@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://workprint.dev/schemas/observation.schema.json",
+  "title": "Workprint Observation",
+  "description": "Canonical normalized observation produced by evidence adapters and consumed by the investigation engine.",
+  "type": "object",
+  "required": [
+    "id",
+    "source_type",
+    "observation",
+    "reliability"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_type": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Machine-friendly evidence category, such as conversation, commit, document, design, calendar, or time_record."
+    },
+    "source_name": {
+      "type": ["string", "null"]
+    },
+    "source_locator": {
+      "type": ["string", "null"],
+      "description": "Stable locator back to the source record, when available."
+    },
+    "observed_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "When the evidence was collected or observed by Workprint."
+    },
+    "event_time": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "When the underlying project event occurred, if known."
+    },
+    "actor": {
+      "type": ["string", "null"]
+    },
+    "activity": {
+      "type": ["string", "null"],
+      "description": "Normalized activity such as question, suggestion, evaluation, decision, adoption, rejection, implementation, drafting, review, or validation."
+    },
+    "artifact": {
+      "type": ["string", "null"]
+    },
+    "observation": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Concise factual statement supported by the referenced source evidence."
+    },
+    "reliability": {
+      "enum": ["high", "medium", "low", "unknown"]
+    },
+    "completeness": {
+      "enum": ["complete", "partial", "unknown"],
+      "default": "unknown"
+    },
+    "notes": {
+      "type": ["string", "null"]
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Source-specific adapter metadata that the core engine does not interpret.",
+      "default": {},
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

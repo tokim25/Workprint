@@ -1,5 +1,16 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- Canonical `Observation` Python model and JSON Schema.
+- Observation model documentation and validation tests.
+
+### Changed
+
+- Investigation input validation now uses the canonical Observation model while preserving the existing evidence-record format.
+
 ## [0.1.0] - 2026-07-14
 
 ### Added

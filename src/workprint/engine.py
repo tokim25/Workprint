@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Iterable
 
+from .models import Observation, ObservationError
+
 
 class InvestigationError(ValueError):
     """Raised when investigation input is invalid."""
@@ -30,29 +32,23 @@ class Event:
 
     @classmethod
     def from_record(cls, record: dict[str, Any]) -> "Event":
-        for field in ("id", "source_type", "observation", "reliability"):
-            if not record.get(field):
-                raise InvestigationError(f"Evidence record is missing required field: {field}")
+        try:
+            normalized = Observation.from_dict(record)
+        except ObservationError as exc:
+            raise InvestigationError(str(exc)) from exc
 
-        reliability = str(record["reliability"]).lower()
-        if reliability not in VALID_CONFIDENCE:
-            raise InvestigationError(
-                f"Evidence {record['id']} has invalid reliability: {reliability}"
-            )
-
-        event_time = _parse_datetime(record.get("event_time"), record["id"])
         return cls(
-            id=str(record["id"]),
-            event_time=event_time,
-            source_type=str(record["source_type"]),
-            source_locator=_optional_string(record.get("source_locator")),
-            actor=_optional_string(record.get("actor")),
-            activity=_optional_string(record.get("activity"), lower=True),
-            artifact=_optional_string(record.get("artifact")),
-            observation=str(record["observation"]).strip(),
-            reliability=reliability,
-            completeness=str(record.get("completeness", "unknown")).lower(),
-            notes=_optional_string(record.get("notes")),
+            id=normalized.id,
+            event_time=normalized.event_time,
+            source_type=normalized.source_type,
+            source_locator=normalized.source_locator,
+            actor=normalized.actor,
+            activity=normalized.activity,
+            artifact=normalized.artifact,
+            observation=normalized.observation,
+            reliability=normalized.reliability.value,
+            completeness=normalized.completeness.value,
+            notes=normalized.notes,
         )
 
     def to_dict(self) -> dict[str, Any]:
