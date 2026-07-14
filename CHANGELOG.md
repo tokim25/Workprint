@@ -1,5 +1,19 @@
 # Changelog
 
+
+## Unreleased
+
+### Added
+
+- Shared `EvidenceAdapter` contract for source-specific evidence readers.
+- Adapter registry for CLI and future evidence-source discovery.
+- Contract and registry tests.
+
+### Changed
+
+- `ChatGPTAdapter` now implements `EvidenceAdapter`.
+- CLI source selection now uses the adapter registry.
+
 ## 0.3.0 - 2026-07-14
 
 ### Added

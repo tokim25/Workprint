@@ -7,6 +7,8 @@ from typing import Any
 
 from workprint.models import NormalizedMessage
 
+from .base import EvidenceAdapter
+
 
 def _parse_timestamp(value: Any) -> datetime | None:
     if value is None:
@@ -60,15 +62,14 @@ def _role(message: dict[str, Any]) -> str:
     }.get(str(raw), "unknown")
 
 
-class ChatGPTAdapter:
+class ChatGPTAdapter(EvidenceAdapter[NormalizedMessage]):
     source_name = "ChatGPT"
+    source_type = "conversation"
 
     def read(self, path: str | Path) -> list[NormalizedMessage]:
-        source_path = Path(path)
+        source_path = self.validate_input(path)
         try:
             payload = json.loads(source_path.read_text(encoding="utf-8"))
-        except FileNotFoundError as exc:
-            raise ValueError(f"file not found: {source_path}") from exc
         except json.JSONDecodeError as exc:
             raise ValueError(f"invalid JSON: {source_path}") from exc
 
