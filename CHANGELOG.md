@@ -5,6 +5,8 @@
 
 ### Added
 
+- Claude conversation adapter and fixture support.
+- Claude import documentation and adapter tests.
 - Shared `EvidenceAdapter` contract for source-specific evidence readers.
 - Adapter registry for CLI and future evidence-source discovery.
 - Contract and registry tests.

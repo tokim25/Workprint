@@ -30,8 +30,9 @@ Each adapter must:
 - return Workprint-normalized records;
 - avoid generating project-level findings or conclusions.
 
-The current `ChatGPTAdapter` returns `NormalizedMessage` records. Future
-conversation adapters such as Claude and Gemini can return the same type.
+`ChatGPTAdapter` and `ClaudeAdapter` both return `NormalizedMessage`
+records. Future conversation adapters such as Gemini can target the same
+normalized type.
 Non-conversation adapters, such as Git, may return a different normalized
 record type while preserving the same adapter contract.
 
