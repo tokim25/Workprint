@@ -1,72 +1,83 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://workprint.dev/schemas/observation.schema.json",
   "title": "Workprint Observation",
-  "description": "Canonical normalized observation produced by evidence adapters and consumed by the investigation engine.",
   "type": "object",
   "required": [
     "id",
+    "timestamp",
+    "source",
     "source_type",
-    "observation",
-    "reliability"
+    "actor",
+    "activity",
+    "statement",
+    "evidence_refs",
+    "reliability",
+    "metadata"
   ],
   "properties": {
     "id": {
       "type": "string",
       "minLength": 1
     },
+    "timestamp": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "source": {
+      "type": "string",
+      "minLength": 1
+    },
     "source_type": {
       "type": "string",
-      "minLength": 1,
-      "description": "Machine-friendly evidence category, such as conversation, commit, document, design, calendar, or time_record."
-    },
-    "source_name": {
-      "type": ["string", "null"]
-    },
-    "source_locator": {
-      "type": ["string", "null"],
-      "description": "Stable locator back to the source record, when available."
-    },
-    "observed_at": {
-      "type": ["string", "null"],
-      "format": "date-time",
-      "description": "When the evidence was collected or observed by Workprint."
-    },
-    "event_time": {
-      "type": ["string", "null"],
-      "format": "date-time",
-      "description": "When the underlying project event occurred, if known."
+      "minLength": 1
     },
     "actor": {
-      "type": ["string", "null"]
+      "type": "string",
+      "minLength": 1
     },
     "activity": {
-      "type": ["string", "null"],
-      "description": "Normalized activity such as question, suggestion, evaluation, decision, adoption, rejection, implementation, drafting, review, or validation."
+      "enum": [
+        "question",
+        "suggestion",
+        "evaluation",
+        "decision",
+        "implementation",
+        "artifact",
+        "observation",
+        "unknown"
+      ]
+    },
+    "statement": {
+      "type": "string",
+      "minLength": 1
     },
     "artifact": {
-      "type": ["string", "null"]
+      "type": [
+        "string",
+        "null"
+      ]
     },
-    "observation": {
-      "type": "string",
-      "minLength": 1,
-      "description": "Concise factual statement supported by the referenced source evidence."
+    "evidence_refs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1
     },
     "reliability": {
-      "enum": ["high", "medium", "low", "unknown"]
-    },
-    "completeness": {
-      "enum": ["complete", "partial", "unknown"],
-      "default": "unknown"
-    },
-    "notes": {
-      "type": ["string", "null"]
+      "enum": [
+        "high",
+        "medium",
+        "low",
+        "unknown"
+      ]
     },
     "metadata": {
-      "type": "object",
-      "description": "Source-specific adapter metadata that the core engine does not interpret.",
-      "default": {},
-      "additionalProperties": true
+      "type": "object"
     }
   },
   "additionalProperties": false

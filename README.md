@@ -2,81 +2,67 @@
 
 **Reconstruct how work gets made.**
 
-Workprint is an evidence-based framework and Claude skill for reconstructing how a project evolved across human and AI activity. It analyzes available artifacts such as AI conversations, commits, documents, designs, calendars, and project records, then produces a transparent account of what happened, what supports each finding, what can be measured, what can only be estimated, and what remains unknown.
-
-Workprint does not use arbitrary “human versus AI” percentages. It attributes observable activities and makes uncertainty explicit.
-
-## Status
-
-`v0.1.0` is the first usable foundation. It includes a Claude Agent Skill, an optional Claude Code slash command, the investigation protocol, evidence and confidence models, report templates, portable JSON schemas, and worked examples.
-
-## Quick start with Claude
-
-### Claude Skills upload
-
-Upload `workprint-claude-skill-v0.1.zip` through Claude's Skill-management interface.
-
-### Claude Code
-
-Copy this repository into your project while preserving the `.claude` directory. Then ask Claude to use Workprint naturally or invoke:
+Workprint turns exported AI conversations into evidence-backed project investigations. This v0.3.0 foundation release includes one complete vertical slice:
 
 ```text
-/workprint
+ChatGPT export
+    ↓
+Normalized messages
+    ↓
+Observations
+    ↓
+Investigation
+    ↓
+Markdown or JSON report
 ```
 
-Example requests:
+## What works
 
-```text
-Use Workprint to inventory the evidence in this repository.
-```
+- Imports common ChatGPT `conversations.json` exports.
+- Normalizes user and assistant messages.
+- Extracts deterministic observations.
+- Reconstructs a chronological timeline.
+- Identifies explicit decisions, suggestions, implementation statements, and unknowns.
+- Produces Markdown and JSON investigation reports.
+- Keeps source references for traceability.
+- Uses no external runtime dependencies.
 
-```text
-/workprint Build a project timeline and attribution report from the supplied files.
-```
-
-## Investigation engine
-
-Workprint includes a local Python CLI that turns normalized evidence JSON into a timeline, decision records, findings, session spans, unknowns, and a Markdown or JSON report.
+## Install locally
 
 ```bash
-pip install -e .
-workprint fixtures/workprint-dogfood.json --output workprint-investigation.md
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e .
 ```
 
-See [docs/investigation-engine.md](docs/investigation-engine.md).
-
-
-## Claude conversation intake
-
-Convert a supported Claude conversation export into canonical Observation records:
+## Run the sample
 
 ```bash
-PYTHONPATH=src python3 -m workprint.cli ingest claude \
-  fixtures/claude/sample-conversations.json \
-  --output claude-observations.json
+workprint investigate chatgpt fixtures/chatgpt/sample-conversations.json   --project "Workprint"   --output report.md
 ```
 
-See [`docs/claude-adapter.md`](docs/claude-adapter.md) for supported input shapes and limitations.
+Or without installing:
 
-## Core rule
-
-> Every material finding must be traceable to evidence, reasoning, and an explicit confidence assessment.
-
-## What Workprint is not
-
-Workprint is not an AI-content detector, employee-monitoring tool, productivity score, legal authorship determination, or substitute for contemporaneous time tracking.
-
-## Repository map
-
-```text
-.claude/       Claude skill and slash command
-docs/          User-facing guidance
-spec/          Core methodology
-templates/     Reusable report structures
-schemas/       Portable structured-data definitions
-examples/      Worked examples
+```bash
+PYTHONPATH=src python3 -m workprint.cli investigate chatgpt   fixtures/chatgpt/sample-conversations.json   --project "Workprint"   --output report.md
 ```
 
-## Licensing
+## Import observations only
 
-No open-source license has been granted. All rights are reserved by the repository owner. See [RIGHTS.md](RIGHTS.md).
+```bash
+workprint import chatgpt fixtures/chatgpt/sample-conversations.json   --output observations.json
+```
+
+## Run tests
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+## Limits
+
+The observation extractor is intentionally deterministic. It detects explicit language and does not claim to understand unstated intent. Workprint may miss implicit decisions, subtle revisions, or activity that occurred outside the exported conversation.
+
+## Rights
+
+Copyright © 2026 Tony Kim. All rights reserved. This repository is not currently open source.

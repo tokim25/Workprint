@@ -1,25 +1,31 @@
 # Roadmap
 
-## v0.1 — Foundation
+## v0.3.0 — ChatGPT vertical slice
 
-- [x] Claude skill
-- [x] Optional slash command
-- [x] Investigation protocol
-- [x] Evidence and confidence models
-- [x] Report templates
-- [x] Portable schemas
-- [x] Worked examples
-- [x] Deterministic investigation engine
-- [x] Timeline, decision, session, finding, and coverage outputs
+- [x] ChatGPT export reader
+- [x] Normalized messages
+- [x] Canonical observations
+- [x] Investigation engine
+- [x] Markdown and JSON reports
+- [x] CLI
+- [x] Tests
 
-## v0.2 — Evidence adapters and raw-source normalization
+## v0.4.0 — Claude support
 
-Potential Git, AI export, Google Docs, Figma, calendar, and time-tracker normalization.
+- [ ] Claude export reader
+- [ ] Shared multi-source investigation command
+- [ ] Cross-source deduplication
 
-## v0.3 — Report workflows
+## v0.5.0 — Git evidence
 
-Potential consulting, performance-review, promotion, disclosure, and due-diligence reports.
+- [ ] Git adapter
+- [ ] Commit and diff observations
+- [ ] Decision-to-implementation linking
 
-## v0.4 — Validation and testing
+## Later
 
-Benchmark evidence sets, inter-rater consistency, test fixtures, schema validation, and red-team cases.
+- Gemini adapter
+- Google Docs revisions
+- Figma history
+- Portfolio report
+- Evidence coverage profile

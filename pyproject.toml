@@ -3,11 +3,11 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "workprint-engine"
-version = "0.1.0"
-description = "Evidence-based investigation engine for reconstructing how work gets made."
+name = "workprint"
+version = "0.3.0"
+description = "Evidence-based reconstruction of how work gets made."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 authors = [{name = "Tony Kim"}]
 license = {text = "All rights reserved"}
 dependencies = []
@@ -17,3 +17,7 @@ workprint = "workprint.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
