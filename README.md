@@ -45,6 +45,19 @@ workprint fixtures/workprint-dogfood.json --output workprint-investigation.md
 
 See [docs/investigation-engine.md](docs/investigation-engine.md).
 
+
+## Claude conversation intake
+
+Convert a supported Claude conversation export into canonical Observation records:
+
+```bash
+PYTHONPATH=src python3 -m workprint.cli ingest claude \
+  fixtures/claude/sample-conversations.json \
+  --output claude-observations.json
+```
+
+See [`docs/claude-adapter.md`](docs/claude-adapter.md) for supported input shapes and limitations.
+
 ## Core rule
 
 > Every material finding must be traceable to evidence, reasoning, and an explicit confidence assessment.

@@ -4,6 +4,9 @@
 
 ### Added
 
+- Shared normalized conversation message model and adapter interface.
+- Claude conversation adapter with deterministic observation extraction.
+- `workprint ingest claude` CLI command, fixture, tests, and documentation.
 - Canonical `Observation` Python model and JSON Schema.
 - Observation model documentation and validation tests.
 
