@@ -1,34 +1,21 @@
 # Changelog
 
-## [Unreleased]
+## 0.3.0 - 2026-07-14
 
 ### Added
 
-- Shared normalized conversation message model and adapter interface.
-- Claude conversation adapter with deterministic observation extraction.
-- `workprint ingest claude` CLI command, fixture, tests, and documentation.
-- Canonical `Observation` Python model and JSON Schema.
-- Observation model documentation and validation tests.
-
-### Changed
-
-- Investigation input validation now uses the canonical Observation model while preserving the existing evidence-record format.
-
-## [0.1.0] - 2026-07-14
-
-### Added
-
-- Initial Workprint product definition and repository structure.
-- Claude Agent Skill with evidence-first workflow.
-- Optional `/workprint` Claude Code command.
-- Evidence, attribution, confidence, estimation, and reporting specifications.
-- JSON schemas for evidence records, findings, and reports.
-- Executive, detailed, portfolio, and validation report templates.
-- Worked examples for software and learning-design projects.
+- Complete ChatGPT-to-investigation vertical slice.
+- Canonical Observation and NormalizedMessage models.
+- Deterministic observation extraction.
+- ChatGPT export reader.
+- Investigation engine.
+- Markdown and JSON report rendering.
+- CLI commands for importing and investigating ChatGPT exports.
+- Sample fixture and automated tests.
 
 ### Known limitations
 
-- Evidence ingestion is manual.
-- No external connectors or automated parsers are included.
-- Active-time estimation remains heuristic.
-- Claude can only analyze evidence supplied or explicitly made available.
+- ChatGPT is the only supported source in this release.
+- Observation extraction is keyword- and pattern-based.
+- Active-time estimates are not included.
+- Branching conversation paths are reduced to the current message lineage when available.
