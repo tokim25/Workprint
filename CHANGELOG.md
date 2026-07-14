@@ -5,6 +5,9 @@
 
 ### Added
 
+- Multi-source investigation command for combining registered evidence adapters.
+- Exact duplicate suppression across repeated evidence inputs.
+- Multi-source investigation tests and documentation.
 - Claude conversation adapter and fixture support.
 - Claude import documentation and adapter tests.
 - Shared `EvidenceAdapter` contract for source-specific evidence readers.
