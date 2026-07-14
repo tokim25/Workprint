@@ -65,3 +65,12 @@ findings, and lists unknowns and limitations.
 
 Reports are presentations of the same investigation data. Markdown and JSON
 are currently supported.
+
+
+## Multi-source orchestration
+
+`workprint.multisource` accepts explicit `SOURCE=PATH` inputs, invokes the
+registered adapters, merges observations, suppresses exact duplicates, and
+sorts the result before handing it to the investigation engine.
+
+Adapters remain independent and contain no multi-source logic.

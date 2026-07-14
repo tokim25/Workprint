@@ -58,6 +58,17 @@ workprint investigate claude fixtures/claude/sample-conversations.json \
   --output claude-report.md
 ```
 
+
+## Combine ChatGPT and Claude evidence
+
+```bash
+workprint investigate-multi \
+  --evidence chatgpt=exports/chatgpt.json \
+  --evidence claude=exports/claude.json \
+  --project "Workprint" \
+  --output combined-report.md
+```
+
 ## Import observations only
 
 ```bash

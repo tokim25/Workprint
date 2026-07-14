@@ -13,8 +13,8 @@
 ## v0.4.0 — Claude support
 
 - [x] Claude export reader
-- [ ] Shared multi-source investigation command
-- [ ] Cross-source deduplication
+- [x] Shared multi-source investigation command
+- [x] Exact cross-source duplicate suppression
 
 ## v0.5.0 — Git evidence
 
