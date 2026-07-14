@@ -12,7 +12,7 @@
 
 ## v0.4.0 — Claude support
 
-- [ ] Claude export reader
+- [x] Claude export reader
 - [ ] Shared multi-source investigation command
 - [ ] Cross-source deduplication
 

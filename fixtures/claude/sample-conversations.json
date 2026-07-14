@@ -1,0 +1,54 @@
+{
+  "conversations": [
+    {
+      "uuid": "claude-conv-1",
+      "name": "Build Workprint",
+      "chat_messages": [
+        {
+          "uuid": "claude-msg-1",
+          "sender": "human",
+          "created_at": "2026-07-14T19:00:00Z",
+          "content": [
+            {
+              "type": "text",
+              "text": "Can Claude help reconstruct how much work I did versus the AI?"
+            }
+          ]
+        },
+        {
+          "uuid": "claude-msg-2",
+          "sender": "assistant",
+          "created_at": "2026-07-14T19:01:00Z",
+          "content": [
+            {
+              "type": "text",
+              "text": "I recommend focusing on evidence-backed activity attribution rather than unsupported percentages."
+            }
+          ]
+        },
+        {
+          "uuid": "claude-msg-3",
+          "sender": "human",
+          "created_at": "2026-07-14T19:02:00Z",
+          "content": [
+            {
+              "type": "text",
+              "text": "Let's use Workprint as the project name."
+            }
+          ]
+        },
+        {
+          "uuid": "claude-msg-4",
+          "sender": "human",
+          "created_at": "2026-07-14T19:03:00Z",
+          "content": [
+            {
+              "type": "text",
+              "text": "I created the repository and pushed the initial files."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

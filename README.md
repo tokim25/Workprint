@@ -20,6 +20,7 @@ Markdown or JSON report
 
 - Uses a shared `EvidenceAdapter` contract for evidence-source readers.
 - Imports common ChatGPT `conversations.json` exports.
+- Imports common Claude JSON conversation exports.
 - Normalizes user and assistant messages.
 - Extracts deterministic observations.
 - Reconstructs a chronological timeline.
@@ -46,6 +47,15 @@ Or without installing:
 
 ```bash
 PYTHONPATH=src python3 -m workprint.cli investigate chatgpt   fixtures/chatgpt/sample-conversations.json   --project "Workprint"   --output report.md
+```
+
+
+## Run a Claude investigation
+
+```bash
+workprint investigate claude fixtures/claude/sample-conversations.json \
+  --project "Workprint" \
+  --output claude-report.md
 ```
 
 ## Import observations only

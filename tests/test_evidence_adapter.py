@@ -20,7 +20,7 @@ class EvidenceAdapterTests(unittest.TestCase):
     def test_registry_returns_chatgpt_adapter(self):
         adapter = get_adapter("chatgpt")
         self.assertIsInstance(adapter, ChatGPTAdapter)
-        self.assertEqual(available_adapters(), ("chatgpt",))
+        self.assertEqual(available_adapters(), ("chatgpt", "claude"))
 
     def test_registry_rejects_unknown_adapter(self):
         with self.assertRaisesRegex(ValueError, "unsupported evidence source"):
