@@ -9,8 +9,10 @@
 - [x] Report templates
 - [x] Portable schemas
 - [x] Worked examples
+- [x] Deterministic investigation engine
+- [x] Timeline, decision, session, finding, and coverage outputs
 
-## v0.2 — Evidence adapters
+## v0.2 — Evidence adapters and raw-source normalization
 
 Potential Git, AI export, Google Docs, Figma, calendar, and time-tracker normalization.
 

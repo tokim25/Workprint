@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "workprint-engine"
+version = "0.1.0"
+description = "Evidence-based investigation engine for reconstructing how work gets made."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{name = "Tony Kim"}]
+license = {text = "All rights reserved"}
+dependencies = []
+
+[project.scripts]
+workprint = "workprint.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

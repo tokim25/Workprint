@@ -41,7 +41,8 @@
       "type": [
         "string",
         "null"
-      ]
+      ],
+      "description": "Normalized activity, such as suggestion, evaluation, decision, adoption, rejection, implementation, drafting, review, or validation."
     },
     "artifact": {
       "type": [

@@ -34,6 +34,17 @@ Use Workprint to inventory the evidence in this repository.
 /workprint Build a project timeline and attribution report from the supplied files.
 ```
 
+## Investigation engine
+
+Workprint includes a local Python CLI that turns normalized evidence JSON into a timeline, decision records, findings, session spans, unknowns, and a Markdown or JSON report.
+
+```bash
+pip install -e .
+workprint fixtures/workprint-dogfood.json --output workprint-investigation.md
+```
+
+See [docs/investigation-engine.md](docs/investigation-engine.md).
+
 ## Core rule
 
 > Every material finding must be traceable to evidence, reasoning, and an explicit confidence assessment.

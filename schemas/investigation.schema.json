@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workprint Investigation Input",
+  "type": "object",
+  "required": [
+    "project",
+    "evidence"
+  ],
+  "properties": {
+    "project": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scope": {
+      "type": "string"
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "evidence.schema.json"
+      }
+    }
+  },
+  "additionalProperties": false
+}
