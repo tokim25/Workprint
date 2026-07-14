@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 from typing import Sequence
 
-from workprint.adapters import ChatGPTAdapter
+from workprint.adapters import available_adapters, get_adapter
 from workprint.engine import build_investigation
 from workprint.extractor import extract_observations
 from workprint.reports import render_markdown
@@ -18,9 +18,10 @@ def _write(path: str | None, content: str) -> None:
         print(content)
 
 
-def _read_chatgpt(path: str):
-    messages = ChatGPTAdapter().read(path)
-    return extract_observations(messages)
+def _read_source(source: str, path: str):
+    adapter = get_adapter(source)
+    records = adapter.read(path)
+    return extract_observations(records)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -34,7 +35,7 @@ def build_parser() -> argparse.ArgumentParser:
         "import",
         help="Normalize source evidence into observations.",
     )
-    import_parser.add_argument("source", choices=["chatgpt"])
+    import_parser.add_argument("source", choices=available_adapters())
     import_parser.add_argument("input")
     import_parser.add_argument("--output")
 
@@ -42,7 +43,7 @@ def build_parser() -> argparse.ArgumentParser:
         "investigate",
         help="Create an investigation report from source evidence.",
     )
-    investigate_parser.add_argument("source", choices=["chatgpt"])
+    investigate_parser.add_argument("source", choices=available_adapters())
     investigate_parser.add_argument("input")
     investigate_parser.add_argument("--project", required=True)
     investigate_parser.add_argument("--format", choices=["markdown", "json"], default="markdown")
@@ -52,7 +53,7 @@ def build_parser() -> argparse.ArgumentParser:
         "validate",
         help="Validate that a supported export can be read.",
     )
-    validate_parser.add_argument("source", choices=["chatgpt"])
+    validate_parser.add_argument("source", choices=available_adapters())
     validate_parser.add_argument("input")
 
     return parser
@@ -63,7 +64,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     try:
-        observations = _read_chatgpt(args.input)
+        observations = _read_source(args.source, args.input)
     except ValueError as exc:
         parser.error(str(exc))
 

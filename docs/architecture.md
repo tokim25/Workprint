@@ -1,26 +1,42 @@
 # Architecture
 
-Workprint v0.3.0 uses a small, explicit pipeline:
+Workprint uses a small, explicit pipeline:
 
 ```text
-Raw ChatGPT export
-        ↓
-ChatGPTAdapter
-        ↓
-NormalizedMessage[]
-        ↓
+Raw evidence
+    ↓
+EvidenceAdapter
+    ↓
+Normalized records
+    ↓
 Deterministic extractor
-        ↓
+    ↓
 Observation[]
-        ↓
+    ↓
 Investigation engine
-        ↓
+    ↓
 Markdown or JSON report
 ```
 
-## Adapter
+## EvidenceAdapter
 
-The adapter understands vendor-specific export structure. It does not make project-level conclusions.
+`EvidenceAdapter` is the shared contract for every evidence source.
+
+Each adapter must:
+
+- declare a stable source name and source type;
+- validate its input;
+- read a source-specific artifact;
+- return Workprint-normalized records;
+- avoid generating project-level findings or conclusions.
+
+The current `ChatGPTAdapter` returns `NormalizedMessage` records. Future
+conversation adapters such as Claude and Gemini can return the same type.
+Non-conversation adapters, such as Git, may return a different normalized
+record type while preserving the same adapter contract.
+
+Adapters are registered through `workprint.adapters.registry`. The CLI uses
+that registry rather than importing vendor-specific classes directly.
 
 ## Normalized message
 
@@ -36,12 +52,15 @@ A normalized message preserves:
 
 ## Observation
 
-An observation is a normalized statement tied to evidence. It records an activity label but does not claim ownership or total effort.
+An observation is a normalized statement tied to evidence. It records an
+activity label but does not claim ownership or total effort.
 
 ## Investigation engine
 
-The engine orders observations, summarizes recorded activity, creates bounded findings, and lists unknowns and limitations.
+The engine orders observations, summarizes recorded activity, creates bounded
+findings, and lists unknowns and limitations.
 
 ## Reports
 
-Reports are presentations of the same investigation data. Markdown and JSON are supported in this release.
+Reports are presentations of the same investigation data. Markdown and JSON
+are currently supported.

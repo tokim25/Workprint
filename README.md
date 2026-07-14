@@ -18,6 +18,7 @@ Markdown or JSON report
 
 ## What works
 
+- Uses a shared `EvidenceAdapter` contract for evidence-source readers.
 - Imports common ChatGPT `conversations.json` exports.
 - Normalizes user and assistant messages.
 - Extracts deterministic observations.
