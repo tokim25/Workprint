@@ -72,16 +72,24 @@ supported evidence, and limitations.
 
 ## Active Capability — Guided Investigation Wizard
 
-Status: Ready for definition
+Status: Complete
 
 Goal: Guide users from discovered evidence through source selection,
 readiness review, and investigation setup without requiring command-line
 knowledge.
 
+See [docs/guided-investigation.md](docs/guided-investigation.md) for the
+guided workflow, selection syntax, output behavior, and limitations.
+
+## Active Capability — Low-Code/No-Code User Experience
+
+Status: Ready for definition
+
+Goal: Make Workprint usable without requiring command-line knowledge.
+
 ## Upcoming Capabilities
 
-1. Low-Code/No-Code User Experience
-2. Semantic correlation only after deterministic behavior is trustworthy
+1. Semantic correlation only after deterministic behavior is trustworthy
 
 Detailed requirements for upcoming capabilities are tracked in
 [PROJECT_PLAN.md](PROJECT_PLAN.md).

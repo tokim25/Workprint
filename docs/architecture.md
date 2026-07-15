@@ -49,6 +49,18 @@ create observations, build findings, generate timelines, or modify files.
 The CLI keeps discovery thin by delegating scanning and aggregation to the
 discovery layer.
 
+## Guided investigation
+
+`workprint.guided` orchestrates a plain-language workflow on top of Project
+Discovery and the existing multi-source investigation pipeline. It prompts for a
+project folder, presents discovered importable files, translates file selections
+into `EvidenceInput` values, and calls `load_observations` before building the
+same investigation and reports used by expert CLI commands.
+
+The guided layer does not introduce separate evidence loading, investigation,
+timeline, report, JSON, or attribution logic. Git repository detection remains
+informational until a Git evidence adapter exists.
+
 ## Static document adapters
 
 The Google Docs adapter reads static `.json`, `.txt`, and `.md` exports using

@@ -20,6 +20,7 @@ usable by people with limited coding knowledge.
 - [x] Figma adapter
 - [x] Report visual design and shareability
 - [x] Project Discovery
+- [x] Guided Investigation Wizard
 - [x] Markdown and JSON reporting
 - [x] Multi-source investigations
 - [x] Exact, source-aware duplicate suppression
@@ -187,25 +188,48 @@ Limitations:
 - Git detection only identifies repository presence.
 - Static export limitations still apply to document and design evidence.
 
-## Active Milestone: Guided Investigation Wizard
+## Completed Milestone: Guided Investigation Wizard
 
-Status: Ready for definition
+Status: Complete
 
 Goal: Guide users from discovered evidence through source selection,
 readiness review, and investigation setup without requiring command-line
 knowledge.
 
+Implemented scope:
+
+- `workprint guide` command.
+- Project folder confirmation.
+- Reuse of Project Discovery.
+- Plain-language display of discovered sources and files.
+- Git repository detection shown as informational only.
+- File-level and source-level selection.
+- Project name prompt.
+- Dedicated default output directory: `workprint-output/`.
+- Default Markdown and JSON outputs.
+- Overwrite confirmation and cancellation paths that leave files unchanged.
+- Reuse of the existing multi-source investigation pipeline.
+- No changes to evidence, observation, investigation, timeline, report, JSON,
+  or adapter data models.
+
+Limitations:
+
+- The workflow is terminal-based.
+- Git repositories cannot be selected until a Git evidence adapter exists.
+- Guided import does not infer attribution beyond existing deterministic
+  evidence handling.
+
+## Active Milestone: Low-Code/No-Code User Experience
+
+Status: Ready for definition
+
+Goal: Make Workprint usable without requiring terminal knowledge.
+
 Detailed requirements: To be defined.
 
 ## Upcoming Milestones
 
-1. Low-Code/No-Code User Experience
-
-   Goal: Make Workprint usable without requiring terminal knowledge.
-
-   Detailed requirements: To be defined.
-
-2. Semantic correlation only after deterministic behavior is trustworthy
+1. Semantic correlation only after deterministic behavior is trustworthy
 
    Goal: Add semantic matching or inference only after deterministic evidence
    handling, traceability, and limitations are reliable.

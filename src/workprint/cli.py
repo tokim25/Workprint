@@ -9,6 +9,7 @@ from workprint.adapters import available_adapters, get_adapter
 from workprint.discovery import discover_project, render_discovery
 from workprint.engine import build_investigation
 from workprint.extractor import extract_observations
+from workprint.guided import run_guided
 from workprint.multisource import load_observations, parse_evidence_spec
 from workprint.reports import render_markdown
 
@@ -58,6 +59,11 @@ def build_parser() -> argparse.ArgumentParser:
     validate_parser.add_argument("source", choices=available_adapters())
     validate_parser.add_argument("input")
 
+    subparsers.add_parser(
+        "guide",
+        help="Start a guided investigation workflow.",
+    )
+
     discover_parser = subparsers.add_parser(
         "discover",
         help="Preview supported evidence in a project directory.",
@@ -92,6 +98,9 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+
+    if args.command == "guide":
+        return run_guided()
 
     if args.command == "discover":
         try:
