@@ -5,6 +5,8 @@
 
 ### Added
 
+- Shareable Markdown report structure with at-a-glance summary, evidence
+  boundary, compact timeline overview, and evidence appendix.
 - Figma adapter for static structured JSON exports.
 - Google Docs adapter for static `.json`, `.txt`, and `.md` exports.
 - Timeline Report with canonical timeline events, deterministic involvement

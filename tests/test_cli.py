@@ -32,6 +32,8 @@ class CliTests(unittest.TestCase):
             self.assertEqual(result, 0)
             content = output.read_text(encoding="utf-8")
             self.assertIn("Workprint Investigation", content)
+            self.assertIn("At a Glance", content)
+            self.assertIn("Evidence Appendix", content)
             self.assertIn("Captured User Involvement Counts", content)
 
     def test_investigate_writes_json_with_timeline(self):

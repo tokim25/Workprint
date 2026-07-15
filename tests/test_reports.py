@@ -36,9 +36,57 @@ class ReportTests(unittest.TestCase):
         rendered = render_markdown(investigation)
 
         self.assertIn("# Workprint Investigation: Workprint", rendered)
-        self.assertIn("## Timeline", rendered)
+        self.assertIn("## At a Glance", rendered)
+        self.assertIn("## Evidence Boundary", rendered)
+        self.assertIn("## Timeline Overview", rendered)
+        self.assertIn("## Timeline Event Details", rendered)
+        self.assertIn("## Evidence Appendix", rendered)
         self.assertIn("Human chose A \\| B", rendered)
         self.assertIn("## Limitations", rendered)
+
+    def test_render_markdown_includes_scannable_summary_and_appendix(self):
+        investigation = Investigation(
+            project="Workprint",
+            source_files=("b.json", "a.json"),
+            observations=(
+                Observation(
+                    id="OBS-1",
+                    timestamp=None,
+                    source="ChatGPT",
+                    source_type="conversation",
+                    actor="Human",
+                    activity="decision",
+                    statement="Human decided to keep evidence references visible.",
+                    evidence_refs=("fixture.json#1",),
+                ),
+            ),
+            findings=(
+                {
+                    "id": "F-001",
+                    "statement": "A finding.",
+                    "confidence": "medium",
+                    "evidence_ids": ["OBS-1"],
+                },
+            ),
+            unknowns=("Unknown offline work.",),
+            limitations=("Counts are not effort.",),
+        )
+
+        rendered = render_markdown(investigation)
+
+        self.assertIn("| Sources analyzed | 2 |", rendered)
+        self.assertIn("| Unknown entries | 1 |", rendered)
+        self.assertIn("| Medium-confidence findings | 1 |", rendered)
+        self.assertIn(
+            "This report reflects captured evidence only; no ownership, effort, "
+            "authorship, value, or contribution percentages are inferred.",
+            rendered,
+        )
+        self.assertLess(rendered.index("- `a.json`"), rendered.index("- `b.json`"))
+        self.assertIn("| Event | Time | Stage | Confidence | Observations |", rendered)
+        self.assertIn("**Captured user involvement:**", rendered)
+        self.assertIn("| `OBS-1` | Unknown | ChatGPT | Human | decision |", rendered)
+        self.assertIn("### Observation Statements", rendered)
 
 
 if __name__ == "__main__":

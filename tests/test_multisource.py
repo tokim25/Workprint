@@ -78,7 +78,7 @@ class MultiSourceTests(unittest.TestCase):
             content = output.read_text(encoding="utf-8")
             self.assertIn("ChatGPT", content)
             self.assertIn("Claude", content)
-            self.assertIn("Sources analyzed: 2", content)
+            self.assertIn("| Sources analyzed | 2 |", content)
 
     def test_cli_writes_multi_source_json_report(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -18,6 +18,7 @@ usable by people with limited coding knowledge.
 - [x] Timeline Report
 - [x] Google Docs adapter
 - [x] Figma adapter
+- [x] Report visual design and shareability
 - [x] Markdown and JSON reporting
 - [x] Multi-source investigations
 - [x] Exact, source-aware duplicate suppression
@@ -134,31 +135,48 @@ Limitations:
 - Contributors, owners, and editors remain metadata unless evidence explicitly
   links them to a node or action.
 
-## Active Milestone: Report Visual Design and Shareability
+## Completed Milestone: Report Visual Design and Shareability
 
-Status: Ready for definition
+Status: Complete
 
 Goal: Improve report presentation so outputs are polished, readable, and easy
 to share with nontechnical audiences.
+
+Implemented scope:
+
+- At-a-glance Markdown summary.
+- Concise evidence boundary near the top of the report.
+- Compact timeline overview table.
+- More readable timeline event detail sections.
+- Captured user involvement counts labeled as evidence-event counts.
+- Stable evidence appendix with observation IDs and evidence references.
+- No changes to evidence, investigation, observation, timeline, adapter, CLI, or
+  JSON models.
+
+Limitations:
+
+- Markdown remains plain and portable.
+- No HTML, CSS, images, or runtime dependencies are included.
+- Report design does not change underlying evidence claims.
+
+## Active Milestone: Low-Code/No-Code User Experience
+
+Status: Ready for definition
+
+Goal: Make Workprint usable without requiring command-line knowledge.
 
 Detailed requirements: To be defined.
 
 ## Upcoming Milestones
 
-1. Low-code/no-code user experience
-
-   Goal: Make Workprint usable without requiring command-line knowledge.
-
-   Detailed requirements: To be defined.
-
-2. Guided import and project setup
+1. Guided import and project setup
 
    Goal: Guide users through source selection, file requirements, permissions,
    and project configuration.
 
    Detailed requirements: To be defined.
 
-3. Semantic correlation only after deterministic behavior is trustworthy
+2. Semantic correlation only after deterministic behavior is trustworthy
 
    Goal: Add semantic matching or inference only after deterministic evidence
    handling, traceability, and limitations are reliable.

@@ -8,6 +8,13 @@ def _escape(text: str) -> str:
     return text.replace("|", "\\|").replace("\n", " ")
 
 
+def _compact(text: str, limit: int = 96) -> str:
+    compact = " ".join(text.split())
+    if len(compact) <= limit:
+        return compact
+    return compact[: limit - 3].rstrip() + "..."
+
+
 def _time_range(start: object, end: object) -> str:
     start_text = start.isoformat() if hasattr(start, "isoformat") else None
     end_text = end.isoformat() if hasattr(end, "isoformat") else None
@@ -33,61 +40,82 @@ def _involvement_summary(involvement: object) -> str:
     return "; ".join(parts) if parts else "unknown"
 
 
+def _event_limit_count(timeline: object) -> int:
+    return sum(len(item.attribution_limits) for item in timeline)
+
+
+def _finding_count(findings: tuple[dict, ...], confidence: str) -> int:
+    return sum(
+        1
+        for item in findings
+        if str(item.get("confidence", "")).lower() == confidence
+    )
+
+
 def render_markdown(investigation: Investigation) -> str:
     timeline = investigation.timeline or build_timeline(list(investigation.observations))
     timeline_summary = investigation.timeline_summary or summarize_timeline(timeline)
     lines: list[str] = [
         f"# Workprint Investigation: {investigation.project}",
         "",
-        "## Scope",
+        "## At a Glance",
         "",
-        f"Sources analyzed: {len(investigation.source_files)}",
+        "| Metric | Count |",
+        "|---|---:|",
+        f"| Sources analyzed | {len(investigation.source_files)} |",
+        f"| Captured observations | {len(investigation.observations)} |",
+        f"| Timeline events | {len(timeline)} |",
+        f"| Findings | {len(investigation.findings)} |",
+        f"| Unknown entries | {len(investigation.unknowns)} |",
+        f"| Event attribution limits | {_event_limit_count(timeline)} |",
+        f"| Medium-confidence findings | {_finding_count(investigation.findings, 'medium')} |",
+        f"| Low-confidence findings | {_finding_count(investigation.findings, 'low')} |",
         "",
-        "## Executive Summary",
+        "## Evidence Boundary",
         "",
         (
-            f"Workprint normalized {len(investigation.observations)} conversation "
-            "observations. Findings below distinguish recorded events from broader "
-            "claims that the evidence cannot support."
+            "This report reflects captured evidence only; no ownership, effort, "
+            "authorship, value, or contribution percentages are inferred."
         ),
         "",
         "## Evidence Sources",
         "",
     ]
 
-    for source in investigation.source_files:
+    for source in sorted(investigation.source_files):
         lines.append(f"- `{source}`")
 
     lines.extend([
         "",
-        "## Timeline",
+        "## Timeline Overview",
         "",
-        "| Time | Stage | Event | User Involvement | Confidence | Evidence |",
-        "|---|---|---|---|---|---|",
+        "| Event | Time | Stage | Confidence | Observations |",
+        "|---|---|---|---|---:|",
     ])
 
     for item in timeline:
         timestamp = _time_range(item.start_time, item.end_time)
-        refs = ", ".join(f"`{ref}`" for ref in item.evidence_refs)
         lines.append(
-            f"| {_escape(timestamp)} | {_escape(item.stage)} | "
-            f"{_escape(item.title)} | {_escape(_involvement_summary(item.user_involvement))} | "
-            f"{_escape(item.confidence)} | {refs} |"
+            f"| `{item.id}` | {_escape(timestamp)} | {_escape(item.stage)} | "
+            f"{_escape(item.confidence.title())} | {len(item.source_observation_ids)} |"
         )
 
-    lines.extend(["", "### Timeline Event Details", ""])
+    lines.extend(["", "## Timeline Event Details", ""])
     for item in timeline:
         lines.extend([
-            f"#### {item.id}: {item.title}",
+            f"### {item.id}: {item.title}",
             "",
             item.description,
             "",
-            f"**Stage:** {item.stage}",
+            "| Field | Value |",
+            "|---|---|",
+            f"| Time | {_escape(_time_range(item.start_time, item.end_time))} |",
+            f"| Stage | {_escape(item.stage)} |",
+            f"| Confidence | {_escape(item.confidence.title())} |",
+            f"| Source observations | {', '.join(f'`{obs_id}`' for obs_id in item.source_observation_ids)} |",
             "",
-            f"**Confidence:** {item.confidence}",
-            "",
-            "**Source observations:** "
-            + ", ".join(f"`{obs_id}`" for obs_id in item.source_observation_ids),
+            "**Evidence references:** "
+            + ", ".join(f"`{ref}`" for ref in item.evidence_refs),
             "",
             "**Activity separation:**",
             "",
@@ -95,6 +123,17 @@ def render_markdown(investigation: Investigation) -> str:
         for category, observation_ids in sorted(item.activity_breakdown.items()):
             rendered_ids = ", ".join(f"`{obs_id}`" for obs_id in observation_ids)
             lines.append(f"- {category}: {rendered_ids}")
+        lines.extend(["", "**Captured user involvement:**", ""])
+        for involvement in item.user_involvement:
+            evidence = (
+                ", ".join(f"`{obs_id}`" for obs_id in involvement.evidence_ids)
+                if involvement.evidence_ids
+                else "none"
+            )
+            lines.append(
+                f"- {involvement.activity}: {involvement.status} "
+                f"(evidence: {evidence})"
+            )
         lines.extend(["", "**Attribution limits:**", ""])
         for limit in item.attribution_limits:
             lines.append(f"- {limit}")
@@ -141,6 +180,27 @@ def render_markdown(investigation: Investigation) -> str:
     lines.extend(["", "## Limitations", ""])
     for item in investigation.limitations:
         lines.append(f"- {item}")
+
+    lines.extend([
+        "",
+        "## Evidence Appendix",
+        "",
+        "### Observation Index",
+        "",
+        "| Observation | Time | Source | Actor | Activity | Evidence |",
+        "|---|---|---|---|---|---|",
+    ])
+    for item in investigation.observations:
+        timestamp = item.timestamp.isoformat() if item.timestamp else "Unknown"
+        refs = ", ".join(f"`{ref}`" for ref in item.evidence_refs)
+        lines.append(
+            f"| `{item.id}` | {_escape(timestamp)} | {_escape(item.source)} | "
+            f"{_escape(item.actor)} | {_escape(item.activity)} | {refs} |"
+        )
+
+    lines.extend(["", "### Observation Statements", ""])
+    for item in investigation.observations:
+        lines.append(f"- `{item.id}`: {_escape(_compact(item.statement, 180))}")
 
     lines.append("")
     return "\n".join(lines)

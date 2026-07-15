@@ -114,6 +114,8 @@ records. Timeline generation is deterministic:
 
 Reports are presentations of the same investigation data. Markdown and JSON
 are currently supported, including timeline events and attribution limits.
+Markdown reports add presentation structure, summaries, and evidence appendices
+without changing the underlying evidence, findings, timeline, or JSON model.
 
 
 ## Multi-source orchestration

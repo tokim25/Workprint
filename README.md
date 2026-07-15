@@ -29,6 +29,7 @@ Markdown or JSON report
 - Classifies captured user involvement without contribution percentages.
 - Identifies explicit decisions, suggestions, implementation statements, and unknowns.
 - Produces Markdown and JSON investigation reports.
+- Produces shareable Markdown reports with compact summaries and evidence appendices.
 - Keeps source references for traceability.
 - Uses no external runtime dependencies.
 
