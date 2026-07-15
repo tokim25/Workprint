@@ -87,6 +87,13 @@ Without installing first:
 PYTHONPATH=src python -m unittest discover -s tests -v
 ```
 
+## Project governance
+
+- [AGENTS.md](AGENTS.md) defines permanent instructions for coding agents.
+- [PROJECT_PLAN.md](PROJECT_PLAN.md) tracks active and upcoming capabilities.
+- [DECISIONS.md](DECISIONS.md) records architectural and product decisions.
+- [CONTRIBUTING.md](CONTRIBUTING.md) explains setup, testing, branch, commit, and pull request expectations.
+
 ## Limits
 
 The observation extractor is intentionally deterministic. It detects explicit language and does not claim to understand unstated intent. Workprint may miss implicit decisions, subtle revisions, or activity that occurred outside the exported conversation.

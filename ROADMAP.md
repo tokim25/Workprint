@@ -1,6 +1,8 @@
 # Roadmap
 
-## v0.3.0 — ChatGPT vertical slice
+## Completed Foundation
+
+### v0.3.0 — ChatGPT vertical slice
 
 - [x] ChatGPT export reader
 - [x] Normalized messages
@@ -10,22 +12,35 @@
 - [x] CLI
 - [x] Tests
 
-## v0.4.0 — Claude support
+### v0.4.0 — Claude and multi-source support
 
 - [x] Claude export reader
+- [x] Shared `EvidenceAdapter` contract
+- [x] Adapter registry
 - [x] Shared multi-source investigation command
-- [x] Exact duplicate suppression for repeated evidence inputs
+- [x] Exact, source-aware duplicate suppression for repeated evidence inputs
 
-## v0.5.0 — Git evidence
+## Active Capability — Timeline Report
 
-- [ ] Git adapter
-- [ ] Commit and diff observations
-- [ ] Decision-to-implementation linking
+Status: Ready for implementation
 
-## Later
+Goal: Generate a chronological, evidence-linked account of how a project
+developed, including the investigated user's involvement at every stage.
 
-- Gemini adapter
-- Google Docs revisions
-- Figma history
-- Portfolio report
-- Evidence coverage profile
+This capability is additive. Existing import, investigation, report, and
+multi-source commands must remain compatible, and existing findings must remain
+available.
+
+See [PROJECT_PLAN.md](PROJECT_PLAN.md) for requirements and acceptance criteria.
+
+## Upcoming Capabilities
+
+1. Google Docs adapter
+2. Figma adapter
+3. Report visual design and shareability
+4. Low-code/no-code user experience
+5. Guided import and project setup
+6. Semantic correlation only after deterministic behavior is trustworthy
+
+Detailed requirements for upcoming capabilities are tracked in
+[PROJECT_PLAN.md](PROJECT_PLAN.md).
