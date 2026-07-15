@@ -19,6 +19,7 @@ usable by people with limited coding knowledge.
 - [x] Google Docs adapter
 - [x] Figma adapter
 - [x] Report visual design and shareability
+- [x] Executive Report v1
 - [x] Project Discovery
 - [x] Guided Investigation Wizard
 - [x] Markdown and JSON reporting
@@ -160,6 +161,39 @@ Limitations:
 - Markdown remains plain and portable.
 - No HTML, CSS, images, or runtime dependencies are included.
 - Report design does not change underlying evidence claims.
+
+## Completed Milestone: Executive Report v1
+
+Status: Complete
+
+Goal: Add a reader-facing executive report that explains project goal,
+outputs, evolution, human-AI collaboration, decisions, confidence, evidence
+gaps, and investigation assurance before the existing detailed report.
+
+Implemented scope:
+
+- Derived Executive Report model separate from the core Investigation model.
+- Deterministic ExecutiveReportBuilder.
+- Executive Brief.
+- Project Overview.
+- Key Milestones.
+- Human-AI Collaboration.
+- Decision Analysis.
+- Confidence Assessment.
+- Evidence Gaps.
+- Investigation Assurance.
+- Additive `executive_report` JSON object.
+- Shared JSON serialization helper for expert CLI and guided output.
+- Copy-quality audit metadata with pinned unslop-text upstream revision.
+
+Limitations:
+
+- No LLM-generated narrative copy.
+- No semantic clustering.
+- No probabilistic confidence scoring.
+- Copy-quality scanner is recorded as unavailable until safely integrated.
+- Project goals, outputs, tools, and decision leadership remain unknown unless
+  supported by explicit evidence.
 
 ## Completed Milestone: Project Discovery
 

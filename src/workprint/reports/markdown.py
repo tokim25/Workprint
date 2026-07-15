@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from workprint.executive import build_executive_report
 from workprint.models import Investigation
 from workprint.timeline import build_timeline, summarize_timeline
 
@@ -52,10 +53,147 @@ def _finding_count(findings: tuple[dict, ...], confidence: str) -> int:
     )
 
 
+def _executive_section(investigation: Investigation) -> list[str]:
+    report = build_executive_report(investigation)
+    brief = report.executive_brief
+    confidence = report.confidence_assessment
+    audit = report.copy_quality_audit
+    lines: list[str] = [
+        f"# Executive Report: {investigation.project}",
+        "",
+        "## Executive Brief",
+        "",
+        brief.project_goal.summary,
+        "",
+    ]
+
+    output_summary = " ".join(item.summary for item in brief.project_outputs)
+    lines.extend([
+        output_summary,
+        "",
+        brief.evolution_summary,
+        "",
+        brief.collaboration_summary,
+        "",
+        brief.confidence_summary,
+        "",
+        brief.unknowns_summary,
+        "",
+        "## Project Overview",
+        "",
+    ])
+
+    for item in report.project_overview:
+        lines.extend([
+            f"### {item.title}",
+            "",
+            item.summary,
+            "",
+            f"**Boundary:** {item.rationale}",
+            "",
+        ])
+
+    lines.extend(["## Key Milestones", ""])
+    for item in report.key_milestones:
+        lines.extend([
+            f"### {item.id}: {item.title}",
+            "",
+            item.summary,
+            "",
+            f"**Why included:** {item.rationale}",
+            "",
+            "**Evidence:** " + _evidence_refs(item.evidence_refs),
+            "",
+        ])
+
+    lines.extend(["## Human-AI Collaboration", ""])
+    for item in report.human_ai_collaboration:
+        lines.extend([
+            f"### {item.title}",
+            "",
+            item.summary,
+            "",
+            f"**Evidence boundary:** {item.rationale}",
+            "",
+        ])
+
+    lines.extend(["## Decision Analysis", ""])
+    for item in report.decision_analysis:
+        lines.extend([
+            f"### {item.id}",
+            "",
+            item.summary,
+            "",
+            f"**Decision leadership:** `{item.leadership}`",
+            "",
+            f"**Confidence:** {item.confidence}",
+            "",
+            f"**Rationale:** {item.rationale}",
+            "",
+            "**Evidence:** " + _evidence_refs(item.evidence_refs),
+            "",
+            "**Alternative interpretations:**",
+            "",
+        ])
+        for alternative in item.alternative_interpretations:
+            lines.append(f"- {alternative}")
+        lines.append("")
+
+    lines.extend([
+        "## Confidence Assessment",
+        "",
+        f"**Overall confidence:** {confidence.band}",
+        "",
+        f"- Evidence strength: {confidence.evidence_strength}",
+        f"- Coverage: {confidence.coverage}",
+        f"- Corroboration: {confidence.corroboration}",
+        f"- Conflicts: {confidence.conflicts}",
+        f"- Gaps: {confidence.gaps}",
+        "",
+        confidence.rationale,
+        "",
+        "## Evidence Gaps",
+        "",
+    ])
+    for item in report.evidence_gaps:
+        lines.extend([
+            f"### {item.id}: {item.summary}",
+            "",
+            f"**Why it matters:** {item.why_it_matters}",
+            "",
+            f"**What would reduce the gap:** {item.would_reduce_gap}",
+            "",
+        ])
+
+    lines.extend([
+        "## Investigation Assurance",
+        "",
+        report.investigation_assurance,
+        "",
+        f"**Copy-quality audit status:** `{audit.status}`",
+        "",
+        audit.disclosure,
+        "",
+        f"**Pinned copy-audit repository:** {audit.upstream_repository}",
+        "",
+        f"**Pinned revision:** `{audit.pinned_revision}`",
+        "",
+        "---",
+        "",
+    ])
+    return lines
+
+
+def _evidence_refs(refs: tuple[str, ...]) -> str:
+    if not refs:
+        return "No direct evidence reference is available."
+    return ", ".join(f"`{ref}`" for ref in refs)
+
+
 def render_markdown(investigation: Investigation) -> str:
     timeline = investigation.timeline or build_timeline(list(investigation.observations))
     timeline_summary = investigation.timeline_summary or summarize_timeline(timeline)
-    lines: list[str] = [
+    lines: list[str] = _executive_section(investigation) + [
         f"# Workprint Investigation: {investigation.project}",
         "",
         "## At a Glance",
