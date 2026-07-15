@@ -55,16 +55,21 @@ metadata handling, and static-export limitations.
 
 ## Active Capability — Report Visual Design and Shareability
 
-Status: Ready for definition
+Status: Complete
 
 Goal: Improve report presentation so outputs are polished, readable, and easy
 to share with nontechnical audiences.
 
+## Active Capability — Low-Code/No-Code User Experience
+
+Status: Ready for definition
+
+Goal: Make Workprint usable without requiring command-line knowledge.
+
 ## Upcoming Capabilities
 
-1. Low-code/no-code user experience
-2. Guided import and project setup
-3. Semantic correlation only after deterministic behavior is trustworthy
+1. Guided import and project setup
+2. Semantic correlation only after deterministic behavior is trustworthy
 
 Detailed requirements for upcoming capabilities are tracked in
 [PROJECT_PLAN.md](PROJECT_PLAN.md).
