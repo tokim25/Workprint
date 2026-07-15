@@ -2,10 +2,10 @@
 
 **Reconstruct how work gets made.**
 
-Workprint turns exported conversations and static document exports into evidence-backed project investigations. The current development state builds on the v0.3.0 ChatGPT foundation with shared adapters, Claude import, Google Docs import, and multi-source investigations:
+Workprint turns exported conversations, static documents, and structured design exports into evidence-backed project investigations. The current development state builds on the v0.3.0 ChatGPT foundation with shared adapters, Claude import, Google Docs import, Figma import, and multi-source investigations:
 
 ```text
-ChatGPT, Claude, or Google Docs export
+ChatGPT, Claude, Google Docs, or Figma export
     ↓
 Normalized messages
     ↓
@@ -22,6 +22,7 @@ Markdown or JSON report
 - Imports common ChatGPT `conversations.json` exports.
 - Imports common Claude JSON conversation exports.
 - Imports static Google Docs `.json`, `.txt`, and `.md` exports.
+- Imports static Figma JSON exports.
 - Normalizes user and assistant messages.
 - Extracts deterministic observations.
 - Reconstructs a chronological, evidence-linked timeline report.
@@ -66,6 +67,14 @@ workprint investigate claude fixtures/claude/sample-conversations.json \
 workprint investigate google-docs fixtures/google-docs/sample-document.json \
   --project "Workprint" \
   --output google-docs-report.md
+```
+
+## Run a Figma investigation
+
+```bash
+workprint investigate figma fixtures/figma/sample-file.json \
+  --project "Workprint" \
+  --output figma-report.md
 ```
 
 

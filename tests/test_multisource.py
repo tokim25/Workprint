@@ -16,6 +16,7 @@ class MultiSourceTests(unittest.TestCase):
         self.chatgpt = Path("fixtures/chatgpt/sample-conversations.json")
         self.claude = Path("fixtures/claude/sample-conversations.json")
         self.google_docs = Path("fixtures/google-docs/sample-document.json")
+        self.figma = Path("fixtures/figma/sample-file.json")
 
     def test_parse_evidence_spec(self):
         parsed = parse_evidence_spec(f"chatgpt={self.chatgpt}")
@@ -51,6 +52,17 @@ class MultiSourceTests(unittest.TestCase):
             {"ChatGPT", "google-docs"},
         )
         self.assertEqual(len(observations), 8)
+
+    def test_loads_figma_with_conversation_sources(self):
+        observations = load_observations([
+            EvidenceInput("chatgpt", self.chatgpt),
+            EvidenceInput("figma", self.figma),
+        ])
+        self.assertEqual(
+            {item.source for item in observations},
+            {"ChatGPT", "figma"},
+        )
+        self.assertEqual(len(observations), 9)
 
     def test_cli_writes_multi_source_markdown_report(self):
         with tempfile.TemporaryDirectory() as directory:

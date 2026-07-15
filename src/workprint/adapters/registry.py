@@ -5,6 +5,7 @@ from collections.abc import Callable
 from .base import EvidenceAdapter
 from .chatgpt import ChatGPTAdapter
 from .claude import ClaudeAdapter
+from .figma import FigmaAdapter
 from .google_docs import GoogleDocsAdapter
 
 
@@ -14,6 +15,7 @@ AdapterFactory = Callable[[], EvidenceAdapter]
 _ADAPTERS: dict[str, AdapterFactory] = {
     "chatgpt": ChatGPTAdapter,
     "claude": ClaudeAdapter,
+    "figma": FigmaAdapter,
     "google-docs": GoogleDocsAdapter,
 }
 

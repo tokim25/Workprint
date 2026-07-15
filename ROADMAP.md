@@ -45,17 +45,26 @@ formats and static-export limitations.
 
 ## Active Capability — Figma Adapter
 
-Status: Ready for definition
+Status: Complete
 
 Goal: Import Figma design activity evidence without adding source-specific
 logic to the investigation engine.
 
+See [docs/figma-import.md](docs/figma-import.md) for supported schema,
+metadata handling, and static-export limitations.
+
+## Active Capability — Report Visual Design and Shareability
+
+Status: Ready for definition
+
+Goal: Improve report presentation so outputs are polished, readable, and easy
+to share with nontechnical audiences.
+
 ## Upcoming Capabilities
 
-1. Report visual design and shareability
-2. Low-code/no-code user experience
-3. Guided import and project setup
-4. Semantic correlation only after deterministic behavior is trustworthy
+1. Low-code/no-code user experience
+2. Guided import and project setup
+3. Semantic correlation only after deterministic behavior is trustworthy
 
 Detailed requirements for upcoming capabilities are tracked in
 [PROJECT_PLAN.md](PROJECT_PLAN.md).

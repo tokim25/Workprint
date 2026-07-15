@@ -1,0 +1,70 @@
+{
+  "schema_version": "workprint-figma-static-v1",
+  "file_key": "figma-file-workprint",
+  "file_id": "file-123",
+  "name": "Workprint Product Design",
+  "last_modified": "2026-03-01T12:00:00Z",
+  "owner": "Design Lead",
+  "editors": ["Product Designer"],
+  "pages": [
+    {
+      "id": "page-discovery",
+      "name": "Discovery",
+      "type": "PAGE",
+      "description": "Initial evidence mapping for the product flow.",
+      "last_modified": "2026-03-01T12:10:00Z",
+      "nodes": [
+        {
+          "id": "frame-empty",
+          "name": "Empty Layout Frame",
+          "type": "FRAME",
+          "children": []
+        },
+        {
+          "id": "frame-brief",
+          "name": "Brief Frame",
+          "type": "FRAME",
+          "description": "We should show users the evidence trail before claims.",
+          "last_modified": "2026-03-01T12:15:00Z",
+          "children": [
+            {
+              "id": "text-headline",
+              "name": "Headline",
+              "type": "TEXT",
+              "characters": "Review the evidence before publishing.",
+              "last_modified": "2026-03-01T12:20:00Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "page-components",
+      "name": "Components",
+      "type": "PAGE",
+      "nodes": [
+        {
+          "id": "component-report-card",
+          "name": "Report Card",
+          "type": "COMPONENT",
+          "component_key": "cmp-report-card",
+          "component_name": "Report Card",
+          "metadata": {
+            "evidence": {
+              "note": "Component selected for report summary blocks."
+            }
+          },
+          "children": [
+            {
+              "id": "instance-report-card",
+              "name": "Report Card Instance",
+              "type": "INSTANCE",
+              "instance_of": "component-report-card",
+              "variant": "timeline"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -17,6 +17,7 @@ usable by people with limited coding knowledge.
 - [x] Deterministic investigation engine
 - [x] Timeline Report
 - [x] Google Docs adapter
+- [x] Figma adapter
 - [x] Markdown and JSON reporting
 - [x] Multi-source investigations
 - [x] Exact, source-aware duplicate suppression
@@ -106,38 +107,58 @@ Limitations:
 - Owners, authors, and editors remain document-level metadata unless evidence
   explicitly maps them to a block.
 
-## Active Milestone: Figma Adapter
+## Completed Milestone: Figma Adapter
 
-Status: Ready for definition
+Status: Complete
 
 Goal: Import Figma design activity evidence without adding source-specific
 logic to the investigation engine.
+
+Implemented scope:
+
+- Static structured `.json` export support.
+- Canonical `figma` source identifier.
+- Meaningful page and node filtering.
+- File, page, node, parent, and node-path metadata preservation.
+- Stable hierarchy-aware evidence references.
+- No filesystem timestamp inference.
+- No file-level timestamp assignment to individual nodes.
+- No contributor, owner, editor, authorship, contribution, ownership, or effort
+  inference.
+
+Limitations:
+
+- Static exports do not recover version history.
+- Static exports do not recover comments or comment resolution history.
+- Static exports do not recover contributor activity.
+- Contributors, owners, and editors remain metadata unless evidence explicitly
+  links them to a node or action.
+
+## Active Milestone: Report Visual Design and Shareability
+
+Status: Ready for definition
+
+Goal: Improve report presentation so outputs are polished, readable, and easy
+to share with nontechnical audiences.
 
 Detailed requirements: To be defined.
 
 ## Upcoming Milestones
 
-1. Report visual design and shareability
-
-   Goal: Improve report presentation so outputs are polished, readable, and
-   easy to share with nontechnical audiences.
-
-   Detailed requirements: To be defined.
-
-2. Low-code/no-code user experience
+1. Low-code/no-code user experience
 
    Goal: Make Workprint usable without requiring command-line knowledge.
 
    Detailed requirements: To be defined.
 
-3. Guided import and project setup
+2. Guided import and project setup
 
    Goal: Guide users through source selection, file requirements, permissions,
    and project configuration.
 
    Detailed requirements: To be defined.
 
-4. Semantic correlation only after deterministic behavior is trustworthy
+3. Semantic correlation only after deterministic behavior is trustworthy
 
    Goal: Add semantic matching or inference only after deterministic evidence
    handling, traceability, and limitations are reliable.
