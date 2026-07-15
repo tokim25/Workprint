@@ -9,7 +9,7 @@ from typing import Callable, TextIO
 from workprint.discovery import ProjectDiscovery, discover_project
 from workprint.engine import build_investigation
 from workprint.multisource import EvidenceInput, load_observations
-from workprint.reports import render_markdown
+from workprint.reports import render_json_dict, render_markdown
 
 
 InputFunc = Callable[[str], str]
@@ -167,7 +167,7 @@ def guided_workflow(
     )
     markdown = render_markdown(investigation)
     json_report = json.dumps(
-        investigation.to_dict(),
+        render_json_dict(investigation),
         indent=2,
         ensure_ascii=False,
     ) + "\n"

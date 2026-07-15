@@ -11,7 +11,7 @@ from workprint.engine import build_investigation
 from workprint.extractor import extract_observations
 from workprint.guided import GuidedOptions, run_guided
 from workprint.multisource import load_observations, parse_evidence_spec
-from workprint.reports import render_markdown
+from workprint.reports import render_json_dict, render_markdown
 
 
 def _write(path: str | None, content: str) -> None:
@@ -153,7 +153,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         if args.format == "json":
             output = json.dumps(
-                investigation.to_dict(),
+                render_json_dict(investigation),
                 indent=2,
                 ensure_ascii=False,
             ) + "\n"
@@ -197,7 +197,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     if args.format == "json":
         output = json.dumps(
-            investigation.to_dict(),
+            render_json_dict(investigation),
             indent=2,
             ensure_ascii=False,
         ) + "\n"
