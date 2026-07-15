@@ -62,6 +62,17 @@ workprint discover path/to/project
 Without a path, Workprint scans the current directory. Discovery previews
 supported evidence and does not import files or generate an investigation.
 
+## Run a guided investigation
+
+```bash
+workprint guide
+```
+
+The guided workflow helps you choose a project folder, review discovered
+evidence, select files, name the project, confirm output paths, and generate
+both Markdown and JSON reports. It preserves the expert CLI commands and uses
+the same investigation pipeline.
+
 
 ## Run a Claude investigation
 

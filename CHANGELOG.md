@@ -5,6 +5,8 @@
 
 ### Added
 
+- Guided investigation workflow for selecting discovered evidence and
+  generating Markdown and JSON reports.
 - Project discovery command for previewing supported evidence before import.
 - Shareable Markdown report structure with at-a-glance summary, evidence
   boundary, compact timeline overview, and evidence appendix.
