@@ -59,12 +59,28 @@ activity label but does not claim ownership or total effort.
 ## Investigation engine
 
 The engine orders observations, summarizes recorded activity, creates bounded
-findings, and lists unknowns and limitations.
+findings, builds timeline events, and lists unknowns and limitations.
+
+## Timeline generation
+
+`workprint.timeline` turns observations into chronological `TimelineEvent`
+records. Timeline generation is deterministic:
+
+- observations are ordered by timestamp, source, and ID;
+- related observations are grouped only when they share conversation context,
+  stage, and a close timestamp window;
+- stages are derived from observation activity labels;
+- user involvement is marked measured only when captured evidence directly
+  supports initiated, directed, contributed, reviewed, decided, or executed;
+- unsupported involvement remains unknown;
+- user, collaborator, AI/tool, joint, and unattributed activity remain separate;
+- captured involvement counts describe evidence events only and are never
+  contribution percentages.
 
 ## Reports
 
 Reports are presentations of the same investigation data. Markdown and JSON
-are currently supported.
+are currently supported, including timeline events and attribution limits.
 
 
 ## Multi-source orchestration

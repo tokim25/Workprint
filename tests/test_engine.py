@@ -20,6 +20,8 @@ class EngineTests(unittest.TestCase):
         )
         self.assertEqual(investigation.project, "Workprint")
         self.assertEqual(len(investigation.observations), 4)
+        self.assertEqual(len(investigation.timeline), 4)
+        self.assertEqual(investigation.timeline_summary["event_count"], 4)
         self.assertGreaterEqual(len(investigation.findings), 2)
 
     def test_renders_markdown(self):
@@ -31,6 +33,8 @@ class EngineTests(unittest.TestCase):
         rendered = render_markdown(investigation)
         self.assertIn("# Workprint Investigation: Workprint", rendered)
         self.assertIn("## Timeline", rendered)
+        self.assertIn("Timeline Event Details", rendered)
+        self.assertIn("Captured User Involvement Counts", rendered)
         self.assertIn("## Unknowns", rendered)
 
 

@@ -32,6 +32,21 @@ class CliTests(unittest.TestCase):
             self.assertEqual(result, 0)
             content = output.read_text(encoding="utf-8")
             self.assertIn("Workprint Investigation", content)
+            self.assertIn("Captured User Involvement Counts", content)
+
+    def test_investigate_writes_json_with_timeline(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "report.json"
+            result = main([
+                "investigate", "chatgpt", self.fixture,
+                "--project", "Workprint",
+                "--format", "json",
+                "--output", str(output),
+            ])
+            self.assertEqual(result, 0)
+            payload = json.loads(output.read_text(encoding="utf-8"))
+            self.assertIn("timeline", payload)
+            self.assertEqual(payload["timeline_summary"]["event_count"], 4)
 
     def test_investigate_claude_writes_markdown(self):
         with tempfile.TemporaryDirectory() as directory:

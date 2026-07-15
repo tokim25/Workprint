@@ -23,7 +23,8 @@ Markdown or JSON report
 - Imports common Claude JSON conversation exports.
 - Normalizes user and assistant messages.
 - Extracts deterministic observations.
-- Reconstructs a chronological timeline.
+- Reconstructs a chronological, evidence-linked timeline report.
+- Classifies captured user involvement without contribution percentages.
 - Identifies explicit decisions, suggestions, implementation statements, and unknowns.
 - Produces Markdown and JSON investigation reports.
 - Keeps source references for traceability.
@@ -86,6 +87,13 @@ Without installing first:
 ```bash
 PYTHONPATH=src python -m unittest discover -s tests -v
 ```
+
+## Project governance
+
+- [AGENTS.md](AGENTS.md) defines permanent instructions for coding agents.
+- [PROJECT_PLAN.md](PROJECT_PLAN.md) tracks active and upcoming capabilities.
+- [DECISIONS.md](DECISIONS.md) records architectural and product decisions.
+- [CONTRIBUTING.md](CONTRIBUTING.md) explains setup, testing, branch, commit, and pull request expectations.
 
 ## Limits
 

@@ -1,7 +1,7 @@
 import unittest
 from datetime import datetime, timezone
 
-from workprint.models import NormalizedMessage, Observation
+from workprint.models import NormalizedMessage, Observation, TimelineEvent
 
 
 class ModelTests(unittest.TestCase):
@@ -45,6 +45,27 @@ class ModelTests(unittest.TestCase):
                 statement="A statement.",
                 evidence_refs=(),
             )
+
+    def test_timeline_event_serializes(self):
+        item = TimelineEvent(
+            id="TL-001",
+            start_time=None,
+            end_time=None,
+            stage="decision",
+            title="Decision",
+            description="Human decided.",
+            source_observation_ids=("OBS-1",),
+            evidence_refs=("file#1",),
+            confidence="medium",
+            user_involvement=(),
+            activity_breakdown={"user_activity": ("OBS-1",)},
+            attribution_limits=("Evidence only.",),
+        )
+
+        data = item.to_dict()
+
+        self.assertEqual(data["id"], "TL-001")
+        self.assertEqual(data["activity_breakdown"]["user_activity"], ["OBS-1"])
 
 
 if __name__ == "__main__":

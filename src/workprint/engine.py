@@ -4,6 +4,7 @@ from collections import Counter
 from pathlib import Path
 
 from workprint.models import Investigation, Observation
+from workprint.timeline import build_timeline, summarize_timeline
 
 
 def build_investigation(
@@ -107,7 +108,9 @@ def build_investigation(
         "Conversation timestamps do not measure active work time.",
         "Observation counts do not represent ownership, effort, or value.",
         "Exact duplicate suppression does not detect semantic duplicates across sources.",
+        "Timeline involvement is based only on captured evidence and does not infer contribution percentages.",
     )
+    timeline = build_timeline(ordered)
 
     return Investigation(
         project=project,
@@ -116,4 +119,6 @@ def build_investigation(
         findings=tuple(findings),
         unknowns=tuple(unknowns),
         limitations=limitations,
+        timeline=timeline,
+        timeline_summary=summarize_timeline(timeline),
     )
