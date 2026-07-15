@@ -52,6 +52,26 @@ authorship, deleted text, or paragraph authorship. Owners, authors, and editors
 remain document-level metadata unless the supplied evidence explicitly maps a
 person to a block.
 
+## Static design adapters
+
+The Figma adapter reads user-supplied static JSON exports using the canonical
+source identifier `figma`. It emits normalized records only for meaningful
+pages or nodes with visible text, descriptions, component or instance metadata,
+or explicit evidence metadata. Empty structural containers are traversed but do
+not produce observations.
+
+Figma evidence references preserve hierarchy, for example
+`sample-file.json#page/page-discovery/node/text-headline`. File, page, node,
+parent, and node-path metadata are preserved separately.
+
+Static design exports are snapshots. The adapter does not recover version
+history, comments, contributor activity, or authorship. File-level timestamps
+are preserved as file metadata and are not assigned to nodes. Explicit page or
+node `last_modified` values may be used as normalized compatibility timestamps
+for ordering, but they represent last observed modification rather than
+creation time. Contributors, owners, and editors remain metadata unless
+evidence explicitly links a person to a node or action.
+
 ## Normalized message
 
 A normalized message preserves:

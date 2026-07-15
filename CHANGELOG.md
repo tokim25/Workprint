@@ -5,6 +5,7 @@
 
 ### Added
 
+- Figma adapter for static structured JSON exports.
 - Google Docs adapter for static `.json`, `.txt`, and `.md` exports.
 - Timeline Report with canonical timeline events, deterministic involvement
   classification, Markdown rendering, and structured JSON output.

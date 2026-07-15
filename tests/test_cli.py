@@ -86,6 +86,32 @@ class CliTests(unittest.TestCase):
                 },
             )
 
+    def test_investigate_figma_writes_json(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "figma-report.json"
+            result = main([
+                "investigate",
+                "figma",
+                "fixtures/figma/sample-file.json",
+                "--project", "Workprint",
+                "--format", "json",
+                "--output", str(output),
+            ])
+            self.assertEqual(result, 0)
+            payload = json.loads(output.read_text(encoding="utf-8"))
+            self.assertEqual(
+                {item["source"] for item in payload["observations"]},
+                {"figma"},
+            )
+            self.assertIn(
+                "sample-file.json#page/page-discovery/node/text-headline",
+                {
+                    ref
+                    for item in payload["observations"]
+                    for ref in item["evidence_refs"]
+                },
+            )
+
     def test_import_google_docs_writes_observations(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "google-docs-observations.json"
@@ -109,6 +135,14 @@ class CliTests(unittest.TestCase):
             "validate",
             "google-docs",
             "fixtures/google-docs/sample-document.md",
+        ])
+        self.assertEqual(result, 0)
+
+    def test_validate_figma(self):
+        result = main([
+            "validate",
+            "figma",
+            "fixtures/figma/sample-file.json",
         ])
         self.assertEqual(result, 0)
 
