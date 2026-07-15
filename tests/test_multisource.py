@@ -71,6 +71,7 @@ class MultiSourceTests(unittest.TestCase):
             payload = json.loads(output.read_text(encoding="utf-8"))
             self.assertEqual(len(payload["source_files"]), 2)
             self.assertEqual(len(payload["observations"]), 8)
+            self.assertEqual(payload["timeline_summary"]["event_count"], 8)
 
 
 if __name__ == "__main__":

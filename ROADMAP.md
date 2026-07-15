@@ -22,25 +22,31 @@
 
 ## Active Capability — Timeline Report
 
-Status: Ready for implementation
+Status: Complete
 
 Goal: Generate a chronological, evidence-linked account of how a project
 developed, including the investigated user's involvement at every stage.
 
 This capability is additive. Existing import, investigation, report, and
-multi-source commands must remain compatible, and existing findings must remain
+multi-source commands remain compatible, and existing findings remain
 available.
 
 See [PROJECT_PLAN.md](PROJECT_PLAN.md) for requirements and acceptance criteria.
 
+## Active Capability — Google Docs Adapter
+
+Status: Ready for definition
+
+Goal: Import Google Docs revision and document evidence into Workprint's
+normalized evidence pipeline.
+
 ## Upcoming Capabilities
 
-1. Google Docs adapter
-2. Figma adapter
-3. Report visual design and shareability
-4. Low-code/no-code user experience
-5. Guided import and project setup
-6. Semantic correlation only after deterministic behavior is trustworthy
+1. Figma adapter
+2. Report visual design and shareability
+3. Low-code/no-code user experience
+4. Guided import and project setup
+5. Semantic correlation only after deterministic behavior is trustworthy
 
 Detailed requirements for upcoming capabilities are tracked in
 [PROJECT_PLAN.md](PROJECT_PLAN.md).

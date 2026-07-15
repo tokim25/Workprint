@@ -15,13 +15,14 @@ usable by people with limited coding knowledge.
 - [x] Adapter registry
 - [x] Canonical observations
 - [x] Deterministic investigation engine
+- [x] Timeline Report
 - [x] Markdown and JSON reporting
 - [x] Multi-source investigations
 - [x] Exact, source-aware duplicate suppression
 
-## Active Milestone: Timeline Report
+## Completed Milestone: Timeline Report
 
-Status: Ready for implementation
+Status: Complete
 
 Goal: Generate a chronological, evidence-linked account of how a project
 developed, including the investigated user's involvement at every stage.
@@ -61,52 +62,65 @@ Requirements:
 
 Acceptance criteria:
 
-- Existing commands remain compatible.
-- Existing findings remain available.
-- Timeline is additive.
-- Classifications are evidence-linked.
-- Unsupported attribution remains unknown.
-- Markdown and JSON outputs are tested.
-- Full regression suite passes.
-- Rules and limitations are documented.
+- [x] Existing commands remain compatible.
+- [x] Existing findings remain available.
+- [x] Timeline is additive.
+- [x] Classifications are evidence-linked.
+- [x] Unsupported attribution remains unknown.
+- [x] Markdown and JSON outputs are tested.
+- [x] Full regression suite passes.
+- [x] Rules and limitations are documented.
+
+Rules and limitations:
+
+- Timeline events are generated deterministically from normalized observations.
+- Related observations are grouped only when they share conversation context,
+  stage, and a close timestamp window.
+- User involvement is marked measured only when the captured observation actor
+  and activity directly support it.
+- Unsupported involvement remains unknown.
+- Captured involvement counts describe evidence events only; they are not
+  ownership, effort, value, authorship, or contribution percentages.
+
+## Active Milestone: Google Docs Adapter
+
+Status: Ready for definition
+
+Goal: Import Google Docs revision and document evidence into Workprint's
+normalized evidence pipeline.
+
+Detailed requirements: To be defined.
 
 ## Upcoming Milestones
 
-1. Google Docs adapter
-
-   Goal: Import Google Docs revision and document evidence into Workprint's
-   normalized evidence pipeline.
-
-   Detailed requirements: To be defined.
-
-2. Figma adapter
+1. Figma adapter
 
    Goal: Import Figma design activity evidence without adding source-specific
    logic to the investigation engine.
 
    Detailed requirements: To be defined.
 
-3. Report visual design and shareability
+2. Report visual design and shareability
 
    Goal: Improve report presentation so outputs are polished, readable, and
    easy to share with nontechnical audiences.
 
    Detailed requirements: To be defined.
 
-4. Low-code/no-code user experience
+3. Low-code/no-code user experience
 
    Goal: Make Workprint usable without requiring command-line knowledge.
 
    Detailed requirements: To be defined.
 
-5. Guided import and project setup
+4. Guided import and project setup
 
    Goal: Guide users through source selection, file requirements, permissions,
    and project configuration.
 
    Detailed requirements: To be defined.
 
-6. Semantic correlation only after deterministic behavior is trustworthy
+5. Semantic correlation only after deterministic behavior is trustworthy
 
    Goal: Add semantic matching or inference only after deterministic evidence
    handling, traceability, and limitations are reliable.

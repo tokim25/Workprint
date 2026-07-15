@@ -83,6 +83,7 @@ Treat these as protected project surfaces:
 - `src/workprint/models`
 - `src/workprint/reports`
 - `src/workprint/extractor.py`
+- `src/workprint/timeline.py`
 - `src/workprint/engine.py`
 - `src/workprint/multisource.py`
 - `src/workprint/cli.py`

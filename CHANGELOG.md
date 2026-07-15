@@ -5,6 +5,8 @@
 
 ### Added
 
+- Timeline Report with canonical timeline events, deterministic involvement
+  classification, Markdown rendering, and structured JSON output.
 - Project operating documentation for agent instructions, capability planning,
   architectural decisions, and contributor workflow.
 - Reconstructed complete foundation tree alongside adapter and multi-source work.

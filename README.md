@@ -23,7 +23,8 @@ Markdown or JSON report
 - Imports common Claude JSON conversation exports.
 - Normalizes user and assistant messages.
 - Extracts deterministic observations.
-- Reconstructs a chronological timeline.
+- Reconstructs a chronological, evidence-linked timeline report.
+- Classifies captured user involvement without contribution percentages.
 - Identifies explicit decisions, suggestions, implementation statements, and unknowns.
 - Produces Markdown and JSON investigation reports.
 - Keeps source references for traceability.
