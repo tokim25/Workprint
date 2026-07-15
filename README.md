@@ -2,10 +2,10 @@
 
 **Reconstruct how work gets made.**
 
-Workprint turns exported AI conversations into evidence-backed project investigations. The current development state builds on the v0.3.0 ChatGPT foundation with shared adapters, Claude import, and multi-source investigations:
+Workprint turns exported conversations and static document exports into evidence-backed project investigations. The current development state builds on the v0.3.0 ChatGPT foundation with shared adapters, Claude import, Google Docs import, and multi-source investigations:
 
 ```text
-ChatGPT or Claude export
+ChatGPT, Claude, or Google Docs export
     ↓
 Normalized messages
     ↓
@@ -21,6 +21,7 @@ Markdown or JSON report
 - Uses a shared `EvidenceAdapter` contract for evidence-source readers.
 - Imports common ChatGPT `conversations.json` exports.
 - Imports common Claude JSON conversation exports.
+- Imports static Google Docs `.json`, `.txt`, and `.md` exports.
 - Normalizes user and assistant messages.
 - Extracts deterministic observations.
 - Reconstructs a chronological, evidence-linked timeline report.
@@ -57,6 +58,14 @@ PYTHONPATH=src python3 -m workprint.cli investigate chatgpt   fixtures/chatgpt/s
 workprint investigate claude fixtures/claude/sample-conversations.json \
   --project "Workprint" \
   --output claude-report.md
+```
+
+## Run a Google Docs investigation
+
+```bash
+workprint investigate google-docs fixtures/google-docs/sample-document.json \
+  --project "Workprint" \
+  --output google-docs-report.md
 ```
 
 

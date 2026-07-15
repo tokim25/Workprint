@@ -5,6 +5,7 @@
 
 ### Added
 
+- Google Docs adapter for static `.json`, `.txt`, and `.md` exports.
 - Timeline Report with canonical timeline events, deterministic involvement
   classification, Markdown rendering, and structured JSON output.
 - Project operating documentation for agent instructions, capability planning,

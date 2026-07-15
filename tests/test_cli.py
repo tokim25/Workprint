@@ -60,8 +60,56 @@ class CliTests(unittest.TestCase):
             content = output.read_text(encoding="utf-8")
             self.assertIn("Claude", content)
 
+    def test_investigate_google_docs_writes_json(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "google-docs-report.json"
+            result = main([
+                "investigate",
+                "google-docs",
+                "fixtures/google-docs/sample-document.json",
+                "--project", "Workprint",
+                "--format", "json",
+                "--output", str(output),
+            ])
+            self.assertEqual(result, 0)
+            payload = json.loads(output.read_text(encoding="utf-8"))
+            self.assertEqual(
+                {item["source"] for item in payload["observations"]},
+                {"google-docs"},
+            )
+            self.assertIn(
+                "sample-document.json#paragraph/1",
+                {
+                    ref
+                    for item in payload["observations"]
+                    for ref in item["evidence_refs"]
+                },
+            )
+
+    def test_import_google_docs_writes_observations(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "google-docs-observations.json"
+            result = main([
+                "import",
+                "google-docs",
+                "fixtures/google-docs/sample-document.txt",
+                "--output", str(output),
+            ])
+            self.assertEqual(result, 0)
+            payload = json.loads(output.read_text(encoding="utf-8"))
+            self.assertEqual(len(payload), 3)
+            self.assertEqual(payload[0]["source"], "google-docs")
+
     def test_validate(self):
         result = main(["validate", "chatgpt", self.fixture])
+        self.assertEqual(result, 0)
+
+    def test_validate_google_docs(self):
+        result = main([
+            "validate",
+            "google-docs",
+            "fixtures/google-docs/sample-document.md",
+        ])
         self.assertEqual(result, 0)
 
 
