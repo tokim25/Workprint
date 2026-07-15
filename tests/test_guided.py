@@ -9,6 +9,7 @@ from unittest.mock import patch
 from workprint.cli import main
 from workprint.discovery import discover_project
 from workprint.guided import (
+    GuidedOptions,
     evidence_files_from_discovery,
     guided_workflow,
     run_guided,
@@ -39,6 +40,7 @@ class GuidedInvestigationTests(unittest.TestCase):
             self.assertTrue(markdown.exists())
             self.assertTrue(json_report.exists())
             self.assertIn("Investigation complete.", output.getvalue())
+            self.assertIn("Selection Summary", output.getvalue())
             self.assertIn("Guided Project", markdown.read_text(encoding="utf-8"))
             payload = json.loads(json_report.read_text(encoding="utf-8"))
             self.assertEqual(payload["project"], "Guided Project")
@@ -70,11 +72,13 @@ class GuidedInvestigationTests(unittest.TestCase):
                 directory,
                 "a-doc.txt",
             )
+            self._prepend_google_docs_marker(Path(directory) / "a-doc.txt")
             self._copy_fixture(
                 "fixtures/google-docs/sample-document.md",
                 directory,
                 "b-doc.md",
             )
+            self._prepend_google_docs_marker(Path(directory) / "b-doc.md")
             discovery = discover_project(directory)
             evidence_files = evidence_files_from_discovery(discovery)
 
@@ -188,6 +192,7 @@ class GuidedInvestigationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             selected_file = Path(directory) / "doc.md"
             selected_file.write_text(
+                "workprint-source: google-docs\n\n"
                 "This document captures project decisions.",
                 encoding="utf-8",
             )
@@ -216,16 +221,127 @@ class GuidedInvestigationTests(unittest.TestCase):
         self.assertIn("Workprint could not continue:", output.getvalue())
         self.assertNotIn("Traceback", output.getvalue())
 
+    def test_keyboard_interrupt_cancels_cleanly(self):
+        output = io.StringIO()
+
+        def interrupt(prompt):
+            raise KeyboardInterrupt
+
+        result = run_guided(input_func=interrupt, output=output)
+
+        self.assertEqual(result, 1)
+        self.assertIn("Canceled. No files were changed.", output.getvalue())
+        self.assertNotIn("Traceback", output.getvalue())
+
+    def test_eof_cancels_cleanly(self):
+        output = io.StringIO()
+
+        def eof(prompt):
+            raise EOFError
+
+        result = run_guided(input_func=eof, output=output)
+
+        self.assertEqual(result, 1)
+        self.assertIn("Canceled. No files were changed.", output.getvalue())
+        self.assertNotIn("Traceback", output.getvalue())
+
+    def test_non_interactive_guide_generates_reports(self):
+        with tempfile.TemporaryDirectory() as directory:
+            self._copy_fixture(
+                "fixtures/chatgpt/sample-conversations.json",
+                directory,
+                "chatgpt.json",
+            )
+            output_dir = Path(directory) / "reports"
+            output = io.StringIO()
+
+            result = run_guided(
+                input_func=lambda prompt: "",
+                output=output,
+                cwd=directory,
+                options=GuidedOptions(
+                    path=directory,
+                    include="chatgpt",
+                    project="Noninteractive Project",
+                    output_dir=output_dir,
+                    yes=True,
+                ),
+            )
+
+            self.assertEqual(result, 0)
+            self.assertTrue((output_dir / "report.md").exists())
+            self.assertTrue((output_dir / "report.json").exists())
+            self.assertIn("Selection Summary", output.getvalue())
+
+    def test_non_interactive_without_yes_does_not_silently_overwrite(self):
+        with tempfile.TemporaryDirectory() as directory:
+            self._copy_fixture(
+                "fixtures/chatgpt/sample-conversations.json",
+                directory,
+                "chatgpt.json",
+            )
+            output_dir = Path(directory) / "workprint-output"
+            output_dir.mkdir()
+            existing = output_dir / "report.md"
+            existing.write_text("existing", encoding="utf-8")
+            answers = iter([""])
+
+            result = run_guided(
+                input_func=lambda prompt: next(answers),
+                output=io.StringIO(),
+                cwd=directory,
+                options=GuidedOptions(
+                    path=directory,
+                    include="chatgpt",
+                    project="No Silent Overwrite",
+                    output_dir=output_dir,
+                ),
+            )
+
+            self.assertEqual(result, 1)
+            self.assertEqual(existing.read_text(encoding="utf-8"), "existing")
+
+    def test_cli_guide_command_accepts_non_interactive_options(self):
+        with patch("workprint.cli.run_guided", return_value=0) as runner:
+            result = main([
+                "guide",
+                "--path", ".",
+                "--include", "chatgpt",
+                "--project", "CLI Project",
+                "--output-dir", "workprint-output",
+                "--yes",
+            ])
+
+        self.assertEqual(result, 0)
+        options = runner.call_args.kwargs["options"]
+        self.assertEqual(options.path, ".")
+        self.assertEqual(options.include, "chatgpt")
+        self.assertEqual(options.project, "CLI Project")
+        self.assertEqual(options.output_dir, "workprint-output")
+        self.assertTrue(options.yes)
+
     def test_cli_guide_command_delegates_to_guided_runner(self):
         with patch("workprint.cli.run_guided", return_value=0) as runner:
             result = main(["guide"])
 
         self.assertEqual(result, 0)
-        runner.assert_called_once_with()
+        options = runner.call_args.kwargs["options"]
+        self.assertIsNone(options.path)
+        self.assertIsNone(options.include)
+        self.assertIsNone(options.project)
+        self.assertFalse(options.yes)
 
     @staticmethod
     def _copy_fixture(source: str, directory: str, name: str) -> None:
         shutil.copy(Path(source), Path(directory) / name)
+
+    @staticmethod
+    def _prepend_google_docs_marker(path: Path) -> None:
+        text = path.read_text(encoding="utf-8")
+        path.write_text(
+            "workprint-source: google-docs\n\n" + text,
+            encoding="utf-8",
+        )
 
 
 if __name__ == "__main__":

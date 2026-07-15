@@ -11,6 +11,23 @@ adapter.
 - `.md`: Markdown export split into non-empty blocks, with the first heading
   used as the document title when present.
 
+Direct expert import supports all three formats:
+
+```bash
+workprint import google-docs document.md --output observations.json
+```
+
+Project Discovery is stricter for `.txt` and `.md` so ordinary repository files
+are not auto-selected as Google Docs evidence. To make a text or Markdown export
+discoverable, include this exact marker near the top of the file:
+
+```text
+workprint-source: google-docs
+```
+
+The marker is used only for discovery. Direct `google-docs` import still reads
+`.txt` and `.md` files without requiring the marker.
+
 ## JSON schema
 
 The adapter accepts a JSON object with:

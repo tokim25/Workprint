@@ -73,6 +73,17 @@ evidence, select files, name the project, confirm output paths, and generate
 both Markdown and JSON reports. It preserves the expert CLI commands and uses
 the same investigation pipeline.
 
+For non-interactive runs:
+
+```bash
+workprint guide \
+  --path path/to/project \
+  --include chatgpt,figma \
+  --project "Workprint" \
+  --output-dir workprint-output \
+  --yes
+```
+
 
 ## Run a Claude investigation
 

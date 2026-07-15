@@ -70,6 +70,14 @@ class GoogleDocsAdapter(EvidenceAdapter[NormalizedMessage]):
 
     source_name = "google-docs"
     source_type = "document"
+    discovery_marker = "workprint-source: google-docs"
+
+    def discover(self, path: str | Path) -> dict[str, Any] | None:
+        source_path = Path(path)
+        suffix = source_path.suffix.lower()
+        if suffix in {".md", ".txt"} and not self._has_discovery_marker(source_path):
+            return None
+        return super().discover(path)
 
     def read(self, path: str | Path) -> list[NormalizedMessage]:
         source_path = self.validate_input(path)
@@ -83,6 +91,23 @@ class GoogleDocsAdapter(EvidenceAdapter[NormalizedMessage]):
         raise ValueError(
             f"unsupported Google Docs export format: {source_path.suffix}"
         )
+
+    def _has_discovery_marker(self, source_path: Path) -> bool:
+        try:
+            lines = source_path.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            return False
+        checked = 0
+        for line in lines:
+            stripped = line.strip().lower()
+            if not stripped or stripped in {"---", "+++"}:
+                continue
+            checked += 1
+            if stripped == self.discovery_marker:
+                return True
+            if checked >= 5:
+                return False
+        return False
 
     def _read_text(
         self,

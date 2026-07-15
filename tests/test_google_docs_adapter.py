@@ -48,6 +48,31 @@ class GoogleDocsAdapterTests(unittest.TestCase):
         self.assertEqual(messages[0].metadata["document_title"], "Workprint Markdown Notes")
         self.assertEqual(messages[0].source_locator, "sample-document.md#paragraph/1")
 
+    def test_direct_text_import_does_not_require_discovery_marker(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "notes.txt"
+            path.write_text("A plain exported note.", encoding="utf-8")
+
+            messages = GoogleDocsAdapter().read(path)
+
+        self.assertEqual(len(messages), 1)
+        self.assertEqual(messages[0].source, "google-docs")
+
+    def test_discover_requires_marker_for_markdown_and_text(self):
+        with tempfile.TemporaryDirectory() as directory:
+            plain = Path(directory) / "README.md"
+            plain.write_text("# Project\n\nOrdinary repository docs.", encoding="utf-8")
+            marked = Path(directory) / "export.md"
+            marked.write_text(
+                "workprint-source: google-docs\n\n# Export\n\nCaptured note.",
+                encoding="utf-8",
+            )
+
+            adapter = GoogleDocsAdapter()
+
+            self.assertIsNone(adapter.discover(plain))
+            self.assertEqual(adapter.discover(marked)["source"], "google-docs")
+
     def test_extracts_document_observations_with_canonical_source(self):
         observations = extract_observations(GoogleDocsAdapter().read(self.json_fixture))
 

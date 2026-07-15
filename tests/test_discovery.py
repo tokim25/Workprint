@@ -94,6 +94,7 @@ class DiscoveryTests(unittest.TestCase):
                 directory,
                 "doc.md",
             )
+            self._prepend_google_docs_marker(Path(directory) / "doc.md")
             self._copy_fixture(
                 "fixtures/figma/sample-file.json",
                 directory,
@@ -123,6 +124,23 @@ class DiscoveryTests(unittest.TestCase):
         self.assertEqual(result.file_count, 1)
         self.assertEqual(result.detected_files, ("sample-file.json",))
 
+    def test_repository_markdown_is_not_google_docs_evidence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            Path(directory, "README.md").write_text(
+                "# Project\n\nOrdinary repository documentation.",
+                encoding="utf-8",
+            )
+            Path(directory, "docs").mkdir()
+            Path(directory, "docs", "architecture.md").write_text(
+                "# Architecture\n\nRegular project documentation.",
+                encoding="utf-8",
+            )
+
+            discovery = discover_project(directory)
+
+        self.assertEqual(discovery.results, ())
+        self.assertFalse(discovery.ready)
+
     def test_cli_discover_command(self):
         with tempfile.TemporaryDirectory() as directory:
             self._copy_fixture(
@@ -148,11 +166,13 @@ class DiscoveryTests(unittest.TestCase):
                 directory,
                 "z-doc.txt",
             )
+            self._prepend_google_docs_marker(Path(directory) / "z-doc.txt")
             self._copy_fixture(
                 "fixtures/google-docs/sample-document.md",
                 directory,
                 "a-doc.md",
             )
+            self._prepend_google_docs_marker(Path(directory) / "a-doc.md")
             first = discover_project(directory)
             second = discover_project(directory)
 
@@ -163,6 +183,14 @@ class DiscoveryTests(unittest.TestCase):
     @staticmethod
     def _copy_fixture(source: str, directory: str, name: str) -> None:
         shutil.copy(Path(source), Path(directory) / name)
+
+    @staticmethod
+    def _prepend_google_docs_marker(path: Path) -> None:
+        text = path.read_text(encoding="utf-8")
+        path.write_text(
+            "workprint-source: google-docs\n\n" + text,
+            encoding="utf-8",
+        )
 
     @staticmethod
     def _result(discovery, source: str):

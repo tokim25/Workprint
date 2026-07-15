@@ -41,16 +41,37 @@ class GuidedResult:
     outputs: GuidedOutputs
 
 
+@dataclass(frozen=True)
+class GuidedOptions:
+    path: str | Path | None = None
+    include: str | None = None
+    project: str | None = None
+    output_dir: str | Path | None = None
+    markdown: str | Path | None = None
+    json: str | Path | None = None
+    yes: bool = False
+
+
 def run_guided(
     *,
     input_func: InputFunc = input,
     output: TextIO = sys.stdout,
     cwd: str | Path = ".",
+    options: GuidedOptions | None = None,
 ) -> int:
     try:
-        result = guided_workflow(input_func=input_func, output=output, cwd=cwd)
+        result = guided_workflow(
+            input_func=input_func,
+            output=output,
+            cwd=cwd,
+            options=options,
+        )
     except GuidedError as exc:
         print(f"Workprint could not continue: {exc}", file=output)
+        return 1
+    except (KeyboardInterrupt, EOFError):
+        print("", file=output)
+        print("Canceled. No files were changed.", file=output)
         return 1
 
     if result is None:
@@ -63,15 +84,21 @@ def guided_workflow(
     input_func: InputFunc,
     output: TextIO,
     cwd: str | Path = ".",
+    options: GuidedOptions | None = None,
 ) -> GuidedResult | None:
+    options = options or GuidedOptions()
     cwd_path = Path(cwd).expanduser().resolve()
     print("Workprint Guided Investigation", file=output)
     print("", file=output)
 
-    project_root = _prompt_path(
-        input_func,
-        "Project folder",
-        default=cwd_path,
+    project_root = (
+        _option_path(options.path, cwd_path)
+        if options.path
+        else _prompt_path(
+            input_func,
+            "Project folder",
+            default=cwd_path,
+        )
     )
     discovery = discover_project(project_root)
     evidence_files = evidence_files_from_discovery(discovery)
@@ -86,26 +113,41 @@ def guided_workflow(
         )
         return None
 
-    selected_files = _prompt_selection(input_func, evidence_files)
+    selected_files = (
+        select_evidence_files(options.include, evidence_files)
+        if options.include is not None
+        else _prompt_selection(input_func, evidence_files)
+    )
     if not selected_files:
         raise GuidedError("no evidence files were selected")
 
-    project_name = _prompt_text(
+    project_name = options.project or _prompt_text(
         input_func,
         "Project name",
         default=project_root.name or "Workprint",
     )
-    outputs = _prompt_outputs(input_func, project_root)
+    outputs = (
+        _option_outputs(options, project_root)
+        if _has_output_options(options)
+        else _prompt_outputs(input_func, project_root)
+    )
 
-    overwrite = _confirm_overwrite(input_func, outputs)
+    _render_selection_summary(project_name, selected_files, outputs, output)
+
+    overwrite = "ok" if options.yes else _confirm_overwrite(input_func, outputs)
     if overwrite == "paths":
         outputs = _prompt_outputs(input_func, project_root)
+        _render_selection_summary(project_name, selected_files, outputs, output)
         overwrite = _confirm_overwrite(input_func, outputs)
     if overwrite == "cancel":
         print("Canceled. No files were changed.", file=output)
         return None
 
-    if not _prompt_yes_no(input_func, "Generate reports now?", default=True):
+    if not options.yes and not _prompt_yes_no(
+        input_func,
+        "Generate reports now?",
+        default=True,
+    ):
         print("Canceled. No files were changed.", file=output)
         return None
 
@@ -144,6 +186,16 @@ def guided_workflow(
         selected_files=tuple(selected_files),
         outputs=outputs,
     )
+
+
+def _option_path(raw_path: str | Path, default: Path) -> Path:
+    path = Path(raw_path).expanduser() if raw_path else default
+    path = path.resolve()
+    if not path.exists():
+        raise GuidedError(f"project folder does not exist: {path}")
+    if not path.is_dir():
+        raise GuidedError(f"project folder is not a directory: {path}")
+    return path
 
 
 def evidence_files_from_discovery(
@@ -186,11 +238,24 @@ def _render_discovered_evidence(
     if not evidence_files:
         return
 
+    print("Select evidence by number or source ID:", file=output)
     for item in evidence_files:
         print(
             f"[{item.index}] {item.label} ({item.source}) - {item.relative_path}",
             file=output,
         )
+    print("", file=output)
+    print("Selection examples:", file=output)
+    print("- Press Enter to include all files.", file=output)
+    print("- Enter numbers such as 1,3 to include specific files.", file=output)
+    print(
+        "- Enter source IDs such as chatgpt,figma to include whole sources.",
+        file=output,
+    )
+    print(
+        "- Prefix with - to remove files or sources, such as -2 or -google-docs.",
+        file=output,
+    )
     print("", file=output)
 
 
@@ -211,17 +276,17 @@ def _prompt_selection(
 ) -> tuple[GuidedEvidenceFile, ...]:
     prompt = (
         "Evidence to include [all] "
-        "(numbers or source IDs; prefix with - to remove): "
+        "(use numbers/source IDs from the list above): "
     )
     raw = input_func(prompt).strip()
     return select_evidence_files(raw, evidence_files)
 
 
 def select_evidence_files(
-    selection: str,
+    selection: str | None,
     evidence_files: tuple[GuidedEvidenceFile, ...],
 ) -> tuple[GuidedEvidenceFile, ...]:
-    text = selection.strip()
+    text = (selection or "").strip()
     if not text or text.lower() == "all":
         return evidence_files
     if text.lower() in {"none", "cancel"}:
@@ -297,6 +362,54 @@ def _prompt_outputs(input_func: InputFunc, project_root: Path) -> GuidedOutputs:
         default=output_dir / "report.json",
     )
     return GuidedOutputs(markdown=markdown, json=json_report)
+
+
+def _has_output_options(options: GuidedOptions) -> bool:
+    return any([options.output_dir, options.markdown, options.json])
+
+
+def _option_outputs(options: GuidedOptions, project_root: Path) -> GuidedOutputs:
+    output_dir = (
+        Path(options.output_dir).expanduser().resolve()
+        if options.output_dir
+        else project_root / "workprint-output"
+    )
+    markdown = (
+        Path(options.markdown).expanduser().resolve()
+        if options.markdown
+        else output_dir / "report.md"
+    )
+    json_report = (
+        Path(options.json).expanduser().resolve()
+        if options.json
+        else output_dir / "report.json"
+    )
+    return GuidedOutputs(markdown=markdown, json=json_report)
+
+
+def _render_selection_summary(
+    project_name: str,
+    selected_files: tuple[GuidedEvidenceFile, ...],
+    outputs: GuidedOutputs,
+    output: TextIO,
+) -> None:
+    print("", file=output)
+    print("Selection Summary", file=output)
+    print("", file=output)
+    print(f"Project: {project_name}", file=output)
+    counts: dict[str, int] = {}
+    for item in selected_files:
+        counts[item.source] = counts.get(item.source, 0) + 1
+    print("Selected sources:", file=output)
+    for source, count in sorted(counts.items()):
+        noun = "file" if count == 1 else "files"
+        print(f"- {source}: {count} {noun}", file=output)
+    print("Selected files:", file=output)
+    for item in selected_files:
+        print(f"- [{item.index}] {item.source}: {item.relative_path}", file=output)
+    print(f"Markdown report: {outputs.markdown}", file=output)
+    print(f"JSON report: {outputs.json}", file=output)
+    print("", file=output)
 
 
 def _prompt_output_path(input_func: InputFunc, label: str, *, default: Path) -> Path:
