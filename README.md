@@ -2,10 +2,10 @@
 
 **Reconstruct how work gets made.**
 
-Workprint turns exported AI conversations into evidence-backed project investigations. This v0.3.0 foundation release includes one complete vertical slice:
+Workprint turns exported AI conversations into evidence-backed project investigations. The current development state builds on the v0.3.0 ChatGPT foundation with shared adapters, Claude import, and multi-source investigations:
 
 ```text
-ChatGPT export
+ChatGPT or Claude export
     ↓
 Normalized messages
     ↓
@@ -79,6 +79,12 @@ workprint import chatgpt fixtures/chatgpt/sample-conversations.json   --output o
 
 ```bash
 python -m unittest discover -s tests -v
+```
+
+Without installing first:
+
+```bash
+PYTHONPATH=src python -m unittest discover -s tests -v
 ```
 
 ## Limits

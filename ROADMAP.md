@@ -14,7 +14,7 @@
 
 - [x] Claude export reader
 - [x] Shared multi-source investigation command
-- [x] Exact cross-source duplicate suppression
+- [x] Exact duplicate suppression for repeated evidence inputs
 
 ## v0.5.0 — Git evidence
 

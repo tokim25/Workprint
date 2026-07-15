@@ -5,6 +5,7 @@
 
 ### Added
 
+- Reconstructed complete foundation tree alongside adapter and multi-source work.
 - Multi-source investigation command for combining registered evidence adapters.
 - Exact duplicate suppression across repeated evidence inputs.
 - Multi-source investigation tests and documentation.
