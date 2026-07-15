@@ -1,0 +1,29 @@
+{
+  "id": "doc-workprint-plan",
+  "title": "Workprint Planning Notes",
+  "created_at": "2026-02-01T10:00:00Z",
+  "modified_at": "2026-02-01T11:30:00Z",
+  "metadata": {
+    "owners": ["Tony Kim"],
+    "authors": ["Tony Kim"],
+    "editors": ["Collaborator Example"]
+  },
+  "paragraphs": [
+    {
+      "id": "intro",
+      "text": "What should the first Workprint document adapter preserve?"
+    },
+    {
+      "id": "decision",
+      "text": "We should use deterministic parsing for static Google Docs exports."
+    },
+    {
+      "id": "implementation",
+      "text": "I added a fixture that represents document-level metadata and paragraph blocks."
+    },
+    {
+      "id": "limits",
+      "text": "Revision history is not available in this static export."
+    }
+  ]
+}

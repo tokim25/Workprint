@@ -16,6 +16,7 @@ usable by people with limited coding knowledge.
 - [x] Canonical observations
 - [x] Deterministic investigation engine
 - [x] Timeline Report
+- [x] Google Docs adapter
 - [x] Markdown and JSON reporting
 - [x] Multi-source investigations
 - [x] Exact, source-aware duplicate suppression
@@ -82,45 +83,61 @@ Rules and limitations:
 - Captured involvement counts describe evidence events only; they are not
   ownership, effort, value, authorship, or contribution percentages.
 
-## Active Milestone: Google Docs Adapter
+## Completed Milestone: Google Docs Adapter
 
-Status: Ready for definition
+Status: Complete
 
 Goal: Import Google Docs revision and document evidence into Workprint's
 normalized evidence pipeline.
+
+Implemented scope:
+
+- Static `.json`, `.txt`, and `.md` export support.
+- Canonical `google-docs` source identifier.
+- Document-level metadata preservation.
+- Stable paragraph evidence references.
+- No filesystem timestamp inference for text or Markdown exports.
+- No paragraph authorship inference from document owners, authors, or editors.
+
+Limitations:
+
+- Static exports do not recover revision history.
+- Static exports do not recover edit-by-edit authorship.
+- Owners, authors, and editors remain document-level metadata unless evidence
+  explicitly maps them to a block.
+
+## Active Milestone: Figma Adapter
+
+Status: Ready for definition
+
+Goal: Import Figma design activity evidence without adding source-specific
+logic to the investigation engine.
 
 Detailed requirements: To be defined.
 
 ## Upcoming Milestones
 
-1. Figma adapter
-
-   Goal: Import Figma design activity evidence without adding source-specific
-   logic to the investigation engine.
-
-   Detailed requirements: To be defined.
-
-2. Report visual design and shareability
+1. Report visual design and shareability
 
    Goal: Improve report presentation so outputs are polished, readable, and
    easy to share with nontechnical audiences.
 
    Detailed requirements: To be defined.
 
-3. Low-code/no-code user experience
+2. Low-code/no-code user experience
 
    Goal: Make Workprint usable without requiring command-line knowledge.
 
    Detailed requirements: To be defined.
 
-4. Guided import and project setup
+3. Guided import and project setup
 
    Goal: Guide users through source selection, file requirements, permissions,
    and project configuration.
 
    Detailed requirements: To be defined.
 
-5. Semantic correlation only after deterministic behavior is trustworthy
+4. Semantic correlation only after deterministic behavior is trustworthy
 
    Goal: Add semantic matching or inference only after deterministic evidence
    handling, traceability, and limitations are reliable.

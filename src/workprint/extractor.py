@@ -79,6 +79,7 @@ def extract_observations(messages: list[NormalizedMessage]) -> list[Observation]
     observations: list[Observation] = []
     for index, message in enumerate(messages, start=1):
         activity = _classify(message)
+        message_metadata = message.metadata or {}
         digest = sha1(
             f"{message.source}:{message.conversation_id}:{message.id}".encode("utf-8")
         ).hexdigest()[:10]
@@ -87,7 +88,7 @@ def extract_observations(messages: list[NormalizedMessage]) -> list[Observation]
                 id=f"OBS-{digest}",
                 timestamp=message.created_at,
                 source=message.source,
-                source_type="conversation",
+                source_type=str(message_metadata.get("source_type") or "conversation"),
                 actor="Human" if message.role == "human" else message.source,
                 activity=activity,
                 statement=_statement(message, activity),
@@ -98,6 +99,7 @@ def extract_observations(messages: list[NormalizedMessage]) -> list[Observation]
                     "message_id": message.id,
                     "role": message.role,
                     "sequence": index,
+                    **message_metadata,
                 },
             )
         )

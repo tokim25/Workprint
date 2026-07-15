@@ -39,6 +39,19 @@ record type while preserving the same adapter contract.
 Adapters are registered through `workprint.adapters.registry`. The CLI uses
 that registry rather than importing vendor-specific classes directly.
 
+## Static document adapters
+
+The Google Docs adapter reads static `.json`, `.txt`, and `.md` exports using
+the canonical source identifier `google-docs`. Each non-empty paragraph or
+block is normalized into a source-independent record with a stable locator such
+as `sample-document.json#paragraph/3`.
+
+Static document exports are snapshots. The adapter preserves explicit
+document-level metadata, but it does not recover revision history, edit-by-edit
+authorship, deleted text, or paragraph authorship. Owners, authors, and editors
+remain document-level metadata unless the supplied evidence explicitly maps a
+person to a block.
+
 ## Normalized message
 
 A normalized message preserves:

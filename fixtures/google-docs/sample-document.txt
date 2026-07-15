@@ -1,0 +1,5 @@
+What should the text export preserve?
+
+We should keep paragraph boundaries as evidence blocks.
+
+Revision history is not available in this plain text export.

@@ -35,18 +35,27 @@ See [PROJECT_PLAN.md](PROJECT_PLAN.md) for requirements and acceptance criteria.
 
 ## Active Capability — Google Docs Adapter
 
-Status: Ready for definition
+Status: Complete
 
 Goal: Import Google Docs revision and document evidence into Workprint's
 normalized evidence pipeline.
 
+See [docs/google-docs-import.md](docs/google-docs-import.md) for supported
+formats and static-export limitations.
+
+## Active Capability — Figma Adapter
+
+Status: Ready for definition
+
+Goal: Import Figma design activity evidence without adding source-specific
+logic to the investigation engine.
+
 ## Upcoming Capabilities
 
-1. Figma adapter
-2. Report visual design and shareability
-3. Low-code/no-code user experience
-4. Guided import and project setup
-5. Semantic correlation only after deterministic behavior is trustworthy
+1. Report visual design and shareability
+2. Low-code/no-code user experience
+3. Guided import and project setup
+4. Semantic correlation only after deterministic behavior is trustworthy
 
 Detailed requirements for upcoming capabilities are tracked in
 [PROJECT_PLAN.md](PROJECT_PLAN.md).
