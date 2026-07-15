@@ -1,0 +1,176 @@
+import io
+import shutil
+import tempfile
+import unittest
+from contextlib import redirect_stdout
+from pathlib import Path
+
+from workprint.cli import main
+from workprint.discovery import discover_project, render_discovery
+
+
+class DiscoveryTests(unittest.TestCase):
+    def test_empty_directory_reports_no_supported_evidence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            discovery = discover_project(directory)
+            rendered = render_discovery(discovery)
+
+        self.assertFalse(discovery.ready)
+        self.assertIn("No supported evidence found.", rendered)
+        self.assertIn("- ChatGPT", rendered)
+        self.assertIn("- Figma", rendered)
+
+    def test_detects_git_repository(self):
+        with tempfile.TemporaryDirectory() as directory:
+            Path(directory, ".git").mkdir()
+            discovery = discover_project(directory)
+
+        self.assertTrue(discovery.git_repository)
+        self.assertEqual(discovery.evidence_sources, 1)
+
+    def test_detects_chatgpt_fixture(self):
+        with tempfile.TemporaryDirectory() as directory:
+            self._copy_fixture(
+                "fixtures/chatgpt/sample-conversations.json",
+                directory,
+                "chatgpt.json",
+            )
+            discovery = discover_project(directory)
+
+        result = self._result(discovery, "chatgpt")
+        self.assertEqual(result.file_count, 1)
+        self.assertEqual(result.metadata["record_count"], 1)
+
+    def test_detects_claude_fixture(self):
+        with tempfile.TemporaryDirectory() as directory:
+            self._copy_fixture(
+                "fixtures/claude/sample-conversations.json",
+                directory,
+                "claude.json",
+            )
+            discovery = discover_project(directory)
+
+        result = self._result(discovery, "claude")
+        self.assertEqual(result.file_count, 1)
+        self.assertEqual(result.metadata["record_count"], 1)
+
+    def test_detects_google_docs_fixture(self):
+        with tempfile.TemporaryDirectory() as directory:
+            self._copy_fixture(
+                "fixtures/google-docs/sample-document.json",
+                directory,
+                "sample-document.json",
+            )
+            discovery = discover_project(directory)
+
+        result = self._result(discovery, "google-docs")
+        self.assertEqual(result.file_count, 1)
+        self.assertEqual(result.detected_files, ("sample-document.json",))
+
+    def test_detects_figma_fixture(self):
+        with tempfile.TemporaryDirectory() as directory:
+            self._copy_fixture(
+                "fixtures/figma/sample-file.json",
+                directory,
+                "sample-file.json",
+            )
+            discovery = discover_project(directory)
+
+        result = self._result(discovery, "figma")
+        self.assertEqual(result.file_count, 1)
+        self.assertEqual(result.detected_files, ("sample-file.json",))
+
+    def test_mixed_project_detection_ignores_unsupported_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            Path(directory, ".git").mkdir()
+            Path(directory, "notes.csv").write_text("unsupported", encoding="utf-8")
+            self._copy_fixture(
+                "fixtures/chatgpt/sample-conversations.json",
+                directory,
+                "chatgpt.json",
+            )
+            self._copy_fixture(
+                "fixtures/google-docs/sample-document.md",
+                directory,
+                "doc.md",
+            )
+            self._copy_fixture(
+                "fixtures/figma/sample-file.json",
+                directory,
+                "design.json",
+            )
+            discovery = discover_project(directory)
+
+        self.assertTrue(discovery.git_repository)
+        self.assertEqual(
+            [item.source for item in discovery.results],
+            ["chatgpt", "figma", "google-docs"],
+        )
+        self.assertEqual(discovery.supported_files, 3)
+        self.assertEqual(discovery.evidence_sources, 4)
+
+    def test_malformed_candidate_does_not_abort_discovery(self):
+        with tempfile.TemporaryDirectory() as directory:
+            Path(directory, "broken.json").write_text("{not json", encoding="utf-8")
+            self._copy_fixture(
+                "fixtures/figma/sample-file.json",
+                directory,
+                "sample-file.json",
+            )
+            discovery = discover_project(directory)
+
+        result = self._result(discovery, "figma")
+        self.assertEqual(result.file_count, 1)
+        self.assertEqual(result.detected_files, ("sample-file.json",))
+
+    def test_cli_discover_command(self):
+        with tempfile.TemporaryDirectory() as directory:
+            self._copy_fixture(
+                "fixtures/figma/sample-file.json",
+                directory,
+                "sample-file.json",
+            )
+            output = io.StringIO()
+            with redirect_stdout(output):
+                result = main(["discover", directory])
+
+        self.assertEqual(result, 0)
+        rendered = output.getvalue()
+        self.assertIn("Project Discovery", rendered)
+        self.assertIn("Figma", rendered)
+        self.assertIn("1 file", rendered)
+        self.assertIn("Ready for investigation.", rendered)
+
+    def test_discovery_order_is_deterministic(self):
+        with tempfile.TemporaryDirectory() as directory:
+            self._copy_fixture(
+                "fixtures/google-docs/sample-document.txt",
+                directory,
+                "z-doc.txt",
+            )
+            self._copy_fixture(
+                "fixtures/google-docs/sample-document.md",
+                directory,
+                "a-doc.md",
+            )
+            first = discover_project(directory)
+            second = discover_project(directory)
+
+        self.assertEqual(first.to_dict(), second.to_dict())
+        result = self._result(first, "google-docs")
+        self.assertEqual(result.detected_files, ("a-doc.md", "z-doc.txt"))
+
+    @staticmethod
+    def _copy_fixture(source: str, directory: str, name: str) -> None:
+        shutil.copy(Path(source), Path(directory) / name)
+
+    @staticmethod
+    def _result(discovery, source: str):
+        for item in discovery.results:
+            if item.source == source:
+                return item
+        raise AssertionError(f"missing discovery result for {source}")
+
+
+if __name__ == "__main__":
+    unittest.main()

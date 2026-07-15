@@ -19,6 +19,7 @@ usable by people with limited coding knowledge.
 - [x] Google Docs adapter
 - [x] Figma adapter
 - [x] Report visual design and shareability
+- [x] Project Discovery
 - [x] Markdown and JSON reporting
 - [x] Multi-source investigations
 - [x] Exact, source-aware duplicate suppression
@@ -159,20 +160,48 @@ Limitations:
 - No HTML, CSS, images, or runtime dependencies are included.
 - Report design does not change underlying evidence claims.
 
-## Active Milestone: Low-Code/No-Code User Experience
+## Completed Milestone: Project Discovery
+
+Status: Complete
+
+Goal: Preview supported evidence in a project directory before import or
+investigation.
+
+Implemented scope:
+
+- `workprint discover [path]` command.
+- Current working directory default when no path is supplied.
+- Recursive filesystem scan.
+- Git repository detection.
+- Adapter-driven detection for ChatGPT, Claude, Google Docs, and Figma
+  evidence.
+- Deterministic source and file ordering.
+- Project readiness summary.
+- No evidence import, investigation generation, report rendering, file
+  modification, or attribution inference.
+
+Limitations:
+
+- Discovery recognizes supported evidence; it does not validate every future
+  investigation outcome.
+- Git detection only identifies repository presence.
+- Static export limitations still apply to document and design evidence.
+
+## Active Milestone: Guided Investigation Wizard
 
 Status: Ready for definition
 
-Goal: Make Workprint usable without requiring command-line knowledge.
+Goal: Guide users from discovered evidence through source selection,
+readiness review, and investigation setup without requiring command-line
+knowledge.
 
 Detailed requirements: To be defined.
 
 ## Upcoming Milestones
 
-1. Guided import and project setup
+1. Low-Code/No-Code User Experience
 
-   Goal: Guide users through source selection, file requirements, permissions,
-   and project configuration.
+   Goal: Make Workprint usable without requiring terminal knowledge.
 
    Detailed requirements: To be defined.
 

@@ -60,15 +60,27 @@ Status: Complete
 Goal: Improve report presentation so outputs are polished, readable, and easy
 to share with nontechnical audiences.
 
-## Active Capability — Low-Code/No-Code User Experience
+## Active Capability — Project Discovery
+
+Status: Complete
+
+Goal: Preview supported evidence in a project directory before import or
+investigation.
+
+See [docs/project-discovery.md](docs/project-discovery.md) for command usage,
+supported evidence, and limitations.
+
+## Active Capability — Guided Investigation Wizard
 
 Status: Ready for definition
 
-Goal: Make Workprint usable without requiring command-line knowledge.
+Goal: Guide users from discovered evidence through source selection,
+readiness review, and investigation setup without requiring command-line
+knowledge.
 
 ## Upcoming Capabilities
 
-1. Guided import and project setup
+1. Low-Code/No-Code User Experience
 2. Semantic correlation only after deterministic behavior is trustworthy
 
 Detailed requirements for upcoming capabilities are tracked in

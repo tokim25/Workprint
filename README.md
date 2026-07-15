@@ -53,6 +53,15 @@ Or without installing:
 PYTHONPATH=src python3 -m workprint.cli investigate chatgpt   fixtures/chatgpt/sample-conversations.json   --project "Workprint"   --output report.md
 ```
 
+## Discover project evidence
+
+```bash
+workprint discover path/to/project
+```
+
+Without a path, Workprint scans the current directory. Discovery previews
+supported evidence and does not import files or generate an investigation.
+
 
 ## Run a Claude investigation
 
