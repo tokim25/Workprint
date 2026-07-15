@@ -78,6 +78,19 @@ class ClaudeAdapter(EvidenceAdapter[NormalizedMessage]):
     source_name = "Claude"
     source_type = "conversation"
 
+    def discover(self, path: str | Path) -> dict[str, Any] | None:
+        try:
+            records = self.read(path)
+        except ValueError:
+            return None
+        if not records:
+            return None
+        return {
+            "source": self.adapter_id,
+            "label": self.display_name,
+            "record_count": len({item.conversation_id for item in records}),
+        }
+
     def read(self, path: str | Path) -> list[NormalizedMessage]:
         source_path = self.validate_input(path)
 

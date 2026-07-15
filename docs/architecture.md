@@ -39,6 +39,16 @@ record type while preserving the same adapter contract.
 Adapters are registered through `workprint.adapters.registry`. The CLI uses
 that registry rather than importing vendor-specific classes directly.
 
+## Discovery
+
+`workprint.discovery` scans a project directory, detects Git repository
+presence, asks registered adapters whether they recognize files, and aggregates
+the results. Discovery is informational only: it does not import evidence,
+create observations, build findings, generate timelines, or modify files.
+
+The CLI keeps discovery thin by delegating scanning and aggregation to the
+discovery layer.
+
 ## Static document adapters
 
 The Google Docs adapter reads static `.json`, `.txt`, and `.md` exports using

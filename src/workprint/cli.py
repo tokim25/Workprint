@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Sequence
 
 from workprint.adapters import available_adapters, get_adapter
+from workprint.discovery import discover_project, render_discovery
 from workprint.engine import build_investigation
 from workprint.extractor import extract_observations
 from workprint.multisource import load_observations, parse_evidence_spec
@@ -57,6 +58,12 @@ def build_parser() -> argparse.ArgumentParser:
     validate_parser.add_argument("source", choices=available_adapters())
     validate_parser.add_argument("input")
 
+    discover_parser = subparsers.add_parser(
+        "discover",
+        help="Preview supported evidence in a project directory.",
+    )
+    discover_parser.add_argument("path", nargs="?", default=".")
+
     multi_parser = subparsers.add_parser(
         "investigate-multi",
         help="Create one investigation from multiple evidence inputs.",
@@ -85,6 +92,14 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+
+    if args.command == "discover":
+        try:
+            discovery = discover_project(args.path)
+        except ValueError as exc:
+            parser.error(str(exc))
+        print(render_discovery(discovery))
+        return 0
 
     if args.command == "investigate-multi":
         try:
