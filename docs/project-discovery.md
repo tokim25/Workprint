@@ -35,6 +35,18 @@ observations, build findings, generate a timeline, or modify files.
 - Google Docs static exports
 - Figma static exports
 
+Google Docs `.json` exports are auto-discovered when they match the supported
+structured schema. Google Docs `.md` and `.txt` files are auto-discovered only
+when they contain this explicit marker near the top of the file:
+
+```text
+workprint-source: google-docs
+```
+
+This keeps ordinary repository Markdown from being treated as Google Docs
+evidence. Direct expert import of `.md` and `.txt` files through
+`workprint import google-docs ...` remains available.
+
 ## Limitations
 
 - Discovery recognizes supported files; it does not validate every future

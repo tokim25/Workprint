@@ -9,7 +9,7 @@ from workprint.adapters import available_adapters, get_adapter
 from workprint.discovery import discover_project, render_discovery
 from workprint.engine import build_investigation
 from workprint.extractor import extract_observations
-from workprint.guided import run_guided
+from workprint.guided import GuidedOptions, run_guided
 from workprint.multisource import load_observations, parse_evidence_spec
 from workprint.reports import render_markdown
 
@@ -59,9 +59,29 @@ def build_parser() -> argparse.ArgumentParser:
     validate_parser.add_argument("source", choices=available_adapters())
     validate_parser.add_argument("input")
 
-    subparsers.add_parser(
+    guide_parser = subparsers.add_parser(
         "guide",
         help="Start a guided investigation workflow.",
+    )
+    guide_parser.add_argument("--path", help="Project folder to scan.")
+    guide_parser.add_argument(
+        "--include",
+        help=(
+            "Evidence selection, for example all, 1,3, chatgpt, "
+            "or -google-docs."
+        ),
+    )
+    guide_parser.add_argument("--project", help="Project name for reports.")
+    guide_parser.add_argument(
+        "--output-dir",
+        help="Output directory for default report paths.",
+    )
+    guide_parser.add_argument("--markdown", help="Markdown report path.")
+    guide_parser.add_argument("--json", help="JSON report path.")
+    guide_parser.add_argument(
+        "--yes",
+        action="store_true",
+        help="Accept defaults, final confirmation, and overwrites.",
     )
 
     discover_parser = subparsers.add_parser(
@@ -100,7 +120,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.command == "guide":
-        return run_guided()
+        options = GuidedOptions(
+            path=args.path,
+            include=args.include,
+            project=args.project,
+            output_dir=args.output_dir,
+            markdown=args.markdown,
+            json=args.json,
+            yes=args.yes,
+        )
+        return run_guided(options=options)
 
     if args.command == "discover":
         try:

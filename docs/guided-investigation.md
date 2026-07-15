@@ -9,6 +9,29 @@ expert CLI commands.
 workprint guide
 ```
 
+For agent, scripted, or chat-driven environments, use non-interactive options:
+
+```bash
+workprint guide \
+  --path path/to/project \
+  --include chatgpt,figma \
+  --project "Project Name" \
+  --output-dir workprint-output \
+  --yes
+```
+
+You can also set output files directly:
+
+```bash
+workprint guide \
+  --path path/to/project \
+  --include 1,3 \
+  --project "Project Name" \
+  --markdown workprint-output/report.md \
+  --json workprint-output/report.json \
+  --yes
+```
+
 ## Workflow
 
 1. Confirm the project folder.
@@ -16,8 +39,9 @@ workprint guide
 3. Select evidence files to include.
 4. Enter a project name.
 5. Confirm Markdown and JSON output paths.
-6. Confirm generation.
-7. Receive plain-language success or cancellation messages.
+6. Review the selection summary.
+7. Confirm generation.
+8. Receive plain-language success or cancellation messages.
 
 ## Discovery Reuse
 
@@ -31,6 +55,10 @@ evidence adapter exists.
 ## Selection Syntax
 
 By default, pressing Enter includes every discovered importable file.
+
+The prompt shows a numbered list before asking for a selection. Use numbers
+from that list or source IDs such as `chatgpt`, `claude`, `google-docs`, and
+`figma`.
 
 You can select specific files or sources:
 
@@ -69,6 +97,12 @@ The directory is created only after final confirmation. Existing files are never
 overwritten silently. If one output exists, Workprint asks before replacing it.
 If both outputs exist, Workprint lets the user overwrite both, choose new paths,
 or cancel.
+
+`--yes` accepts final confirmation and overwrites existing output files. Without
+`--yes`, Workprint asks before replacing any existing report.
+
+Ctrl-C or EOF cancels the workflow cleanly with `Canceled. No files were
+changed.`
 
 ## Relationship to Expert Commands
 

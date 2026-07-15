@@ -28,6 +28,9 @@
 
 ### Changed
 
+- Guided investigation now supports non-interactive options, cleaner
+  cancellation, clearer evidence selection, and stricter Google Docs Markdown
+  and text auto-discovery.
 - `ChatGPTAdapter` now implements `EvidenceAdapter`.
 - CLI source selection now uses the adapter registry.
 
