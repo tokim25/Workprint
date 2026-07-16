@@ -54,6 +54,11 @@ Workprint is organized into these layers:
 New adapters must normalize source material rather than introduce
 source-specific logic into the investigation engine.
 
+## Branch Discipline
+
+Unless explicitly instructed otherwise, all implementation work must begin on a
+new feature branch. Do not commit directly to main.
+
 ## Development Workflow
 
 - Start from an up-to-date main branch.
