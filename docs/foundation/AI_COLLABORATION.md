@@ -24,7 +24,8 @@ making.
 Codex is used for repository work: reading the codebase, proposing scoped
 implementation plans, editing files, running tests, checking diffs, and
 reporting validation. Codex should follow `AGENTS.md`, preserve source
-boundaries, avoid unrelated changes, and never commit, push, merge, or delete
+boundaries, avoid unrelated changes, follow
+`AUTONOMOUS_EXECUTION_GUARDRAILS.md`, and never commit, push, merge, or delete
 branches unless explicitly asked.
 
 These roles can overlap in practice, but the distinction is useful. Strategy,
@@ -111,6 +112,32 @@ expanding scope unnecessarily.
 
 Commit records the finished change only when the user asks for a commit and
 the repository state has been reviewed.
+
+## Autonomous Execution With Escalation
+
+For a clearly scoped and approved milestone, Codex may continue through
+planning, implementation, validation, dogfooding, and self-review without
+asking for approval between routine steps. Routine steps include repository
+inspection, helper organization, implementation details, focused tests,
+validation commands, and dogfooding the approved user journey.
+
+This autonomy exists to reduce unnecessary handoffs, not to transfer product
+authority. Codex must escalate when the work requires a consequential product,
+UX, trust, evidence, privacy, licensing, third-party attribution, or
+architecture decision.
+
+Codex must stop and ask for direction before changing the user story, changing
+the product promise, choosing a major UX flow, introducing new user-facing
+terminology, making enduring architecture decisions, breaking compatibility,
+changing confidence or attribution rules, adding dependencies, expanding
+scope, removing existing behavior, changing unrelated files, proceeding from
+unclear requirements, making unsupported claims, continuing when dogfood
+contradicts tests, or committing with unresolved risks.
+
+Before reporting completion, Codex should review the result through the VP of
+User Experience, product and technical partner, and world-class marketer
+lenses. Completion reports should begin with a short summary, then an
+"Explain Like I'm 5" explanation, then technical detail only as needed.
 
 ## Why Strategy Is Separate From Implementation
 
