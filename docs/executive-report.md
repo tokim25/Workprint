@@ -62,6 +62,20 @@ Multiple evidence sources that support unrelated claims increase coverage, not
 corroboration. Repeated or copied statements are not treated as independent
 corroboration when dependency is detectable.
 
+## Git Evidence In Executive Reports
+
+When local Git evidence is supplied, the Executive Report may use it to support
+implementation chronology, repository milestones, merge milestones, completed
+output evidence, and reduced Git-history gaps.
+
+Git evidence does not automatically raise confidence. Confidence improves only
+when the deterministic report rules find direct support, such as Git evidence
+supporting the same executive claim as another independent evidence reference.
+
+If Git reports shallow history, the Executive Report records that limitation.
+Commit counts, file counts, additions, and deletions are not treated as
+authorship, ownership, effort, value, productivity, or contribution measures.
+
 ## Tools And Evidence Sources
 
 Executive Report v1 keeps these concepts separate:

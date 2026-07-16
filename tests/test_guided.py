@@ -1,6 +1,7 @@
 import io
 import json
 import shutil
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -15,6 +16,9 @@ from workprint.guided import (
     run_guided,
     select_evidence_files,
 )
+
+
+GIT = shutil.which("git")
 
 
 class GuidedInvestigationTests(unittest.TestCase):
@@ -87,11 +91,13 @@ class GuidedInvestigationTests(unittest.TestCase):
         self.assertEqual(len(selected), 1)
         self.assertEqual(selected[0].relative_path, "b-doc.md")
 
-    def test_git_repository_is_informational_only(self):
+    def test_git_repository_can_be_selected(self):
+        if not GIT:
+            self.skipTest("git executable is required")
         with tempfile.TemporaryDirectory() as directory:
-            Path(directory, ".git").mkdir()
+            self._init_git(Path(directory))
             output = io.StringIO()
-            answers = iter([""])
+            answers = iter(["", "", "Git Project", "", "", "", ""])
 
             result = guided_workflow(
                 input_func=lambda prompt: next(answers),
@@ -99,11 +105,11 @@ class GuidedInvestigationTests(unittest.TestCase):
                 cwd=directory,
             )
 
-        self.assertIsNone(result)
+        self.assertIsNotNone(result)
         rendered = output.getvalue()
         self.assertIn("Git repository: found", rendered)
-        self.assertIn("cannot be selected", rendered)
-        self.assertIn("No importable evidence was found.", rendered)
+        self.assertIn("(git)", rendered)
+        self.assertIn("Investigation complete.", rendered)
 
     def test_cancel_before_generation_leaves_outputs_uncreated(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -342,6 +348,10 @@ class GuidedInvestigationTests(unittest.TestCase):
             "workprint-source: google-docs\n\n" + text,
             encoding="utf-8",
         )
+
+    @staticmethod
+    def _init_git(path: Path) -> None:
+        subprocess.run([GIT, "-C", str(path), "init"], check=True, capture_output=True)
 
 
 if __name__ == "__main__":

@@ -88,6 +88,33 @@ class ReportTests(unittest.TestCase):
         self.assertIn("| `OBS-1` | Unknown | ChatGPT | Human | decision |", rendered)
         self.assertIn("### Observation Statements", rendered)
 
+    def test_large_evidence_reference_lists_are_summarized(self):
+        refs = tuple(f"fixture.json#{index}" for index in range(12))
+        investigation = Investigation(
+            project="Workprint",
+            source_files=("fixture.json",),
+            observations=(
+                Observation(
+                    id="OBS-1",
+                    timestamp=None,
+                    source="ChatGPT",
+                    source_type="conversation",
+                    actor="Human",
+                    activity="decision",
+                    statement="Human decided to keep evidence references visible.",
+                    evidence_refs=refs,
+                ),
+            ),
+            findings=(),
+            unknowns=(),
+            limitations=(),
+        )
+
+        rendered = render_markdown(investigation)
+
+        self.assertIn("and 7 more evidence reference(s) in JSON", rendered)
+        self.assertIn("fixture.json#0", rendered)
+
 
 if __name__ == "__main__":
     unittest.main()

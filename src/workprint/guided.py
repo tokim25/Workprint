@@ -106,11 +106,6 @@ def guided_workflow(
     _render_discovered_evidence(discovery, evidence_files, output)
     if not evidence_files:
         print("No importable evidence was found.", file=output)
-        print(
-            "Git repositories are shown for awareness, but Git investigation "
-            "is not available until a Git evidence adapter exists.",
-            file=output,
-        )
         return None
 
     selected_files = (
@@ -206,13 +201,18 @@ def evidence_files_from_discovery(
     index = 1
     for result in discovery.results:
         for relative_path in result.detected_files:
+            path = root / relative_path
+            rendered_path = relative_path
+            if result.source == "git":
+                path = Path(result.metadata.get("repository_root") or root)
+                rendered_path = str(path)
             files.append(
                 GuidedEvidenceFile(
                     index=index,
                     source=result.source,
                     label=result.label,
-                    relative_path=relative_path,
-                    path=root / relative_path,
+                    relative_path=rendered_path,
+                    path=path,
                 )
             )
             index += 1
@@ -228,11 +228,6 @@ def _render_discovered_evidence(
     print("", file=output)
     if discovery.git_repository:
         print("Git repository: found", file=output)
-        print(
-            "Git is informational for now and cannot be selected until "
-            "Workprint has a Git evidence adapter.",
-            file=output,
-        )
         print("", file=output)
 
     if not evidence_files:
@@ -402,7 +397,10 @@ def _render_selection_summary(
         counts[item.source] = counts.get(item.source, 0) + 1
     print("Selected sources:", file=output)
     for source, count in sorted(counts.items()):
-        noun = "file" if count == 1 else "files"
+        if source == "git":
+            noun = "repository" if count == 1 else "repositories"
+        else:
+            noun = "file" if count == 1 else "files"
         print(f"- {source}: {count} {noun}", file=output)
     print("Selected files:", file=output)
     for item in selected_files:

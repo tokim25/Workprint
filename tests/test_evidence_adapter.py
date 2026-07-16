@@ -7,6 +7,7 @@ from workprint.adapters import (
     ClaudeAdapter,
     EvidenceAdapter,
     FigmaAdapter,
+    GitAdapter,
     GoogleDocsAdapter,
     available_adapters,
     get_adapter,
@@ -25,7 +26,7 @@ class EvidenceAdapterTests(unittest.TestCase):
         self.assertIsInstance(adapter, ChatGPTAdapter)
         self.assertEqual(
             available_adapters(),
-            ("chatgpt", "claude", "figma", "google-docs"),
+            ("chatgpt", "claude", "figma", "git", "google-docs"),
         )
 
     def test_registry_returns_claude_adapter(self):
@@ -39,6 +40,10 @@ class EvidenceAdapterTests(unittest.TestCase):
     def test_registry_returns_figma_adapter(self):
         adapter = get_adapter("figma")
         self.assertIsInstance(adapter, FigmaAdapter)
+
+    def test_registry_returns_git_adapter(self):
+        adapter = get_adapter("git")
+        self.assertIsInstance(adapter, GitAdapter)
 
     def test_registry_rejects_unknown_adapter(self):
         with self.assertRaisesRegex(ValueError, "unsupported evidence source"):

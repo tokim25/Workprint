@@ -67,7 +67,7 @@ def build_investigation(
                 "id": f"F-{finding_number:03d}",
                 "statement": (
                     f"{most_common_actor} appears in the largest number of recorded "
-                    f"conversation observations ({count}). This is an event count, "
+                    f"observations ({count}). This is an event count, "
                     "not a measure of total contribution."
                 ),
                 "confidence": "high",

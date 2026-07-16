@@ -36,7 +36,7 @@ class ProjectDiscovery:
 
     @property
     def evidence_sources(self) -> int:
-        return len(self.results) + (1 if self.git_repository else 0)
+        return len(self.results)
 
     @property
     def supported_files(self) -> int:
@@ -72,6 +72,28 @@ def _is_git_repository(root: Path) -> bool:
     return (root / ".git").exists()
 
 
+def _git_result(root: Path) -> DiscoveryResult | None:
+    try:
+        metadata = get_adapter("git").discover(root)
+    except ValueError:
+        return None
+    if metadata is None:
+        return None
+    repository_root = str(metadata.get("repository_root") or root)
+    return DiscoveryResult(
+        source="git",
+        label="Git",
+        file_count=1,
+        detected_files=(".",),
+        metadata={
+            "record_count": metadata.get("record_count", 1),
+            "repository_root": repository_root,
+            "current_branch": metadata.get("current_branch"),
+            "is_shallow": metadata.get("is_shallow", False),
+        },
+    )
+
+
 def discover_project(path: str | Path = ".") -> ProjectDiscovery:
     root = Path(path).expanduser().resolve()
     if not root.exists():
@@ -79,7 +101,11 @@ def discover_project(path: str | Path = ".") -> ProjectDiscovery:
     if not root.is_dir():
         raise ValueError(f"project path is not a directory: {root}")
 
-    adapters = [get_adapter(adapter_id) for adapter_id in available_adapters()]
+    adapters = [
+        get_adapter(adapter_id)
+        for adapter_id in available_adapters()
+        if adapter_id != "git"
+    ]
     grouped: dict[str, dict[str, Any]] = {}
 
     for file_path in _iter_files(root):
@@ -100,7 +126,7 @@ def discover_project(path: str | Path = ".") -> ProjectDiscovery:
             entry["records"] += int(metadata.get("record_count", 0))
             break
 
-    results = tuple(
+    results_list = [
         DiscoveryResult(
             source=source,
             label=entry["label"],
@@ -109,11 +135,15 @@ def discover_project(path: str | Path = ".") -> ProjectDiscovery:
             metadata={"record_count": entry["records"]},
         )
         for source, entry in sorted(grouped.items(), key=lambda item: item[0])
-    )
+    ]
+    git_result = _git_result(root)
+    if git_result is not None:
+        results_list.append(git_result)
+    results = tuple(sorted(results_list, key=lambda item: item.source))
 
     return ProjectDiscovery(
         root=str(root),
-        git_repository=_is_git_repository(root),
+        git_repository=git_result is not None or _is_git_repository(root),
         results=results,
     )
 
@@ -165,5 +195,7 @@ def _summary_line(result: DiscoveryResult) -> str:
     if result.source == "figma":
         noun = "file" if result.file_count == 1 else "files"
         return f"{result.file_count} {noun}"
+    if result.source == "git":
+        return "1 local repository"
     noun = "file" if result.file_count == 1 else "files"
     return f"{result.file_count} {noun}"

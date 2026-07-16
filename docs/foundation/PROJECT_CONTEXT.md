@@ -52,6 +52,7 @@ Workprint currently includes these completed capabilities:
 - Timeline Report.
 - Google Docs static export adapter.
 - Figma static export adapter.
+- Local Git evidence adapter.
 - Report visual design and shareability.
 - Executive Report v1.
 - Executive Report copy-quality audit integration.
@@ -110,8 +111,8 @@ resolution history, contributor activity, or authorship. File-level metadata
 does not become node-level attribution.
 
 Discovery recognizes supported evidence, but it does not validate every future
-investigation outcome. Git repository detection is informational only until a
-Git evidence adapter exists.
+investigation outcome. Local Git repositories are selectable evidence sources
+when the installed `git` command can resolve a non-bare repository or worktree.
 
 Guided Investigation is currently terminal-based. It improves usability, but it
 does not yet deliver a full low-code or no-code experience.
@@ -129,8 +130,9 @@ detection.
 Semantic duplicate detection across different platforms is not implemented.
 Current duplicate suppression handles exact, source-aware duplicates.
 
-Git evidence import is not implemented. Discovery can detect Git repository
-presence, but Git is not selectable for investigation.
+Git evidence import is local-only. It does not call GitHub, fetch remotes,
+inspect file contents, support bare repositories, traverse unrelated nested
+repositories, or resolve author and committer identities.
 
 Low-code and no-code UX remains at the definition stage. Current workflows
 still rely on terminal interaction or scripted CLI options.
@@ -149,11 +151,11 @@ patterns, confidence, and evidence gaps. This is not a current capability.
 ## Major Capabilities
 
 Workprint can import supported ChatGPT and Claude conversation exports, static
-Google Docs exports, and static Figma JSON exports. It can discover supported
-evidence in a project folder, combine multiple sources into one investigation,
-generate deterministic observations and timeline events, build an Executive
-Report, run the Executive Report copy-quality audit offline, and render
-Markdown or JSON outputs.
+Google Docs exports, static Figma JSON exports, and local Git repository
+metadata. It can discover supported evidence in a project folder, combine
+multiple sources into one investigation, generate deterministic observations
+and timeline events, build an Executive Report, run the Executive Report
+copy-quality audit offline, and render Markdown or JSON outputs.
 
 The system preserves source boundaries. It separates user activity,
 collaborator activity, AI/tool activity, joint activity, and unattributed

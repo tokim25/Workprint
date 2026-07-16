@@ -18,6 +18,7 @@ usable by people with limited coding knowledge.
 - [x] Timeline Report
 - [x] Google Docs adapter
 - [x] Figma adapter
+- [x] Git adapter
 - [x] Report visual design and shareability
 - [x] Executive Report v1
 - [x] Project Discovery
@@ -235,6 +236,45 @@ Limitations:
 - No finalized-output CLI mode or override flag is introduced in this
   milestone.
 
+## Completed Milestone: Git Adapter
+
+Status: Complete
+
+Goal: Import local Git repository evidence into Workprint's normalized
+evidence pipeline without using network services or inferring authorship,
+ownership, effort, value, or contribution percentages.
+
+Implemented scope:
+
+- Canonical `git` source identifier and `Git` reader-facing label.
+- Local repository input through the installed `git` command.
+- Read-only command boundary using explicit argument arrays.
+- Repository metadata capture, including root, current branch, and shallow
+  history status.
+- Commit metadata capture, including SHA, abbreviated SHA, timestamp, author
+  and committer names/emails as recorded by Git, subject, body, parent SHAs,
+  merge status, changed paths, change type, additions, deletions, and tags.
+- Deterministic chronological commit ordering.
+- Empty repository support through repository metadata records.
+- Discovery and Guided Investigation selection for local Git repositories.
+- Executive Report support for repository implementation chronology, merge
+  milestones, and reduced Git-history gaps when Git evidence is supplied.
+- Shallow-history disclosure when the repository reports incomplete history.
+- Tests using temporary repositories rather than committed nested `.git`
+  fixtures.
+
+Limitations:
+
+- Local Git only; no GitHub API or remote network access.
+- Bare repositories are not supported in v1.
+- Discovery does not automatically traverse unrelated nested repositories.
+- File contents are not inspected; v1 uses commit and change metadata.
+- Git author and committer fields are preserved as recorded metadata. They do
+  not prove who personally wrote every changed line.
+- Commit counts, file counts, additions, and deletions are repository-change
+  metadata, not effort, ownership, value, authorship, productivity, or
+  contribution measures.
+
 ## Completed Milestone: Project Discovery
 
 Status: Complete
@@ -247,7 +287,7 @@ Implemented scope:
 - `workprint discover [path]` command.
 - Current working directory default when no path is supplied.
 - Recursive filesystem scan.
-- Git repository detection.
+- Git repository detection as a selectable evidence source.
 - Adapter-driven detection for ChatGPT, Claude, Google Docs, and Figma
   evidence.
 - Deterministic source and file ordering.
@@ -259,7 +299,8 @@ Limitations:
 
 - Discovery recognizes supported evidence; it does not validate every future
   investigation outcome.
-- Git detection only identifies repository presence.
+- Git discovery is narrow: it checks the selected repository context and does
+  not automatically traverse unrelated nested repositories.
 - Static export limitations still apply to document and design evidence.
 
 ## Completed Milestone: Guided Investigation Wizard
@@ -276,7 +317,7 @@ Implemented scope:
 - Project folder confirmation.
 - Reuse of Project Discovery.
 - Plain-language display of discovered sources and files.
-- Git repository detection shown as informational only.
+- Git repository selection when local Git evidence is available.
 - File-level and source-level selection.
 - Project name prompt.
 - Dedicated default output directory: `workprint-output/`.
@@ -289,7 +330,6 @@ Implemented scope:
 Limitations:
 
 - The workflow is terminal-based.
-- Git repositories cannot be selected until a Git evidence adapter exists.
 - Guided import does not infer attribution beyond existing deterministic
   evidence handling.
 

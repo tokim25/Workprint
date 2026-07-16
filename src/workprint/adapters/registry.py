@@ -6,6 +6,7 @@ from .base import EvidenceAdapter
 from .chatgpt import ChatGPTAdapter
 from .claude import ClaudeAdapter
 from .figma import FigmaAdapter
+from .git import GitAdapter
 from .google_docs import GoogleDocsAdapter
 
 
@@ -16,6 +17,7 @@ _ADAPTERS: dict[str, AdapterFactory] = {
     "chatgpt": ChatGPTAdapter,
     "claude": ClaudeAdapter,
     "figma": FigmaAdapter,
+    "git": GitAdapter,
     "google-docs": GoogleDocsAdapter,
 }
 

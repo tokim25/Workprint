@@ -15,6 +15,24 @@ records.
 A specific origin or category of evidence, such as ChatGPT, Claude, Google
 Docs, Figma, Git, or a future supported system.
 
+## Git Evidence
+
+Local repository metadata captured from Git, including repository context,
+commit metadata, changed paths, tags, and shallow-history status. Git evidence
+does not include file contents in v1.
+
+## Git Author Or Committer
+
+Name and email values recorded by Git on a commit. Workprint preserves these
+values as metadata, but they do not prove who personally wrote every changed
+line and are not resolved into canonical identities.
+
+## Shallow Git History
+
+A Git repository state where earlier history may be missing. Workprint
+discloses this as a limitation because incomplete history can affect
+chronology, tags, branch context, and evidence coverage.
+
 ## Observation
 
 An evidence-linked statement derived from normalized evidence. An observation

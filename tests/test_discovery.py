@@ -1,5 +1,6 @@
 import io
 import shutil
+import subprocess
 import tempfile
 import unittest
 from contextlib import redirect_stdout
@@ -7,6 +8,9 @@ from pathlib import Path
 
 from workprint.cli import main
 from workprint.discovery import discover_project, render_discovery
+
+
+GIT = shutil.which("git")
 
 
 class DiscoveryTests(unittest.TestCase):
@@ -21,12 +25,17 @@ class DiscoveryTests(unittest.TestCase):
         self.assertIn("- Figma", rendered)
 
     def test_detects_git_repository(self):
+        if not GIT:
+            self.skipTest("git executable is required")
         with tempfile.TemporaryDirectory() as directory:
-            Path(directory, ".git").mkdir()
+            self._init_git(Path(directory))
             discovery = discover_project(directory)
 
         self.assertTrue(discovery.git_repository)
         self.assertEqual(discovery.evidence_sources, 1)
+        result = self._result(discovery, "git")
+        self.assertEqual(result.label, "Git")
+        self.assertEqual(result.detected_files, (".",))
 
     def test_detects_chatgpt_fixture(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -81,8 +90,10 @@ class DiscoveryTests(unittest.TestCase):
         self.assertEqual(result.detected_files, ("sample-file.json",))
 
     def test_mixed_project_detection_ignores_unsupported_files(self):
+        if not GIT:
+            self.skipTest("git executable is required")
         with tempfile.TemporaryDirectory() as directory:
-            Path(directory, ".git").mkdir()
+            self._init_git(Path(directory))
             Path(directory, "notes.csv").write_text("unsupported", encoding="utf-8")
             self._copy_fixture(
                 "fixtures/chatgpt/sample-conversations.json",
@@ -105,9 +116,9 @@ class DiscoveryTests(unittest.TestCase):
         self.assertTrue(discovery.git_repository)
         self.assertEqual(
             [item.source for item in discovery.results],
-            ["chatgpt", "figma", "google-docs"],
+            ["chatgpt", "figma", "git", "google-docs"],
         )
-        self.assertEqual(discovery.supported_files, 3)
+        self.assertEqual(discovery.supported_files, 4)
         self.assertEqual(discovery.evidence_sources, 4)
 
     def test_malformed_candidate_does_not_abort_discovery(self):
@@ -191,6 +202,10 @@ class DiscoveryTests(unittest.TestCase):
             "workprint-source: google-docs\n\n" + text,
             encoding="utf-8",
         )
+
+    @staticmethod
+    def _init_git(path: Path) -> None:
+        subprocess.run([GIT, "-C", str(path), "init"], check=True, capture_output=True)
 
     @staticmethod
     def _result(discovery, source: str):

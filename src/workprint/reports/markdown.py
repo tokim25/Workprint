@@ -252,6 +252,9 @@ def _waiver_summary(waivers: tuple[dict, ...]) -> str:
 def _evidence_refs(refs: tuple[str, ...]) -> str:
     if not refs:
         return "No direct evidence reference is available."
+    if len(refs) > 8:
+        shown = ", ".join(f"`{ref}`" for ref in refs[:5])
+        return f"{shown}, and {len(refs) - 5} more evidence reference(s) in JSON."
     return ", ".join(f"`{ref}`" for ref in refs)
 
 
@@ -318,7 +321,7 @@ def render_markdown(investigation: Investigation) -> str:
             f"| Source observations | {', '.join(f'`{obs_id}`' for obs_id in item.source_observation_ids)} |",
             "",
             "**Evidence references:** "
-            + ", ".join(f"`{ref}`" for ref in item.evidence_refs),
+            + _evidence_refs(item.evidence_refs),
             "",
             "**Activity separation:**",
             "",
@@ -395,7 +398,7 @@ def render_markdown(investigation: Investigation) -> str:
     ])
     for item in investigation.observations:
         timestamp = item.timestamp.isoformat() if item.timestamp else "Unknown"
-        refs = ", ".join(f"`{ref}`" for ref in item.evidence_refs)
+        refs = _evidence_refs(item.evidence_refs)
         lines.append(
             f"| `{item.id}` | {_escape(timestamp)} | {_escape(item.source)} | "
             f"{_escape(item.actor)} | {_escape(item.activity)} | {refs} |"
