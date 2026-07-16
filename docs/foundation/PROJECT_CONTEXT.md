@@ -54,6 +54,7 @@ Workprint currently includes these completed capabilities:
 - Figma static export adapter.
 - Report visual design and shareability.
 - Executive Report v1.
+- Executive Report copy-quality audit integration.
 - Project Discovery.
 - Guided Investigation Wizard.
 - Markdown and JSON reporting.
@@ -116,13 +117,14 @@ Guided Investigation is currently terminal-based. It improves usability, but it
 does not yet deliver a full low-code or no-code experience.
 
 Executive Report v1 is deterministic and derived from existing investigation
-data. It does not use LLM-generated narrative copy, semantic clustering,
-probabilistic confidence scoring, or hidden contribution estimates.
+data. It includes an offline copy-quality audit integration using the pinned
+`unslop-text` scanner from JCarterJohnson's `vibecoded-design-tells` project,
+plus Workprint-owned structural checks and evidence-preservation validation.
+It does not use LLM-generated narrative copy, semantic clustering,
+probabilistic confidence scoring, hidden contribution estimates, or authorship
+detection.
 
 ## Technical Debt
-
-The copy-quality scanner referenced by Executive Report v1 is recorded as
-unavailable until it can be safely integrated.
 
 Semantic duplicate detection across different platforms is not implemented.
 Current duplicate suppression handles exact, source-aware duplicates.
@@ -150,7 +152,8 @@ Workprint can import supported ChatGPT and Claude conversation exports, static
 Google Docs exports, and static Figma JSON exports. It can discover supported
 evidence in a project folder, combine multiple sources into one investigation,
 generate deterministic observations and timeline events, build an Executive
-Report, and render Markdown or JSON outputs.
+Report, run the Executive Report copy-quality audit offline, and render
+Markdown or JSON outputs.
 
 The system preserves source boundaries. It separates user activity,
 collaborator activity, AI/tool activity, joint activity, and unattributed

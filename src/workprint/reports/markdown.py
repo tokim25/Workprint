@@ -170,18 +170,83 @@ def _executive_section(investigation: Investigation) -> list[str]:
         "",
         report.investigation_assurance,
         "",
-        f"**Copy-quality audit status:** `{audit.status}`",
+        "### Copy-Quality Audit",
+        "",
+        f"**Status:** `{audit.status}`",
         "",
         audit.disclosure,
         "",
-        f"**Pinned copy-audit repository:** {audit.upstream_repository}",
+        f"**What was scanned:** {', '.join(audit.scanned_sections)}",
+        "",
+        f"**Lexical audit:** {_audit_completion(audit.lexical_review_completed)}",
+        "",
+        f"**Structural audit:** {_audit_completion(audit.structural_review_completed)}",
+        "",
+        f"**Evidence-preservation validation:** {_audit_completion(audit.evidence_preservation_confirmed)}",
+        "",
+        f"**Findings by severity:** {_severity_counts(audit.severity_counts or {})}",
+        "",
+        f"**Waivers:** {_waiver_summary(audit.waivers)}",
+        "",
+        f"**Override used:** {'yes' if audit.override_used else 'no'}",
+        "",
+        (
+            "**Attribution:** Workprint's lexical copy-quality review incorporates the "
+            f"`unslop-text` scanner and methodology developed by {audit.upstream_author} "
+            f"in the `{audit.upstream_project}` project. Workprint adds deterministic "
+            "structural checks and evidence-preservation validation. Structural checks "
+            "complement the lexical review because lexical findings alone cannot assess "
+            "overall writing quality. This audit is "
+            "not an authorship detector."
+        ),
+        "",
+        f"**Upstream repository:** {audit.upstream_repository}",
         "",
         f"**Pinned revision:** `{audit.pinned_revision}`",
         "",
-        "---",
+        f"**Upstream license:** {audit.upstream_license}",
+        "",
+        f"**Attribution notice:** `{audit.attribution_notice}`",
+        "",
+        "**Limitations:**",
         "",
     ])
+    for limitation in audit.limitations:
+        lines.append(f"- {limitation}")
+    if audit.findings:
+        lines.extend(["", "**Findings:**", ""])
+        for finding in audit.findings:
+            lines.append(
+                "- "
+                f"`{finding.get('severity', 'unknown')}` "
+                f"`{finding.get('rule', 'unknown')}` "
+                f"({finding.get('section', 'unknown')}): "
+                f"{finding.get('message', 'No message recorded.')}"
+            )
+    lines.extend(["", "---", ""])
     return lines
+
+
+def _audit_completion(value: bool) -> str:
+    return "completed" if value else "not completed"
+
+
+def _severity_counts(counts: dict[str, int]) -> str:
+    if not counts:
+        return "none"
+    return ", ".join(
+        f"{severity}: {count}"
+        for severity, count in sorted(counts.items())
+    )
+
+
+def _waiver_summary(waivers: tuple[dict, ...]) -> str:
+    if not waivers:
+        return "none"
+    return "; ".join(
+        f"{item.get('section', 'unknown')} / {item.get('rule', 'unknown')}: {item.get('reason', 'no reason recorded')}"
+        for item in waivers
+    )
 
 
 def _evidence_refs(refs: tuple[str, ...]) -> str:

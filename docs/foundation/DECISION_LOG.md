@@ -128,3 +128,32 @@ must clearly disclose their limits. Future richer adapters can add revision or
 comment evidence when actual source data supports it.
 
 Status: Accepted.
+
+## Executive Copy-Quality Audit Uses A Pinned Upstream Scanner
+
+Context: Executive Report v1 included copy-quality audit metadata with the
+`unslop-text` upstream revision pinned, but the scanner was not yet integrated.
+Completing the audit gate required using the upstream work without describing
+the scanner, research, rules, or methodology as Workprint's original work.
+
+Alternatives: Workprint could keep the audit unavailable, reimplement similar
+rules without attribution, fetch upstream files at report-generation time, or
+vendor a reviewed subset of the upstream project.
+
+Decision: Workprint vendors the reviewed `unslop-text` scanner and references
+from JCarterJohnson's `vibecoded-design-tells` project at pinned revision
+`f7c4aefc2c797a66e55b49354a93917ab60d33ac`, preserves attribution and
+licensing information through the MIT license and third-party notice, and wraps
+the scanner in Workprint-owned integration code. Workprint adds deterministic
+structural checks because lexical findings alone cannot assess overall writing
+quality, plus evidence-preservation validation, Markdown disclosure, and
+additive JSON metadata. The audit is documented as a writing-pattern review,
+not an authorship detector.
+
+Consequences: Report generation can run the lexical scanner offline and record
+clear upstream attribution. Workprint owns the integration boundary and status
+rules while preserving the upstream license and credit. Future audit changes
+must continue to distinguish JCarterJohnson's upstream work from Workprint's
+additions and must not imply endorsement.
+
+Status: Accepted.
