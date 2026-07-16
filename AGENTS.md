@@ -56,8 +56,13 @@ source-specific logic into the investigation engine.
 
 ## Branch Discipline
 
-Unless explicitly instructed otherwise, all implementation work must begin on a
-new feature branch. Do not commit directly to main.
+- Do not commit directly to `main`.
+- Begin each implementation, fix, or documentation milestone on a focused branch.
+- Confirm `main` is clean and current before creating the branch.
+- Use one branch and pull request per coherent capability.
+- Stop and report the issue if work was accidentally started on `main`.
+- Do not move or rewrite commits without explicit approval.
+- Documentation-only work follows the same branch and pull-request workflow unless explicitly exempted.
 
 ## Development Workflow
 
