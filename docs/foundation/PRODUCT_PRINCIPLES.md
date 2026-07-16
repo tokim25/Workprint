@@ -80,6 +80,25 @@ understand the project account.
 Every section should be able to answer: "Why should I believe this?" It should
 also answer why the section exists for a human reader.
 
+## Complexity Belongs In The Engine
+
+Complexity is allowed in the engine. It is not allowed in the experience.
+
+Workprint may need careful adapters, normalization, observation extraction,
+timeline rules, confidence explanations, source limitations, and evidence
+references to preserve trust. Users should not have to experience that
+complexity as setup friction, implementation terminology, or unnecessary
+stopping points.
+
+The product experience should organize complexity around a user's natural
+mental model: tell Workprint about the project, provide evidence, wait while
+it investigates, and understand what it discovered. Details should appear
+only when they help the user decide, trust, inspect, or export.
+
+Every screen should be able to answer: "Would Google, Apple, or Notion make
+the user stop here?" If the answer is no, the interaction should be
+simplified, absorbed into another step, or moved into progressive disclosure.
+
 ## Unknown Over Unsupported Certainty
 
 Unknowns are part of product quality. If Workprint cannot determine whether a
