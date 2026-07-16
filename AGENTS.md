@@ -25,6 +25,37 @@ Workprint reconstructs how work was made from evidence such as conversations,
 documents, designs, and repository activity. It reports evidenced actions and
 decisions without inventing unsupported attribution.
 
+## User Story First
+
+Every phase of work must begin with a clear user and product framing before
+implementation details:
+
+1. User problem
+2. User story
+3. UX story
+4. Marketing story
+5. Smallest useful version
+6. Trust or usability risks
+
+Definitions:
+
+- User problem: What is difficult, confusing, or impossible today?
+- User story: What new thing will the user be able to do?
+- UX story: What should the experience feel like from the user's perspective?
+- Marketing story: How would an excellent marketer explain the value in one
+  clear sentence?
+- Smallest useful version: What must be built now, and what should wait?
+- Risk: What could confuse users, reduce trust, or pull Workprint away from
+  its core promise?
+
+Required product question:
+
+"Does this help the user understand or demonstrate what they did, what AI did,
+or how they worked together?"
+
+If the answer is no, contributors should explain why the work still belongs in
+the roadmap.
+
 ## Core Principles
 
 - Preserve evidence traceability.
@@ -74,6 +105,15 @@ source-specific logic into the investigation engine.
 - Do not commit, push, merge, or delete branches unless explicitly requested.
 - Never replace the repository tree with a partial snapshot.
 - Check for accidental deletions of core packages before committing.
+
+## Novice-User Communication
+
+- Explain roadmap and implementation changes in plain language first.
+- Use an "Explain Like I'm 5" summary before technical detail.
+- Keep the first summary short enough for the user to react to quickly.
+- Do not assume familiarity with Git, GitHub, branches, pull requests, command
+  lines, or software architecture.
+- Give one clear next action at a time when possible.
 
 ## Required Validation
 

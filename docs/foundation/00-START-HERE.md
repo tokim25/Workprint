@@ -26,15 +26,18 @@ Read these documents in this order:
 5. [ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md)
 6. [AI_COLLABORATION.md](AI_COLLABORATION.md)
 7. [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md)
-8. [DECISION_LOG.md](DECISION_LOG.md)
-9. [WORKPRINT_GLOSSARY.md](WORKPRINT_GLOSSARY.md)
+8. [CODEX_WORKING_CONTEXT.md](CODEX_WORKING_CONTEXT.md)
+9. [DECISION_LOG.md](DECISION_LOG.md)
+10. [WORKPRINT_GLOSSARY.md](WORKPRINT_GLOSSARY.md)
 
 The order matters. The vision explains why Workprint exists. The charter sets
 the constitutional limits. Product and engineering principles translate those
 limits into operating judgment. Architecture explains the system shape. AI
 collaboration explains how the project itself is made. Context records the
-current repository state. The decision log preserves accepted choices. The
-glossary keeps language stable.
+current repository state. Codex working context explains how coding tasks
+should stay centered on user capability, UX clarity, and marketing legibility.
+The decision log preserves accepted choices. The glossary keeps language
+stable.
 
 ## Document Ownership
 
@@ -49,8 +52,9 @@ state, active milestone, capabilities, limitations, and technical debt.
 
 Some documents are occasionally updated. `PRODUCT_PRINCIPLES.md`,
 `ENGINEERING_PRINCIPLES.md`, `ARCHITECTURE_OVERVIEW.md`,
-`AI_COLLABORATION.md`, and `WORKPRINT_GLOSSARY.md` should change when the
-project's stable principles, architecture, collaboration model, or terminology
+`AI_COLLABORATION.md`, `CODEX_WORKING_CONTEXT.md`, and
+`WORKPRINT_GLOSSARY.md` should change when the project's stable principles,
+architecture, collaboration model, coding-agent workflow, or terminology
 change.
 
 This distinction exists so contributors know when to preserve a document and

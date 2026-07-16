@@ -72,6 +72,14 @@ that direction. It previews discovered evidence, lets users select sources,
 asks for a project name, and generates Markdown and JSON outputs through the
 same multi-source investigation pipeline used by expert commands.
 
+Workprint is entering a user-experience phase. The near-term priority is to
+create a web-based experience, center the product on explaining human and AI
+roles, make investigations understandable to novice users, and support future
+use inside ChatGPT and Claude workflows.
+
+The CLI remains useful infrastructure for validation, automation, and expert
+workflows, but it is no longer the primary product experience.
+
 ## Near-Term Roadmap
 
 Near-term work should continue reducing the amount of project-specific command

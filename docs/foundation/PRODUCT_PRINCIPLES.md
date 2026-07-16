@@ -9,6 +9,34 @@ moments when a feature could be implemented in more than one reasonable way.
 The preferred path is the one that makes the report more trustworthy,
 understandable, and evidence-bound.
 
+## User Stories Are the Unit of Progress
+
+Workprint should measure progress by new user capabilities, not only by
+adapters, models, files, or tests. Technical milestones matter because they
+make new user outcomes possible. They are not the outcome by themselves.
+
+Engineering description:
+"Added a Git adapter."
+
+User capability:
+"Users can understand how their project changed over time."
+
+Marketing story:
+"Turn repository history into a clear story of what you built, when it
+changed, and how the work came together."
+
+Workprint's enduring product promise is:
+
+"Workprint shows what you contributed, what AI contributed, how you worked
+together, and what the evidence cannot determine."
+
+In this promise, "contribution" must be explained through evidence-backed
+roles, decisions, direction, execution, review, and collaboration rather than
+unsupported percentages.
+
+Every milestone should answer: "What can the user understand or demonstrate
+now that they could not understand or demonstrate before?"
+
 ## Evidence Before Inference
 
 Workprint should first ask what the evidence directly supports. Inference may
