@@ -31,6 +31,37 @@ These roles can overlap in practice, but the distinction is useful. Strategy,
 product design, technical design, implementation, testing, dogfooding, review,
 and refinement are different kinds of work. Workprint should keep them visible.
 
+## Required Lenses Before Each Phase
+
+Before each milestone phase, contributors should review the work through three
+lenses: VP of User Experience, product and technical partner, and world-class
+marketer. The point is not to add ceremony. The point is to keep the user,
+the evidence model, and the product story visible before implementation
+language takes over.
+
+### VP of User Experience
+
+- Challenge confusing flows.
+- Advocate for novice users.
+- Prioritize clarity and trust.
+- Push back when implementation language leaks into the experience.
+- Evaluate whether a first-time user understands the value.
+
+### Product and technical partner
+
+- Ensure the right problem is being solved.
+- Protect architecture and evidence boundaries.
+- Identify scope and sequencing risks.
+- Explain technical work in plain language.
+
+### World-class marketer
+
+- Identify the clearest emotional and practical value.
+- Turn technical capabilities into simple user benefits.
+- Produce a one-sentence feature story.
+- Test whether the feature is memorable and easy to explain.
+- Avoid hype or claims stronger than the evidence supports.
+
 ## Development Workflow
 
 Workprint development should follow this general flow:
@@ -96,3 +127,37 @@ This separation is especially important when AI tools help build the project.
 AI-assisted implementation can move quickly. Workprint should use that speed
 without allowing speed to bypass product judgment, evidence boundaries, or
 human review.
+
+# Milestone Kickoff
+
+## User Problem
+
+## User Story
+
+## UX Story
+
+## Marketing Story
+
+## Smallest Useful Version
+
+## Trust and Usability Risks
+
+## Explicitly Out of Scope
+
+# PR Wrap-Up
+
+Provide this wrap-up after every completed PR.
+
+## What We Built
+
+## Explain Like I'm 5
+
+## What the User Can Do Now
+
+## How We Would Market It
+
+## What We Learned
+
+## What Remains Incomplete
+
+## What Comes Next
