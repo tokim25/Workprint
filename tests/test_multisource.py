@@ -1,4 +1,6 @@
 import json
+import shutil
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -9,6 +11,9 @@ from workprint.multisource import (
     load_observations,
     parse_evidence_spec,
 )
+
+
+GIT = shutil.which("git")
 
 
 class MultiSourceTests(unittest.TestCase):
@@ -22,6 +27,17 @@ class MultiSourceTests(unittest.TestCase):
         parsed = parse_evidence_spec(f"chatgpt={self.chatgpt}")
         self.assertEqual(parsed.source, "chatgpt")
         self.assertEqual(parsed.path, self.chatgpt)
+
+    def test_parse_evidence_spec_accepts_git_repository(self):
+        if not GIT:
+            self.skipTest("git executable is required")
+        with tempfile.TemporaryDirectory() as directory:
+            subprocess.run([GIT, "-C", directory, "init"], check=True, capture_output=True)
+
+            parsed = parse_evidence_spec(f"git={directory}")
+
+        self.assertEqual(parsed.source, "git")
+        self.assertEqual(parsed.path, Path(directory).resolve())
 
     def test_parse_evidence_spec_rejects_bad_format(self):
         with self.assertRaisesRegex(ValueError, "SOURCE=PATH"):

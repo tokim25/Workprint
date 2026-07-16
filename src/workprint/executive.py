@@ -29,6 +29,11 @@ from workprint.models import (
 
 EXECUTIVE_SCHEMA_VERSION = "1.0"
 COPY_AUDITED_SECTIONS = SCANNED_SECTION_NAMES
+GIT_AUTHORSHIP_BOUNDARY = (
+    "Git author and committer fields preserve identities recorded in "
+    "repository history. They do not prove who personally wrote every changed "
+    "line, establish ownership, or measure contribution."
+)
 
 CONFIDENCE_ORDER = ("Very High", "High", "Moderate", "Limited", "Low")
 
@@ -39,6 +44,8 @@ SOURCE_LABELS = {
     "Claude": "Claude",
     "figma": "Figma",
     "Figma": "Figma",
+    "git": "Git",
+    "Git": "Git",
     "google-docs": "Google Docs",
     "Google Docs": "Google Docs",
 }
@@ -58,6 +65,7 @@ PRODUCED_PATTERNS = (
     r"\bbuilt\b",
     r"\bcreated\b",
     r"\badded\b",
+    r"\badd\b",
     r"\bimplemented\b",
     r"\bgenerated\b",
     r"\bproduced\b",
@@ -141,6 +149,7 @@ class ExecutiveReportBuilder:
         )
         collaboration = _collaboration(observations, self.investigation.timeline)
         fixture_boundary = _fixture_boundary(self.investigation)
+        has_git = _has_git_evidence(observations)
 
         brief = ExecutiveBrief(
             project_goal=goal,
@@ -152,7 +161,7 @@ class ExecutiveReportBuilder:
         )
 
         overview = _project_overview(self.investigation, observations, fixture_boundary)
-        draft_assurance = _investigation_assurance_method(fixture_boundary)
+        draft_assurance = _investigation_assurance_method(fixture_boundary, has_git)
         audit_sections = _copy_audit_sections(
             brief=brief,
             overview=overview,
@@ -164,7 +173,7 @@ class ExecutiveReportBuilder:
             assurance=draft_assurance,
         )
         copy_audit = CopyQualityAuditor().audit(audit_sections)
-        assurance = _investigation_assurance(copy_audit, fixture_boundary)
+        assurance = _investigation_assurance(copy_audit, fixture_boundary, has_git)
 
         return ExecutiveReport(
             schema_version=EXECUTIVE_SCHEMA_VERSION,
@@ -180,6 +189,7 @@ class ExecutiveReportBuilder:
             metadata={
                 "fixture_boundary": fixture_boundary,
                 "source_labels": SOURCE_LABELS,
+                "git_authorship_boundary": GIT_AUTHORSHIP_BOUNDARY if has_git else None,
             },
         )
 
@@ -213,6 +223,122 @@ def _refs(items: tuple[Observation, ...] | list[Observation]) -> tuple[str, ...]
 
 def _all_refs(observations: tuple[Observation, ...]) -> tuple[str, ...]:
     return _refs(observations)
+
+
+def _has_git_evidence(observations: tuple[Observation, ...]) -> bool:
+    return any(item.source == "git" for item in observations)
+
+
+def _git_commit_subject(item: Observation) -> str:
+    return str((item.metadata or {}).get("subject") or "")
+
+
+def _is_git_commit_observation(item: Observation) -> bool:
+    return (
+        item.source == "git"
+        and item.activity == "implementation"
+        and bool((item.metadata or {}).get("commit_sha"))
+        and not item.artifact
+        and "repository file change" not in item.statement.lower()
+    )
+
+
+def _is_major_git_capability_subject(subject: str) -> bool:
+    value = subject.lower()
+    if value.startswith(("chore", "refactor", "test")):
+        return False
+    if any(term in value for term in ("fixture", "template", "metadata")):
+        return False
+    capability_terms = (
+        "investigation engine",
+        "observation model",
+        "timeline report",
+        "timeline reporting",
+        "google docs adapter",
+        "figma",
+        "project discovery",
+        "guided investigation",
+        "executive report",
+        "foundation",
+        "copy quality audit",
+        "copy-quality audit",
+        "git adapter",
+    )
+    action_terms = ("add", "introduce", "implement", "integrate", "complete")
+    return any(term in value for term in capability_terms) and any(
+        action in value for action in action_terms
+    )
+
+
+def _is_named_git_branch_merge(subject: str) -> bool:
+    value = subject.lower()
+    if "merge pull request" not in value and not value.startswith("merge "):
+        return False
+    return any(
+        marker in value
+        for marker in (
+            "/feature/",
+            "/fix/",
+            "/design/",
+            "/docs/",
+            "feature/",
+            "fix/",
+            "design/",
+            "docs/",
+            "documentation",
+        )
+    )
+
+
+def _is_major_git_correction_subject(subject: str) -> bool:
+    value = subject.lower()
+    return any(
+        term in value
+        for term in ("restore", "revert", "migration", "migrate", "major correction")
+    )
+
+
+def _is_explicit_validation_or_release_subject(subject: str) -> bool:
+    value = subject.lower()
+    return any(term in value for term in ("release", "validated", "validation milestone"))
+
+
+def _clean_git_subject(subject: str) -> str:
+    value = re.sub(
+        r"^(feat|fix|docs|design|chore|refactor|test)(\([^)]+\))?:\s*",
+        "",
+        subject,
+        flags=re.IGNORECASE,
+    )
+    return value[:1].upper() + value[1:] if value else "Git milestone"
+
+
+def _branch_name_from_merge_subject(subject: str) -> str:
+    match = re.search(r"from\s+[^/\s]+/([^\s]+)$", subject, flags=re.IGNORECASE)
+    if match:
+        return match.group(1)
+    match = re.search(
+        r"merge\s+(?:branch\s+)?['\"]?([^'\"]+)['\"]?",
+        subject,
+        flags=re.IGNORECASE,
+    )
+    return match.group(1) if match else ""
+
+
+def _title_from_branch(branch: str) -> str:
+    tail = branch.split("/")[-1]
+    words = tail.replace("-", " ").replace("_", " ").strip()
+    special = {
+        "timeline report": "Timeline reporting",
+        "google docs adapter": "Google Docs adapter",
+        "figma adapter": "Figma adapter",
+        "project discovery": "Project discovery",
+        "guided investigation": "Guided investigation",
+        "executive report": "Executive Report v1",
+        "unslop text audit": "Copy-quality audit",
+        "branch discipline": "Branch discipline documentation",
+    }
+    return special.get(words.lower(), words[:1].upper() + words[1:])
 
 
 def _project_goal(observations: tuple[Observation, ...]) -> ExecutiveFinding:
@@ -334,10 +460,21 @@ def _project_outputs(observations: tuple[Observation, ...]) -> tuple[ExecutiveFi
 
 
 def _is_project_level_output(item: Observation) -> bool:
+    if item.source == "git":
+        return _git_commit_supports_project_output(item)
     statement = item.statement.lower()
     if _matches(statement, NON_PROJECT_OUTPUT_PATTERNS):
         return False
     return _matches(statement, PROJECT_OUTPUT_PATTERNS)
+
+
+def _git_commit_supports_project_output(item: Observation) -> bool:
+    if not _is_git_commit_observation(item):
+        return False
+    subject = _git_commit_subject(item)
+    if not subject:
+        return False
+    return _is_major_git_capability_subject(subject)
 
 
 def _key_milestones(
@@ -380,11 +517,11 @@ def _key_milestones(
                 status=reason,
                 evidence_ids=tuple(data["evidence_ids"]),
                 evidence_refs=tuple(data["evidence_refs"]),
-                rationale=_milestone_rationale(reason),
+                rationale=_milestone_rationale(reason, items),
             )
         )
     if milestones:
-        return tuple(milestones)
+        return tuple(_prioritize_milestones(milestones, by_id))
     return (
         ExecutiveFinding(
             id="MS-001",
@@ -400,6 +537,8 @@ def _key_milestones(
 
 
 def _milestone_reason(items: list[Observation]) -> str:
+    if items and all(item.source == "git" for item in items):
+        return _git_milestone_reason(items)
     text = " ".join(item.statement for item in items)
     if any(item.activity == "decision" for item in items):
         return "an explicit decision"
@@ -414,14 +553,145 @@ def _milestone_reason(items: list[Observation]) -> str:
     return ""
 
 
-def _milestone_rationale(reason: str) -> str:
-    return {
-        "an explicit decision": "Decision evidence makes this a key milestone.",
-        "a completed or created output": "Completed-output evidence makes this a key milestone.",
-        "a material requirement change": "Requirement-change evidence makes this a key milestone.",
-        "a validated implementation milestone": "Validation evidence makes this a key milestone.",
-        "a major correction or reversal": "Correction evidence makes this a key milestone.",
-    }.get(reason, "Captured evidence supports this key milestone.")
+def _git_milestone_reason(items: list[Observation]) -> str:
+    for item in items:
+        if not _is_git_commit_observation(item):
+            continue
+        metadata = item.metadata or {}
+        subject = _git_commit_subject(item)
+        subject_lower = subject.lower()
+        tags = metadata.get("tags") or ()
+        parents = metadata.get("parent_shas") or ()
+        if tags:
+            return "a release or version milestone"
+        if metadata.get("is_merge") and _is_named_git_branch_merge(subject):
+            return "a branch integration"
+        if not parents and "initial commit" in subject_lower:
+            return "repository establishment"
+        if _is_major_git_correction_subject(subject):
+            return "a major correction or reversal"
+        if _is_major_git_capability_subject(subject):
+            return "a completed or created output"
+        if _is_explicit_validation_or_release_subject(subject):
+            return "a validated implementation milestone"
+    return ""
+
+
+def _prioritize_milestones(
+    milestones: list[ExecutiveFinding],
+    observations_by_id: dict[str, Observation],
+    limit: int = 8,
+) -> list[ExecutiveFinding]:
+    if len(milestones) <= limit:
+        return milestones
+
+    def topic(item: ExecutiveFinding) -> str:
+        value = f"{item.title} {item.summary}".lower()
+        for marker, key in (
+            ("repository established", "repository"),
+            ("investigation engine", "investigation-engine"),
+            ("observation model", "observation-model"),
+            ("timeline", "timeline"),
+            ("google docs", "google-docs"),
+            ("figma", "figma"),
+            ("project discovery", "project-discovery"),
+            ("guided investigation", "guided-investigation"),
+            ("executive report", "executive-report"),
+            ("foundation", "foundation"),
+            ("copy-quality audit", "copy-quality-audit"),
+            ("copy quality audit", "copy-quality-audit"),
+            ("git adapter", "git-adapter"),
+        ):
+            if marker in value:
+                return key
+        return item.id
+
+    topic_rank = {
+        "repository": 0,
+        "investigation-engine": 1,
+        "observation-model": 2,
+        "timeline": 3,
+        "google-docs": 4,
+        "copy-quality-audit": 5,
+        "guided-investigation": 6,
+        "executive-report": 7,
+        "figma": 8,
+        "project-discovery": 9,
+        "foundation": 10,
+        "git-adapter": 11,
+    }
+
+    def priority(item: ExecutiveFinding) -> tuple[int, int, int, int]:
+        observations = [
+            observations_by_id[obs_id]
+            for obs_id in item.evidence_ids
+            if obs_id in observations_by_id
+        ]
+        newest = max(
+            (
+                int(obs.timestamp.timestamp())
+                for obs in observations
+                if obs.timestamp is not None
+            ),
+            default=0,
+        )
+        status_rank = 0 if item.status != "a branch integration" else 1
+        return (
+            topic_rank.get(topic(item), 99),
+            status_rank,
+            -newest,
+            int(item.id.split("-")[-1]),
+        )
+
+    ordered = sorted(milestones, key=priority)
+    selected: list[ExecutiveFinding] = []
+    selected_topics: set[str] = set()
+    for item in ordered:
+        if len(selected) >= limit:
+            break
+        item_topic = topic(item)
+        if item_topic in selected_topics:
+            continue
+        selected.append(item)
+        selected_topics.add(item_topic)
+
+    if len(selected) < limit:
+        for item in ordered:
+            if item not in selected:
+                selected.append(item)
+            if len(selected) >= limit:
+                break
+
+    selected.sort(key=lambda item: int(item.id.split("-")[-1]))
+    return [
+        ExecutiveFinding(
+            id=f"MS-{index:03d}",
+            title=item.title,
+            summary=item.summary,
+            status=item.status,
+            evidence_ids=item.evidence_ids,
+            evidence_refs=item.evidence_refs,
+            rationale=item.rationale,
+        )
+        for index, item in enumerate(selected, start=1)
+    ]
+
+
+def _milestone_rationale(reason: str, items: list[Observation]) -> str:
+    anchor = "Captured evidence"
+    if items:
+        anchor = _compact(_milestone_summary(reason, items), 80).rstrip(".")
+    suffix = {
+        "repository establishment": "supports this milestone as repository establishment evidence.",
+        "an explicit decision": "supports this milestone as explicit decision evidence.",
+        "a completed or created output": "supports this milestone as completed or created work.",
+        "a release or version milestone": "supports this milestone as release or version evidence.",
+        "a branch integration": "supports this milestone as repository integration evidence.",
+        "a material requirement change": "supports this milestone as a material requirement change.",
+        "a validated implementation milestone": "supports this milestone as validation evidence.",
+        "a major correction or reversal": "supports this milestone as correction or reversal evidence.",
+    }.get(reason, "supports this key milestone.")
+    return f"{anchor} {suffix}"
 
 
 def _milestone_key(items: list[Observation], event: TimelineEvent) -> str:
@@ -449,10 +719,15 @@ def _normalize_for_dedupe(text: str) -> str:
 
 
 def _milestone_title(reason: str, items: list[Observation]) -> str:
+    if items and all(item.source == "git" for item in items):
+        return _git_milestone_title(reason, items)
     summary = _milestone_summary(reason, items)
     prefix = {
+        "repository establishment": "Repository",
         "an explicit decision": "Decision",
         "a completed or created output": "Completed work",
+        "a release or version milestone": "Release",
+        "a branch integration": "Branch integration",
         "a material requirement change": "Requirement change",
         "a validated implementation milestone": "Validation",
         "a major correction or reversal": "Correction",
@@ -465,11 +740,76 @@ def _milestone_title(reason: str, items: list[Observation]) -> str:
     return f"{prefix}: {_compact(summary, 88)}"
 
 
+def _git_milestone_title(reason: str, items: list[Observation]) -> str:
+    selected = _selected_git_milestone_observation(reason, items)
+    subject = _git_commit_subject(selected)
+    subject_lower = subject.lower()
+    if reason == "repository establishment":
+        return "Repository established"
+    if reason == "a branch integration":
+        branch = _branch_name_from_merge_subject(subject)
+        return f"{_title_from_branch(branch)} merged" if branch else "Branch integration merged"
+    if reason == "a release or version milestone":
+        tags = (selected.metadata or {}).get("tags") or ()
+        return f"Release {'/'.join(tags)} recorded" if tags else "Release milestone recorded"
+    known_titles = (
+        ("investigation engine", "Deterministic investigation engine added"),
+        ("observation model", "Canonical observation model introduced"),
+        ("timeline report", "Timeline reporting added"),
+        ("timeline reporting", "Timeline reporting added"),
+        ("google docs adapter", "Google Docs adapter added"),
+        ("figma", "Figma adapter added"),
+        ("project discovery", "Project discovery added"),
+        ("guided investigation", "Guided investigation added"),
+        ("executive report", "Executive Report v1 added"),
+        ("foundation", "Foundation documentation added"),
+        ("copy quality audit", "Copy-quality audit integrated"),
+        ("copy-quality audit", "Copy-quality audit integrated"),
+        ("git adapter", "Git adapter added"),
+    )
+    for marker, title in known_titles:
+        if marker in subject_lower:
+            return title
+    return _compact(_clean_git_subject(subject), 88)
+
+
 def _milestone_summary(reason: str, items: list[Observation]) -> str:
     if not items:
         return "The available evidence establishes a project milestone."
-    plain = _plain_statement(items[0].statement)
+    selected = items[0]
+    if items and all(item.source == "git" for item in items):
+        selected = _selected_git_milestone_observation(reason, items)
+    elif reason == "a branch integration":
+        selected = next(
+            (
+                item for item in items
+                if (item.metadata or {}).get("is_merge")
+                and "merge commit" in item.statement.lower()
+            ),
+            selected,
+        )
+    elif reason == "a completed or created output":
+        selected = next(
+            (
+                item for item in items
+                if item.source == "git"
+                and "recorded commit" in item.statement.lower()
+            ),
+            selected,
+        )
+    plain = _plain_statement(selected.statement)
     return plain
+
+
+def _selected_git_milestone_observation(reason: str, items: list[Observation]) -> Observation:
+    candidates = [item for item in items if _is_git_commit_observation(item)]
+    if not candidates:
+        return items[0]
+    if reason == "a branch integration":
+        return next((item for item in candidates if (item.metadata or {}).get("is_merge")), candidates[0])
+    if reason == "repository establishment":
+        return next((item for item in candidates if not (item.metadata or {}).get("parent_shas")), candidates[0])
+    return candidates[0]
 
 
 def _collaboration(
@@ -685,7 +1025,7 @@ def _confidence_assessment(
     observations = investigation.observations
     evidence_strength = _evidence_strength(observations, decisions)
     coverage = _coverage(investigation)
-    corroboration = _corroboration(milestones, decisions)
+    corroboration = _corroboration(milestones, decisions, observations)
     conflicts = _conflicts(observations)
     gap_summary = _gap_summary(gaps)
     band = _confidence_band(
@@ -739,23 +1079,38 @@ def _coverage(investigation: Investigation) -> str:
 def _corroboration(
     milestones: tuple[ExecutiveFinding, ...],
     decisions: tuple[ExecutiveDecision, ...],
+    observations: tuple[Observation, ...],
 ) -> str:
+    by_id = {item.id: item for item in observations}
     corroborated: list[str] = []
     for item in milestones:
-        if len(set(item.evidence_refs)) >= 2:
+        sources = _independent_sources(item.evidence_ids, by_id)
+        if len(sources) >= 2:
             corroborated.append(item.id)
     for item in decisions:
-        if len(set(item.evidence_refs)) >= 2:
+        sources = _independent_sources(item.evidence_ids, by_id)
+        if len(sources) >= 2:
             corroborated.append(item.id)
     if corroborated:
         return (
             "Corroboration is present where two or more independent evidence "
-            f"references support the same claim: {', '.join(corroborated)}."
+            f"sources support the same claim: {', '.join(corroborated)}."
         )
     return (
-        "No executive claim has two independent supporting evidence references; "
-        "source diversity is treated as coverage, not corroboration."
+        "No executive claim has support from two independent evidence sources; "
+        "repeated support within one source is not treated as corroboration."
     )
+
+
+def _independent_sources(
+    evidence_ids: tuple[str, ...],
+    observations_by_id: dict[str, Observation],
+) -> set[str]:
+    return {
+        observations_by_id[item_id].source
+        for item_id in evidence_ids
+        if item_id in observations_by_id
+    }
 
 
 def _conflicts(observations: tuple[Observation, ...]) -> str:
@@ -801,40 +1156,107 @@ def _confidence_band(
 
 
 def _evidence_gaps(investigation: Investigation) -> tuple[EvidenceGap, ...]:
-    gaps: list[EvidenceGap] = [
-        EvidenceGap(
-            id="GAP-001",
-            summary="Git history was not analyzed.",
-            why_it_matters=(
-                "Without Git history, Workprint cannot fully reconstruct "
-                "file-level implementation sequence or code authorship."
-            ),
-            would_reduce_gap="Provide supported Git evidence when a Git adapter exists.",
-            affects=("coverage", "implementation sequence", "authorship boundaries"),
-        ),
-        EvidenceGap(
-            id="GAP-002",
-            summary="Static exports may omit revision history.",
-            why_it_matters=(
-                "Static document or design exports may show content without showing "
-                "how it changed over time."
-            ),
-            would_reduce_gap="Provide revision-aware exports or source history.",
-            affects=("coverage", "collaboration", "decision sequence"),
-        ),
-        EvidenceGap(
-            id="GAP-003",
-            summary="Unsupported attribution remains unknown.",
-            why_it_matters=(
-                "Captured activity does not establish authorship, ownership, effort, "
-                "value, or contribution percentages."
-            ),
-            would_reduce_gap="Provide evidence that explicitly maps people to actions.",
-            affects=("attribution", "decision leadership"),
-        ),
-    ]
+    gaps: list[EvidenceGap] = []
+    has_git = any(item.source == "git" for item in investigation.observations)
+    has_conversation = any(item.source_type == "conversation" for item in investigation.observations)
+    has_static_export = any(
+        item.source_type in {"document", "design"}
+        for item in investigation.observations
+    )
+    has_shallow_git = any(
+        item.source == "git" and (item.metadata or {}).get("is_shallow")
+        for item in investigation.observations
+    )
+    if not has_git:
+        gaps.append(
+            EvidenceGap(
+                id="GAP-001",
+                summary="Git history was not analyzed.",
+                why_it_matters=(
+                    "Without Git history, Workprint has less evidence for "
+                    "file-level implementation sequence and repository chronology."
+                ),
+                would_reduce_gap="Provide supported local Git evidence.",
+                affects=("coverage", "implementation sequence", "authorship boundaries"),
+            )
+        )
+    if has_git:
+        gaps.append(
+            EvidenceGap(
+                id=f"GAP-{len(gaps) + 1:03d}",
+                summary="Activity outside Git history is unavailable.",
+                why_it_matters=(
+                    "Git evidence does not capture conversations, rationale, "
+                    "uncommitted local work, deleted working-tree changes, or "
+                    "activity in tools outside the repository."
+                ),
+                would_reduce_gap="Provide conversation, document, design, or other non-Git evidence.",
+                affects=("coverage", "decision sequence", "collaboration"),
+            )
+        )
+        gaps.append(
+            EvidenceGap(
+                id=f"GAP-{len(gaps) + 1:03d}",
+                summary="Git identities do not establish line-level authorship.",
+                why_it_matters=GIT_AUTHORSHIP_BOUNDARY,
+                would_reduce_gap="Provide evidence that explicitly maps people to specific actions.",
+                affects=("attribution", "authorship boundaries"),
+            )
+        )
+    if has_shallow_git:
+        gaps.append(
+            EvidenceGap(
+                id=f"GAP-{len(gaps) + 1:03d}",
+                summary="Git history appears shallow or incomplete.",
+                why_it_matters=(
+                    "A shallow repository may omit earlier commits, tags, branch "
+                    "history, or context needed to reconstruct chronology."
+                ),
+                would_reduce_gap="Provide a complete local Git repository history.",
+                affects=("coverage", "implementation sequence", "repository chronology"),
+            )
+        )
+    if has_static_export:
+        gaps.append(
+            EvidenceGap(
+                id=f"GAP-{len(gaps) + 1:03d}",
+                summary="Static exports may omit revision history.",
+                why_it_matters=(
+                    "Static document or design exports may show content without showing "
+                    "how it changed over time."
+                ),
+                would_reduce_gap="Provide revision-aware exports or source history.",
+                affects=("coverage", "collaboration", "decision sequence"),
+            )
+        )
+    if not has_git:
+        gaps.append(
+            EvidenceGap(
+                id=f"GAP-{len(gaps) + 1:03d}",
+                summary="Unsupported attribution remains unknown.",
+                why_it_matters=(
+                    "Captured activity does not establish authorship, ownership, effort, "
+                    "value, or contribution percentages."
+                ),
+                would_reduce_gap="Provide evidence that explicitly maps people to actions.",
+                affects=("attribution", "decision leadership"),
+            )
+        )
+    if has_git and not has_conversation:
+        gaps.append(
+            EvidenceGap(
+                id=f"GAP-{len(gaps) + 1:03d}",
+                summary="Conversations and decision rationale may be absent.",
+                why_it_matters=(
+                    "Git records repository changes, but commit metadata often does not "
+                    "show the discussion, alternatives, or rationale behind decisions."
+                ),
+                would_reduce_gap="Provide conversation exports or decision records.",
+                affects=("decision leadership", "rationale", "collaboration"),
+            )
+        )
     for item in investigation.unknowns:
-        if _is_duplicate_gap(item):
+        if _is_duplicate_gap(item, has_git=has_git):
             continue
         gaps.append(
             EvidenceGap(
@@ -848,9 +1270,13 @@ def _evidence_gaps(investigation: Investigation) -> tuple[EvidenceGap, ...]:
     return tuple(gaps)
 
 
-def _is_duplicate_gap(text: str) -> bool:
+def _is_duplicate_gap(text: str, *, has_git: bool = False) -> bool:
     value = text.lower()
-    return "revision history" in value and "static export" in value
+    if "revision history" in value and "static export" in value:
+        return True
+    if has_git and "offline work" in value and "activity outside" in value:
+        return True
+    return False
 
 
 def _copy_quality_audit_unavailable() -> CopyQualityAudit:
@@ -933,7 +1359,10 @@ def _copy_audit_sections(
     }
 
 
-def _investigation_assurance_method(fixture_boundary: dict[str, object]) -> str:
+def _investigation_assurance_method(
+    fixture_boundary: dict[str, object],
+    has_git: bool = False,
+) -> str:
     fixture_text = ""
     if fixture_boundary.get("all_selected_evidence_is_fixture"):
         fixture_text = (
@@ -941,6 +1370,7 @@ def _investigation_assurance_method(fixture_boundary: dict[str, object]) -> str:
             "Workprint repository; it does not reconstruct the repository's "
             "complete real-world development history."
         )
+    git_text = f" {GIT_AUTHORSHIP_BOUNDARY}" if has_git else ""
     return (
         "This Workprint report is an evidence-backed reconstruction based only "
         "on the sources supplied for investigation. Workprint normalizes "
@@ -952,12 +1382,17 @@ def _investigation_assurance_method(fixture_boundary: dict[str, object]) -> str:
         "traceable to evidence. When evidence is incomplete, unavailable, "
         "ambiguous, or unsupported, Workprint states that limitation rather "
         "than filling the gap with speculation."
+        + git_text
         + fixture_text
     )
 
 
-def _investigation_assurance(copy_audit: CopyQualityAudit, fixture_boundary: dict[str, object]) -> str:
-    base = _investigation_assurance_method(fixture_boundary)
+def _investigation_assurance(
+    copy_audit: CopyQualityAudit,
+    fixture_boundary: dict[str, object],
+    has_git: bool = False,
+) -> str:
+    base = _investigation_assurance_method(fixture_boundary, has_git)
     if copy_audit.status == "unavailable":
         audit_text = (
             " Workprint is configured to incorporate JCarterJohnson's "
@@ -1008,7 +1443,7 @@ def _project_tools(observations: tuple[Observation, ...]) -> ExecutiveFinding:
                         evidence_refs.append(ref)
     if not found:
         return ExecutiveFinding(
-            id="OV-002",
+            id="OV-003",
             title="Project tools explicitly observed",
             summary=(
                 "The available evidence does not explicitly establish the tools "
@@ -1021,7 +1456,7 @@ def _project_tools(observations: tuple[Observation, ...]) -> ExecutiveFinding:
             ),
         )
     return ExecutiveFinding(
-        id="OV-002",
+        id="OV-003",
         title="Project tools explicitly observed",
         summary="Explicitly observed project tools: " + ", ".join(sorted(found)) + ".",
         status="explicitly_supported",
@@ -1068,6 +1503,11 @@ def _project_overview(
                 "toolset used to create the project."
             ),
         ),
+    ])
+    git_summary = _git_repository_overview(observations)
+    if git_summary is not None:
+        overview.append(git_summary)
+    overview.extend([
         _project_tools(observations),
         _unconfirmed_tools(),
     ])
@@ -1076,7 +1516,7 @@ def _project_overview(
 
 def _unconfirmed_tools() -> ExecutiveFinding:
     return ExecutiveFinding(
-        id="OV-003",
+        id="OV-004",
         title="Unconfirmed tool information",
         summary="Workprint does not infer a complete project toolset.",
         status="unknown",
@@ -1091,11 +1531,57 @@ def _evidence_source_summary(investigation: Investigation) -> str:
     source_counts = Counter(_source_label(item.source) for item in investigation.observations)
     if not source_counts:
         return "No evidence sources were analyzed."
+    if set(source_counts) == {"Git"}:
+        return "Workprint analyzed local Git repository evidence."
     rendered = ", ".join(
-        f"{source}: {count} observation(s)"
+        "Git repository evidence" if source == "Git" else f"{source}: {count} observation(s)"
         for source, count in sorted(source_counts.items())
     )
     return f"Workprint analyzed evidence from {rendered}."
+
+
+def _git_repository_overview(observations: tuple[Observation, ...]) -> ExecutiveFinding | None:
+    git_observations = [item for item in observations if item.source == "git"]
+    if not git_observations:
+        return None
+    commit_observations = [item for item in git_observations if _is_git_commit_observation(item)]
+    repository_obs = next(
+        (item for item in git_observations if (item.metadata or {}).get("repository_root") and not (item.metadata or {}).get("commit_sha")),
+        None,
+    )
+    metadata = repository_obs.metadata if repository_obs and repository_obs.metadata else {}
+    repository = metadata.get("repository_root") or "the selected local Git repository"
+    branch = metadata.get("current_branch")
+    shallow = bool(metadata.get("is_shallow"))
+    timestamps = sorted(
+        item.timestamp for item in commit_observations if item.timestamp is not None
+    )
+    date_range = ""
+    if timestamps:
+        start = timestamps[0].date().isoformat()
+        end = timestamps[-1].date().isoformat()
+        date_range = f" from {start} to {end}" if start != end else f" on {start}"
+    branch_text = f" on branch `{branch}`" if branch else ""
+    shallow_text = " The repository reports shallow history." if shallow else " The repository does not report shallow history."
+    commit_count = len(commit_observations)
+    commit_noun = "commit" if commit_count == 1 else "commits"
+    summary = (
+        f"Workprint analyzed {commit_count} {commit_noun} from the local "
+        f"Git repository `{repository}`{branch_text}{date_range}."
+        + shallow_text
+    )
+    return ExecutiveFinding(
+        id="OV-002",
+        title="Git repository analyzed",
+        summary=summary,
+        status="captured_evidence",
+        evidence_ids=tuple(item.id for item in git_observations),
+        evidence_refs=_refs(git_observations),
+        rationale=(
+            "Commit counts describe available repository history only; they are "
+            "not productivity, ownership, effort, value, authorship, or contribution measures."
+        ),
+    )
 
 
 def _source_label(source: str) -> str:
@@ -1160,12 +1646,12 @@ def _confidence_summary(confidence: ConfidenceAssessment) -> str:
 def _plain_statement(text: str) -> str:
     value = " ".join(text.split())
     replacements = (
-        r"^(?:Human|ChatGPT|Claude|Assistant|google-docs|figma)\s+reported implementation activity:\s*",
-        r"^(?:Human|ChatGPT|Claude|Assistant|google-docs|figma)\s+stated a decision or acceptance:\s*",
-        r"^(?:Human|ChatGPT|Claude|Assistant|google-docs|figma)\s+stated a decision:\s*",
-        r"^(?:Human|ChatGPT|Claude|Assistant|google-docs|figma)\s+suggested:\s*",
-        r"^(?:Human|ChatGPT|Claude|Assistant|google-docs|figma)\s+asked:\s*",
-        r"^(?:Human|ChatGPT|Claude|Assistant|google-docs|figma)\s+stated:\s*",
+        r"^(?:Human|ChatGPT|Claude|Assistant|google-docs|figma|git|Git author:[^:]+)\s+reported implementation activity:\s*",
+        r"^(?:Human|ChatGPT|Claude|Assistant|google-docs|figma|git|Git author:[^:]+)\s+stated a decision or acceptance:\s*",
+        r"^(?:Human|ChatGPT|Claude|Assistant|google-docs|figma|git|Git author:[^:]+)\s+stated a decision:\s*",
+        r"^(?:Human|ChatGPT|Claude|Assistant|google-docs|figma|git|Git author:[^:]+)\s+suggested:\s*",
+        r"^(?:Human|ChatGPT|Claude|Assistant|google-docs|figma|git|Git author:[^:]+)\s+asked:\s*",
+        r"^(?:Human|ChatGPT|Claude|Assistant|google-docs|figma|git|Git author:[^:]+)\s+stated:\s*",
         r"^figma stated:\s*",
     )
     for pattern in replacements:
@@ -1187,6 +1673,24 @@ def _plain_statement(text: str) -> str:
     value = re.sub(
         r"^I created the GitHub repository and pushed the first commit\.?$",
         "The GitHub repository was created and the first commit was pushed.",
+        value,
+        flags=re.IGNORECASE,
+    )
+    value = re.sub(
+        r"^Git recorded merge commit ([0-9a-f]+):\s*",
+        r"\1 merge commit: ",
+        value,
+        flags=re.IGNORECASE,
+    )
+    value = re.sub(
+        r"^Git recorded commit ([0-9a-f]+):\s*",
+        r"\1 commit: ",
+        value,
+        flags=re.IGNORECASE,
+    )
+    value = re.sub(
+        r"^Git recorded repository file change ([A-Z]) for ",
+        r"Repository file change \1: ",
         value,
         flags=re.IGNORECASE,
     )

@@ -1,9 +1,15 @@
 import json
+import os
+import shutil
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 
 from workprint.cli import main
+
+
+GIT = shutil.which("git")
 
 
 class CliTests(unittest.TestCase):
@@ -147,6 +153,35 @@ class CliTests(unittest.TestCase):
             "fixtures/figma/sample-file.json",
         ])
         self.assertEqual(result, 0)
+
+    def test_import_git_writes_observations(self):
+        if not GIT:
+            self.skipTest("git executable is required")
+        with tempfile.TemporaryDirectory() as directory:
+            repo = Path(directory)
+            subprocess.run([GIT, "-C", directory, "init"], check=True, capture_output=True)
+            subprocess.run([GIT, "-C", directory, "config", "user.name", "Tester"], check=True)
+            subprocess.run([GIT, "-C", directory, "config", "user.email", "tester@example.com"], check=True)
+            (repo / "report.md").write_text("# Report\n", encoding="utf-8")
+            subprocess.run([GIT, "-C", directory, "add", "report.md"], check=True)
+            subprocess.run(
+                [GIT, "-C", directory, "commit", "-m", "Add report"],
+                check=True,
+                capture_output=True,
+                env={
+                    **os.environ,
+                    "GIT_AUTHOR_DATE": "2026-01-01T12:00:00+00:00",
+                    "GIT_COMMITTER_DATE": "2026-01-01T12:00:00+00:00",
+                },
+            )
+            output = repo / "observations.json"
+
+            result = main(["import", "git", directory, "--output", str(output)])
+
+            self.assertEqual(result, 0)
+            payload = json.loads(output.read_text(encoding="utf-8"))
+            self.assertEqual({item["source"] for item in payload}, {"git"})
+            self.assertTrue(any(item["metadata"].get("commit_sha") for item in payload))
 
 
 if __name__ == "__main__":

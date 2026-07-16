@@ -157,3 +157,33 @@ must continue to distinguish JCarterJohnson's upstream work from Workprint's
 additions and must not imply endorsement.
 
 Status: Accepted.
+
+## Git Evidence Uses Local Read-Only Metadata
+
+Context: Workprint needs repository activity evidence to support chronology,
+implementation milestones, and evidence gaps without overstating what Git can
+prove. Git records contain useful metadata, but they also include names,
+email addresses, commit messages, file paths, and line-change counts that can
+be misread as identity, authorship, effort, ownership, value, or productivity
+signals.
+
+Alternatives: Workprint could omit Git evidence, call the GitHub API, parse
+`.git` internals directly, inspect file contents, or infer people and effort
+from author fields and line counts.
+
+Decision: Workprint uses a local-only Git adapter that invokes the installed
+`git` command through a small read-only command boundary. The adapter records
+repository and commit metadata, preserves Git-recorded author and committer
+values exactly, and maps data into conservative observations. It does not use
+network access, inspect file contents, mutate repositories, resolve identities,
+or convert commit counts, file counts, additions, or deletions into
+authorship, ownership, effort, value, productivity, or contribution measures.
+
+Consequences: Git evidence can support implementation chronology, merge
+milestones, completed-output evidence, and reduced Git-history gaps while
+remaining traceable and deterministic. Bare repositories, remote-only history,
+unrelated nested repositories, and file-content analysis are out of scope for
+v1. Reports must disclose shallow history and preserve the distinction between
+Git metadata and unsupported attribution.
+
+Status: Accepted.

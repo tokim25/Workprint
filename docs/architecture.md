@@ -32,19 +32,23 @@ Each adapter must:
 
 `ChatGPTAdapter` and `ClaudeAdapter` both return `NormalizedMessage`
 records. Future conversation adapters such as Gemini can target the same
-normalized type.
-Non-conversation adapters, such as Git, may return a different normalized
-record type while preserving the same adapter contract.
+normalized type. Non-conversation adapters may return different normalized
+record types while preserving the same adapter contract.
 
 Adapters are registered through `workprint.adapters.registry`. The CLI uses
 that registry rather than importing vendor-specific classes directly.
 
 ## Discovery
 
-`workprint.discovery` scans a project directory, detects Git repository
-presence, asks registered adapters whether they recognize files, and aggregates
-the results. Discovery is informational only: it does not import evidence,
-create observations, build findings, generate timelines, or modify files.
+`workprint.discovery` scans a project directory, detects the selected local
+Git repository context, asks registered adapters whether they recognize files,
+and aggregates the results. Discovery is informational until the user selects
+evidence: it does not import evidence, create observations, build findings,
+generate timelines, or modify files.
+
+Discovery does not automatically traverse unrelated nested repositories. Git
+worktrees are supported when the installed `git` command can resolve a
+non-bare worktree root.
 
 The CLI keeps discovery thin by delegating scanning and aggregation to the
 discovery layer.
@@ -58,8 +62,32 @@ into `EvidenceInput` values, and calls `load_observations` before building the
 same investigation and reports used by expert CLI commands.
 
 The guided layer does not introduce separate evidence loading, investigation,
-timeline, report, JSON, or attribution logic. Git repository detection remains
-informational until a Git evidence adapter exists.
+timeline, report, JSON, or attribution logic. Local Git repositories are
+selected as a single evidence source and loaded through the same multi-source
+pipeline as files.
+
+## Local Git adapter
+
+The Git adapter reads a local non-bare repository using the installed `git`
+command through a small deterministic subprocess boundary. It uses explicit
+argument arrays, UTF-8 text handling, and read-only commands such as
+`rev-parse`, `branch --show-current`, `log`, `show`, `diff-tree`, and
+`tag --points-at`. It does not fetch, pull, push, checkout, reset, merge,
+rebase, or change branches.
+
+The adapter emits repository metadata records and commit records. Commit
+records preserve Git-recorded values for SHA, abbreviated SHA, timestamp,
+author and committer names/emails, subject, body, parent SHAs, merge status,
+changed paths, change type, additions, deletions, and tags. File contents are
+not inspected in v1.
+
+Git evidence is treated conservatively. A commit may support implementation
+chronology. A merge commit may support a branch-integration milestone. A
+commit message supports a decision only when the message text explicitly says
+so. Changed file metadata supports that repository artifacts changed, not why
+they changed. Commit counts, file counts, additions, and deletions are never
+converted into effort, ownership, value, authorship, productivity, or
+contribution measures.
 
 ## Static document adapters
 

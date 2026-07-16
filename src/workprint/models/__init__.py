@@ -1,4 +1,5 @@
 from .message import NormalizedMessage
+from .git import GitFileChange, NormalizedGitCommit, NormalizedGitRepository
 from .observation import Observation
 from .investigation import Investigation
 from .timeline import TimelineEvent, TimelineInvolvement
@@ -14,6 +15,9 @@ from .executive import (
 
 __all__ = [
     "NormalizedMessage",
+    "GitFileChange",
+    "NormalizedGitCommit",
+    "NormalizedGitRepository",
     "Observation",
     "Investigation",
     "TimelineEvent",

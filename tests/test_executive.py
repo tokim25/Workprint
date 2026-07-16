@@ -335,7 +335,14 @@ class ExecutiveReportTests(unittest.TestCase):
         corroborated = self._investigation(
             [
                 self._obs("OBS-1", "Human stated a decision: I choose A.", activity="decision", source_type="conversation"),
-                self._obs("OBS-2", "Human stated a decision: I choose A.", activity="decision", source_type="document"),
+                self._obs(
+                    "OBS-2",
+                    "google-docs stated a decision: I choose A.",
+                    actor="google-docs",
+                    source="google-docs",
+                    activity="decision",
+                    source_type="document",
+                ),
             ],
             timeline=(
                 self._event("TL-001", ("OBS-1", "OBS-2"), ("a#1", "b#2")),
@@ -354,7 +361,16 @@ class ExecutiveReportTests(unittest.TestCase):
 
     def test_gap_count_is_canonical_and_deduplicates_static_revision_unknown(self):
         investigation = self._investigation(
-            [self._obs("OBS-1", "Human stated a decision: I choose A.", activity="decision")],
+            [
+                self._obs(
+                    "OBS-1",
+                    "google-docs stated a decision: I choose A.",
+                    actor="google-docs",
+                    source="google-docs",
+                    source_type="document",
+                    activity="decision",
+                )
+            ],
             unknowns=("Revision history is not available in this static export.",),
         )
 
@@ -363,6 +379,273 @@ class ExecutiveReportTests(unittest.TestCase):
         self.assertEqual(len(report.evidence_gaps), 3)
         self.assertIn("3 executive evidence gap", report.confidence_assessment.gaps)
         self.assertIn("3 evidence gap", report.executive_brief.unknowns_summary)
+
+    def test_git_evidence_removes_git_history_unavailable_gap(self):
+        investigation = self._investigation([
+            self._obs(
+                "OBS-1",
+                "Git recorded commit abc1234: Add report.",
+                actor="Git author: Workprint Tester <tester@example.com>",
+                source="git",
+                source_type="repository",
+                activity="implementation",
+                ref="/repo#commit/abc1234",
+            )
+        ])
+
+        report = build_executive_report(investigation)
+
+        summaries = [item.summary for item in report.evidence_gaps]
+        self.assertNotIn("Git history was not analyzed.", summaries)
+
+    def test_shallow_git_history_is_disclosed(self):
+        investigation = self._investigation([
+            self._obs(
+                "OBS-1",
+                "Git history is shallow or incomplete for /repo; earlier commits may be unavailable.",
+                actor="Git",
+                source="git",
+                source_type="repository",
+                activity="unknown",
+                ref="/repo#git/repository",
+                metadata={"is_shallow": True},
+            )
+        ])
+
+        report = build_executive_report(investigation)
+
+        self.assertTrue(
+            any("shallow or incomplete" in item.summary for item in report.evidence_gaps)
+        )
+
+    def test_git_presence_alone_does_not_raise_confidence(self):
+        investigation = self._investigation([
+            self._obs(
+                "OBS-1",
+                "Git repository metadata was captured for /repo on main.",
+                actor="Git",
+                source="git",
+                source_type="repository",
+                activity="observation",
+                ref="/repo#git/repository",
+            )
+        ])
+
+        report = build_executive_report(investigation)
+
+        self.assertEqual(report.confidence_assessment.band, "Limited")
+
+    def test_git_merge_commit_supports_branch_integration_milestone(self):
+        investigation = self._investigation([
+            self._obs(
+                "OBS-1",
+                "Git recorded merge commit abc1234: Merge feature branch.",
+                actor="Git author: Workprint Tester <tester@example.com>",
+                source="git",
+                source_type="repository",
+                activity="implementation",
+                ref="/repo#commit/abc1234",
+                metadata={
+                    "commit_sha": "abc1234",
+                    "subject": "Merge pull request #1 from owner/feature/reporting",
+                    "is_merge": True,
+                    "parent_shas": ("p1", "p2"),
+                },
+            )
+        ])
+
+        report = build_executive_report(investigation)
+
+        self.assertEqual(report.key_milestones[0].status, "a branch integration")
+        self.assertIn("Reporting merged", report.key_milestones[0].title)
+
+    def test_git_source_diversity_alone_is_not_corroboration(self):
+        investigation = self._investigation([
+            self._obs("OBS-1", "Human stated: A planning note."),
+            self._obs(
+                "OBS-2",
+                "Git recorded commit abc1234: Add implementation.",
+                actor="Git author: Workprint Tester <tester@example.com>",
+                source="git",
+                source_type="repository",
+                activity="implementation",
+                ref="/repo#commit/abc1234",
+            ),
+        ])
+
+        report = build_executive_report(investigation)
+
+        self.assertIn("No executive claim", report.confidence_assessment.corroboration)
+
+    def test_two_git_commits_do_not_create_independent_corroboration(self):
+        observations = [
+            self._obs(
+                "OBS-1",
+                "Git recorded commit aaa1111: feat(timeline): add deterministic timeline report.",
+                actor="Git author: A <a@example.com>",
+                source="git",
+                source_type="repository",
+                activity="implementation",
+                ref="/repo#commit/aaa1111",
+                metadata={"commit_sha": "aaa1111", "subject": "feat(timeline): add deterministic timeline report"},
+            ),
+            self._obs(
+                "OBS-2",
+                "Git recorded commit bbb2222: feat(timeline): add deterministic timeline report.",
+                actor="Git author: B <b@example.com>",
+                source="git",
+                source_type="repository",
+                activity="implementation",
+                ref="/repo#commit/bbb2222",
+                metadata={"commit_sha": "bbb2222", "subject": "feat(timeline): add deterministic timeline report"},
+            ),
+        ]
+        investigation = self._investigation(
+            observations,
+            timeline=(self._event("TL-001", ("OBS-1", "OBS-2"), ("a#1", "b#2")),),
+        )
+
+        report = build_executive_report(investigation)
+
+        self.assertIn("No executive claim", report.confidence_assessment.corroboration)
+
+    def test_git_plus_chatgpt_same_claim_can_corroborate(self):
+        observations = [
+            self._obs(
+                "OBS-1",
+                "ChatGPT reported implementation activity: I added the deterministic timeline report.",
+                actor="ChatGPT",
+                source="ChatGPT",
+                activity="implementation",
+                ref="chatgpt#1",
+            ),
+            self._obs(
+                "OBS-2",
+                "Git recorded commit aaa1111: feat(timeline): add deterministic timeline report.",
+                actor="Git author: A <a@example.com>",
+                source="git",
+                source_type="repository",
+                activity="implementation",
+                ref="/repo#commit/aaa1111",
+                metadata={"commit_sha": "aaa1111", "subject": "feat(timeline): add deterministic timeline report"},
+            ),
+        ]
+        investigation = self._investigation(
+            observations,
+            timeline=(self._event("TL-001", ("OBS-1", "OBS-2"), ("chatgpt#1", "/repo#commit/aaa1111")),),
+        )
+
+        report = build_executive_report(investigation)
+
+        self.assertIn("MS-001", report.confidence_assessment.corroboration)
+
+    def test_unrelated_git_and_chatgpt_evidence_does_not_correlate(self):
+        investigation = self._investigation([
+            self._obs("OBS-1", "ChatGPT stated: A planning note.", actor="ChatGPT", source="ChatGPT"),
+            self._obs(
+                "OBS-2",
+                "Git recorded commit aaa1111: feat(timeline): add deterministic timeline report.",
+                actor="Git author: A <a@example.com>",
+                source="git",
+                source_type="repository",
+                activity="implementation",
+                ref="/repo#commit/aaa1111",
+                metadata={"commit_sha": "aaa1111", "subject": "feat(timeline): add deterministic timeline report"},
+            ),
+        ])
+
+        report = build_executive_report(investigation)
+
+        self.assertIn("No executive claim", report.confidence_assessment.corroboration)
+
+    def test_git_file_changes_and_routine_commits_are_not_milestones(self):
+        investigation = self._investigation([
+            self._obs(
+                "OBS-1",
+                "Git recorded repository file change A for src/workprint/foo.py in commit aaa1111. Additions and deletions describe repository changes, not effort or value.",
+                actor="Git",
+                source="git",
+                source_type="repository",
+                activity="artifact",
+                ref="/repo#commit/aaa1111/file/src/workprint/foo.py",
+                metadata={"commit_sha": "aaa1111", "subject": "chore: update helper", "file_path": "src/workprint/foo.py"},
+            ),
+            self._obs(
+                "OBS-2",
+                "Git recorded commit aaa1111: chore: update helper.",
+                actor="Git author: A <a@example.com>",
+                source="git",
+                source_type="repository",
+                activity="implementation",
+                ref="/repo#commit/aaa1111",
+                metadata={"commit_sha": "aaa1111", "subject": "chore: update helper"},
+            ),
+        ])
+
+        report = build_executive_report(investigation)
+
+        self.assertEqual(report.key_milestones[0].status, "not_established")
+
+    def test_git_milestones_are_capped_and_reader_facing(self):
+        observations = []
+        for index in range(12):
+            sha = f"abc{index:04d}"
+            observations.append(
+                self._obs(
+                    f"OBS-{index}",
+                    f"Git recorded commit {sha}: feat(timeline): add deterministic timeline report.",
+                    actor="Git author: A <a@example.com>",
+                    source="git",
+                    source_type="repository",
+                    activity="implementation",
+                    ref=f"/repo#commit/{sha}",
+                    metadata={"commit_sha": sha, "subject": "feat(timeline): add deterministic timeline report"},
+                )
+            )
+        report = build_executive_report(self._investigation(observations))
+
+        self.assertLessEqual(len(report.key_milestones), 8)
+        self.assertTrue(
+            any(item.title == "Timeline reporting added" for item in report.key_milestones)
+        )
+        self.assertTrue(
+            any("feat(timeline): add deterministic timeline report" in item.summary for item in report.key_milestones)
+        )
+
+    def test_git_authorship_boundary_and_repository_summary_appear(self):
+        investigation = self._investigation([
+            self._obs(
+                "OBS-1",
+                "Git repository metadata was captured for /repo on main.",
+                actor="Git",
+                source="git",
+                source_type="repository",
+                activity="observation",
+                ref="/repo#git/repository",
+                metadata={"repository_root": "/repo", "current_branch": "main", "is_shallow": False},
+            ),
+            self._obs(
+                "OBS-2",
+                "Git recorded commit aaa1111: feat(timeline): add deterministic timeline report.",
+                actor="Git author: A <a@example.com>",
+                source="git",
+                source_type="repository",
+                activity="implementation",
+                ref="/repo#commit/aaa1111",
+                metadata={"commit_sha": "aaa1111", "subject": "feat(timeline): add deterministic timeline report"},
+            ),
+        ])
+
+        report = build_executive_report(investigation)
+
+        self.assertIn("Git author and committer fields", report.investigation_assurance)
+        self.assertIn("personally wrote every changed line", report.investigation_assurance)
+        self.assertTrue(
+            any(item.title == "Git repository analyzed" and "1 commit" in item.summary for item in report.project_overview)
+        )
+        self.assertFalse(
+            any("Static exports may omit revision history" == item.summary for item in report.evidence_gaps)
+        )
 
     def test_copy_audit_runs_and_records_attribution_metadata(self):
         report = build_executive_report(self._investigation([]))
@@ -639,6 +922,7 @@ class ExecutiveReportTests(unittest.TestCase):
         source_type="conversation",
         activity="observation",
         ref=None,
+        metadata=None,
     ):
         return Observation(
             id=obs_id,
@@ -649,7 +933,7 @@ class ExecutiveReportTests(unittest.TestCase):
             activity=activity,
             statement=statement,
             evidence_refs=(ref or f"{obs_id}.json#1",),
-            metadata={"conversation_id": "c1"},
+            metadata={"conversation_id": "c1", **(metadata or {})},
         )
 
     @staticmethod

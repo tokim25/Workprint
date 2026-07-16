@@ -35,6 +35,13 @@ def _sort_key(item: Observation) -> tuple:
 
 def _conversation_id(item: Observation) -> str:
     metadata = item.metadata or {}
+    if item.source == "git":
+        commit_sha = metadata.get("commit_sha")
+        if commit_sha:
+            return str(commit_sha)
+        repository_root = metadata.get("repository_root")
+        if repository_root:
+            return str(repository_root)
     value = metadata.get("conversation_id")
     return str(value) if value else ""
 
@@ -92,6 +99,8 @@ def _activity_category(item: Observation) -> str:
         return "user_activity"
     if actor in {"chatgpt", "claude", "assistant", "tool"}:
         return "ai_tool_activity"
+    if actor == "git" or actor.startswith("git author:"):
+        return "unattributed_activity"
     if actor in {"unknown", "unattributed", ""}:
         return "unattributed_activity"
     return "collaborator_activity"
