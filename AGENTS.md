@@ -3,6 +3,22 @@
 These instructions are permanent guidance for coding agents working on
 Workprint.
 
+## Foundation First
+
+Before proposing or implementing architectural, product, report, adapter, or
+investigation changes, all future contributors, human and AI, must:
+
+1. Read `docs/foundation/00-START-HERE.md`.
+2. Read all foundation documents referenced from that entry point.
+3. Read `PROJECT_PLAN.md`.
+4. Confirm that the proposed implementation aligns with the documented
+   Workprint philosophy before proposing architectural changes.
+
+If an implementation appears to conflict with the Foundation, surface the
+conflict explicitly. Do not silently change Workprint's product philosophy,
+evidence boundaries, attribution rules, confidence model, or architectural
+principles as an implementation detail.
+
 ## Project Purpose
 
 Workprint reconstructs how work was made from evidence such as conversations,
