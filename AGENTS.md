@@ -56,6 +56,26 @@ or how they worked together?"
 If the answer is no, contributors should explain why the work still belongs in
 the roadmap.
 
+## Autonomous Execution Guardrails
+
+Before executing a milestone autonomously, read
+`docs/foundation/AUTONOMOUS_EXECUTION_GUARDRAILS.md`.
+
+Codex may carry a clearly scoped and approved milestone from planning through
+implementation, validation, dogfooding, and self-review without asking for
+approval at every routine step.
+
+Codex must stop and ask for direction before consequential product, UX, trust,
+evidence, privacy, licensing, third-party attribution, or architectural
+decisions. It must also stop before commit unless the user has explicitly
+approved committing for that specific milestone.
+
+When reporting plans, progress, or completion:
+
+1. Lead with a short summary.
+2. Provide an "Explain Like I'm 5" explanation.
+3. Add technical details only as needed.
+
 ## Core Principles
 
 - Preserve evidence traceability.
