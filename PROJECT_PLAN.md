@@ -25,6 +25,7 @@ usable by people with limited coding knowledge.
 - [x] Markdown and JSON reporting
 - [x] Multi-source investigations
 - [x] Exact, source-aware duplicate suppression
+- [x] Executive Report copy-quality audit integration
 
 ## Completed Milestone: Timeline Report
 
@@ -194,6 +195,45 @@ Limitations:
 - Copy-quality scanner is recorded as unavailable until safely integrated.
 - Project goals, outputs, tools, and decision leadership remain unknown unless
   supported by explicit evidence.
+
+## Completed Milestone: Executive Report Copy-Quality Audit Integration
+
+Status: Complete
+
+Goal: Complete the Executive Report copy-quality gate using the pinned
+`unslop-text` scanner and methodology from JCarterJohnson's
+`vibecoded-design-tells` project while preserving evidence boundaries and
+clear attribution.
+
+Implemented scope:
+
+- Vendored reviewed upstream files from pinned revision
+  `f7c4aefc2c797a66e55b49354a93917ab60d33ac`.
+- Preserved attribution and licensing information through the complete
+  upstream MIT license and third-party notice.
+- Workprint-owned adapter around the upstream lexical scanner.
+- Offline scanner invocation at report-generation time.
+- Deterministic structural review for documented prose patterns.
+- Evidence-preservation confirmation.
+- Additive JSON audit metadata, including upstream author, project,
+  repository, revision, license, and attribution notice.
+- Expanded Markdown Copy-Quality Audit section.
+- Status handling for `passed`, `passed_with_waivers`, `failed`, and
+  `unavailable`.
+- Tests covering attribution, scanner availability, status rules, structural
+  checks, exclusions, Markdown, and JSON.
+
+Limitations:
+
+- The audit is not an authorship detector.
+- A passing audit indicates that generated narrative satisfied the configured
+  lexical and structural review; it does not establish human authorship or
+  prove that AI was not involved.
+- The audit reports findings and status; it does not automatically rewrite
+  narrative copy.
+- Medium and low findings require explicit waivers to pass with waivers.
+- No finalized-output CLI mode or override flag is introduced in this
+  milestone.
 
 ## Completed Milestone: Project Discovery
 

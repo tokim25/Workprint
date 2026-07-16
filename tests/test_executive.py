@@ -6,6 +6,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from workprint.cli import main
+from workprint.copy_audit import (
+    AuditWaiver,
+    CopyQualityAuditor,
+    structural_review,
+)
 from workprint.executive import (
     UNSLOP_TEXT_PINNED_REVISION,
     build_executive_report,
@@ -34,7 +39,7 @@ class ExecutiveReportTests(unittest.TestCase):
 
         goal = report.executive_brief.project_goal
         self.assertEqual(goal.status, "unknown")
-        self.assertIn("does not contain an explicit statement", goal.summary)
+        self.assertIn("No explicit statement", goal.summary)
 
     def test_implementation_decision_does_not_become_project_goal(self):
         investigation = self._investigation([
@@ -57,7 +62,7 @@ class ExecutiveReportTests(unittest.TestCase):
         self.assertEqual(goal.status, "unknown")
         self.assertEqual(
             goal.summary,
-            "The available evidence does not contain an explicit statement of the project's overall goal.",
+            "No explicit statement of the project's overall goal appears in the supplied evidence.",
         )
 
     def test_explicit_project_goal_uses_evidence(self):
@@ -141,7 +146,7 @@ class ExecutiveReportTests(unittest.TestCase):
 
         self.assertEqual(len(outputs), 1)
         self.assertEqual(outputs[0].status, "not_established")
-        self.assertIn("does not establish", outputs[0].summary)
+        self.assertIn("No completed or planned", outputs[0].summary)
 
     def test_key_milestones_filter_routine_observations(self):
         observations = [
@@ -359,14 +364,77 @@ class ExecutiveReportTests(unittest.TestCase):
         self.assertIn("3 executive evidence gap", report.confidence_assessment.gaps)
         self.assertIn("3 evidence gap", report.executive_brief.unknowns_summary)
 
-    def test_copy_audit_unavailable_degraded_mode(self):
+    def test_copy_audit_runs_and_records_attribution_metadata(self):
         report = build_executive_report(self._investigation([]))
 
         audit = report.copy_quality_audit
-        self.assertEqual(audit.status, "unavailable")
+        self.assertEqual(audit.status, "passed")
+        self.assertEqual(audit.upstream_author, "JCarterJohnson")
+        self.assertEqual(audit.upstream_project, "vibecoded-design-tells")
+        self.assertEqual(audit.upstream_license, "MIT")
         self.assertEqual(audit.pinned_revision, UNSLOP_TEXT_PINNED_REVISION)
-        self.assertIn("not run", audit.disclosure)
-        self.assertFalse(audit.structural_review_completed)
+        self.assertEqual(audit.upstream_revision, UNSLOP_TEXT_PINNED_REVISION)
+        self.assertTrue(audit.scanner_available)
+        self.assertTrue(audit.lexical_review_completed)
+        self.assertTrue(audit.structural_review_completed)
+        self.assertTrue(audit.evidence_preservation_confirmed)
+        self.assertFalse(audit.override_used)
+        self.assertIn("NOTICE.md", audit.attribution_notice)
+        self.assertIn("incorporates", audit.disclosure)
+        self.assertIn("developed by JCarterJohnson", audit.disclosure)
+        self.assertIn("attribution and licensing information", audit.disclosure)
+        self.assertIn("lexical findings alone cannot assess overall writing quality", audit.disclosure)
+        self.assertIn("A passing audit indicates", audit.disclosure)
+        self.assertIn("does not establish human authorship", audit.disclosure)
+
+    def test_copy_audit_missing_scanner_is_unavailable_with_upstream_credit(self):
+        audit = CopyQualityAuditor(
+            scanner_path=Path("missing-unslop-text-scanner.py")
+        ).audit({"Executive Brief": "Plain evidence-backed text."})
+
+        self.assertEqual(audit.status, "unavailable")
+        self.assertFalse(audit.lexical_review_completed)
+        self.assertIn("JCarterJohnson", audit.disclosure)
+        self.assertIn("vibecoded-design-tells", audit.disclosure)
+        self.assertIn("configured to incorporate", audit.disclosure)
+        self.assertIn("lexical review was not completed", audit.disclosure.lower())
+
+    def test_copy_audit_high_severity_finding_fails(self):
+        audit = CopyQualityAuditor().audit({
+            "Executive Brief": "This sentence ships an em dash — which should fail.",
+        })
+
+        self.assertEqual(audit.status, "failed")
+        self.assertGreaterEqual(audit.severity_counts.get("high", 0), 1)
+        self.assertTrue(any(item["rule"] == "em-dash" for item in audit.findings))
+
+    def test_copy_audit_medium_low_findings_with_waivers_pass_with_waivers(self):
+        waivers = (
+            AuditWaiver(
+                rule="hype-marketing",
+                section="Executive Brief",
+                reason="Retained in a test fixture to exercise waiver handling.",
+            ),
+            AuditWaiver(
+                rule="promotional-language",
+                section="Executive Brief",
+                reason="Retained in a test fixture to exercise waiver handling.",
+            ),
+        )
+        audit = CopyQualityAuditor(waivers=waivers).audit({
+            "Executive Brief": "The report avoids revolutionary claims.",
+        })
+
+        self.assertEqual(audit.status, "passed_with_waivers")
+        self.assertEqual(len(audit.waivers), 2)
+
+    def test_copy_audit_medium_low_findings_without_waivers_fail(self):
+        audit = CopyQualityAuditor().audit({
+            "Executive Brief": "The report avoids revolutionary claims.",
+        })
+
+        self.assertEqual(audit.status, "failed")
+        self.assertIn("without documented waivers", audit.disclosure)
 
     def test_copy_audit_model_statuses(self):
         passed = CopyQualityAudit(
@@ -376,6 +444,8 @@ class ExecutiveReportTests(unittest.TestCase):
             pinned_revision="rev",
             scanned_sections=("Executive Brief",),
             structural_review_completed=True,
+            lexical_review_completed=True,
+            evidence_preservation_confirmed=True,
         )
         waived = CopyQualityAudit(
             status="passed_with_waivers",
@@ -384,6 +454,9 @@ class ExecutiveReportTests(unittest.TestCase):
             pinned_revision="rev",
             scanned_sections=("Executive Brief",),
             waivers=({"finding": "medium", "reason": "intentional"},),
+            structural_review_completed=True,
+            lexical_review_completed=True,
+            evidence_preservation_confirmed=True,
         )
         failed = CopyQualityAudit(
             status="failed",
@@ -421,6 +494,20 @@ class ExecutiveReportTests(unittest.TestCase):
         self.assertNotIn("reported implementation activity", rendered)
         self.assertNotIn("stated a decision or acceptance", rendered)
 
+    def test_markdown_copy_audit_discloses_attribution_and_revision(self):
+        rendered = render_markdown(self._investigation([]))
+
+        self.assertIn("### Copy-Quality Audit", rendered)
+        self.assertIn("JCarterJohnson", rendered)
+        self.assertIn("vibecoded-design-tells", rendered)
+        self.assertIn("unslop-text", rendered)
+        self.assertIn("incorporates the `unslop-text` scanner", rendered)
+        self.assertIn("lexical findings alone cannot assess overall writing quality", rendered)
+        self.assertIn(UNSLOP_TEXT_PINNED_REVISION, rendered)
+        self.assertIn("not an authorship detector", rendered)
+        self.assertNotIn("endorsed by", rendered.lower())
+        self.assertNotIn("certified by", rendered.lower())
+
     def test_json_adds_executive_report_without_breaking_existing_keys(self):
         data = render_json_dict(self._investigation([
             self._obs("OBS-1", "Human stated a decision: I choose Markdown.", activity="decision")
@@ -438,6 +525,50 @@ class ExecutiveReportTests(unittest.TestCase):
         }:
             self.assertIn(key, data)
         self.assertEqual(data["executive_report"]["schema_version"], "1.0")
+        audit = data["executive_report"]["copy_quality_audit"]
+        self.assertEqual(audit["upstream_author"], "JCarterJohnson")
+        self.assertEqual(audit["upstream_project"], "vibecoded-design-tells")
+        self.assertEqual(audit["upstream_revision"], UNSLOP_TEXT_PINNED_REVISION)
+        self.assertEqual(audit["upstream_license"], "MIT")
+        self.assertIn("NOTICE.md", audit["attribution_notice"])
+        self.assertIn("A passing audit indicates", audit["disclosure"])
+
+    def test_structural_checks_detect_representative_patterns(self):
+        findings = structural_review({
+            "Executive Brief": (
+                "In conclusion, this is not just a report, but a revolutionary change. "
+                "Honestly, it is robust."
+            )
+        })
+        rules = {item["rule"] for item in findings}
+
+        self.assertIn("not-just-x-y", rules)
+        self.assertIn("unnecessary-recap", rules)
+        self.assertIn("promotional-language", rules)
+        self.assertIn("manufactured-casualness", rules)
+
+    def test_appendix_only_evidence_is_excluded_from_copy_scan(self):
+        investigation = self._investigation([
+            self._obs(
+                "OBS-1",
+                "Human stated: This raw evidence has an em dash — but is not executive narrative.",
+                activity="observation",
+            )
+        ])
+
+        report = build_executive_report(investigation)
+
+        self.assertEqual(report.copy_quality_audit.status, "passed")
+
+    def test_copy_audit_does_not_claim_human_authorship_or_no_ai_involvement(self):
+        rendered = render_markdown(self._investigation([])).lower()
+
+        self.assertNotIn("human-written", rendered)
+        self.assertNotIn("not ai-generated", rendered)
+        self.assertNotIn("ai-free", rendered)
+        self.assertNotIn("passed an ai detector", rendered)
+        self.assertIn("does not establish human authorship", rendered)
+        self.assertIn("prove that ai was not involved", rendered)
 
     def test_cli_and_guided_use_shared_json_shape(self):
         with tempfile.TemporaryDirectory() as directory:

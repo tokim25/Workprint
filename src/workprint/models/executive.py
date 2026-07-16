@@ -108,12 +108,27 @@ class CopyQualityAudit:
     structural_review_completed: bool = False
     override_used: bool = False
     disclosure: str = ""
+    audit_implementation_version: str = ""
+    upstream_author: str = ""
+    upstream_project: str = ""
+    upstream_revision: str = ""
+    upstream_license: str = ""
+    attribution_notice: str = ""
+    scanner_available: bool = False
+    lexical_review_completed: bool = False
+    severity_counts: dict[str, int] | None = None
+    evidence_preservation_confirmed: bool = False
+    limitations: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if self.status not in COPY_AUDIT_STATUSES:
             raise ValueError(f"unsupported copy audit status: {self.status}")
-        if self.status == "passed" and not self.structural_review_completed:
-            raise ValueError("passed copy audit requires structural review")
+        if self.status in {"passed", "passed_with_waivers"} and not self.structural_review_completed:
+            raise ValueError(f"{self.status} copy audit requires structural review")
+        if self.status in {"passed", "passed_with_waivers"} and not self.lexical_review_completed:
+            raise ValueError(f"{self.status} copy audit requires lexical review")
+        if self.status in {"passed", "passed_with_waivers"} and not self.evidence_preservation_confirmed:
+            raise ValueError(f"{self.status} copy audit requires evidence-preservation confirmation")
         if self.status == "unavailable" and not self.disclosure:
             raise ValueError("unavailable copy audit requires disclosure")
 
@@ -122,6 +137,8 @@ class CopyQualityAudit:
         data["scanned_sections"] = list(self.scanned_sections)
         data["findings"] = list(self.findings)
         data["waivers"] = list(self.waivers)
+        data["severity_counts"] = dict(self.severity_counts or {})
+        data["limitations"] = list(self.limitations)
         return data
 
 

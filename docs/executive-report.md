@@ -76,18 +76,77 @@ tool use as part of project activity.
 
 ## Copy-Quality Audit
 
-Executive Report v1 records copy-quality audit metadata using the pinned
-`unslop-text` upstream repository and revision:
+Executive Report copy-quality review incorporates the `unslop-text` scanner
+and research developed by JCarterJohnson in the `vibecoded-design-tells`
+project. Workprint pins and records the reviewed upstream revision, preserves
+attribution and licensing information, and adds its own integration,
+evidence-preservation checks, and deterministic structural review.
+
+Pinned upstream source:
 
 ```text
 https://github.com/JCarterJohnson/vibecoded-design-tells
 f7c4aefc2c797a66e55b49354a93917ab60d33ac
 ```
 
-The scanner is not yet vendored or integrated. Until it is available,
-Workprint records audit status `unavailable`, discloses that the audit was not
-completed, and generates the report in degraded mode. Workprint does not claim
-that the prose was audited, human-authored, or rewritten.
+The vendored upstream files and license are preserved under
+`third_party/vibecoded-design-tells/`. Workprint-owned integration code invokes
+the pinned scanner offline against a temporary UTF-8 narrative-only report
+extract. Report generation does not contact GitHub or require network access.
+
+The audit reviews generated narrative sections only:
+
+- Executive Brief.
+- Project Overview narrative.
+- Key Milestone summaries.
+- Human-AI Collaboration narrative.
+- Decision Analysis prose.
+- Confidence Assessment rationale.
+- Evidence Gaps prose.
+- Investigation Assurance.
+
+The audit does not scan raw evidence quotations, evidence IDs, JSON keys,
+factual appendix tables, detailed source appendix content, code, or command
+examples.
+
+The Markdown Copy-Quality Audit section reports status, scan scope, lexical
+review completion, structural review completion, evidence-preservation
+validation, finding counts by severity, waivers, override status, upstream
+repository, pinned revision, upstream license, attribution notice, and
+limitations.
+
+Structural checks complement the lexical review because lexical findings alone
+cannot assess overall writing quality.
+
+The JSON `copy_quality_audit` object preserves existing fields and adds
+attribution and diligence fields, including `upstream_author`,
+`upstream_project`, `upstream_repository`, `upstream_revision`,
+`upstream_license`, and `attribution_notice`.
+
+Status rules:
+
+- `passed`: lexical scanner ran, structural checks ran, no unresolved findings
+  require waivers, and evidence-preservation validation passed.
+- `passed_with_waivers`: lexical and structural checks ran, no high-severity
+  findings remain, and every retained medium or low finding has a documented
+  waiver.
+- `failed`: a high-severity finding remains, structural review cannot
+  complete after starting, evidence-preservation validation fails, audit output
+  is malformed, or medium/low findings lack required waivers.
+- `unavailable`: required scanner files are missing, the scanner cannot
+  execute in the environment, or the pinned revision cannot be verified in the
+  installed source.
+
+When the scanner is unavailable, Workprint records status `unavailable`,
+discloses degraded mode, and states that the lexical review was not completed.
+
+A passing audit indicates that the generated narrative satisfied the configured
+lexical and structural review. The audit identifies documented writing
+patterns. It does not determine whether text was written by a human or an AI,
+and passing the review does not establish human authorship or prove that AI was
+not involved.
+
+No endorsement by JCarterJohnson is implied.
 
 ## What Workprint Does Not Infer
 

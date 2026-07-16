@@ -5,6 +5,14 @@ from collections import Counter
 from dataclasses import dataclass
 from pathlib import PurePosixPath
 
+from workprint.copy_audit import CopyQualityAuditor, SCANNED_SECTION_NAMES
+from workprint.executive_constants import (
+    UNSLOP_TEXT_AUTHOR,
+    UNSLOP_TEXT_LICENSE,
+    UNSLOP_TEXT_PINNED_REVISION,
+    UNSLOP_TEXT_PROJECT,
+    UNSLOP_TEXT_REPOSITORY,
+)
 from workprint.models import (
     ConfidenceAssessment,
     CopyQualityAudit,
@@ -20,17 +28,7 @@ from workprint.models import (
 
 
 EXECUTIVE_SCHEMA_VERSION = "1.0"
-UNSLOP_TEXT_REPOSITORY = "https://github.com/JCarterJohnson/vibecoded-design-tells"
-UNSLOP_TEXT_PINNED_REVISION = "f7c4aefc2c797a66e55b49354a93917ab60d33ac"
-COPY_AUDITED_SECTIONS = (
-    "Executive Brief",
-    "Project Evolution narrative",
-    "Collaboration Profile",
-    "Decision Analysis",
-    "Confidence Assessment",
-    "Evidence Gaps",
-    "Investigation Assurance",
-)
+COPY_AUDITED_SECTIONS = SCANNED_SECTION_NAMES
 
 CONFIDENCE_ORDER = ("Very High", "High", "Moderate", "Limited", "Low")
 
@@ -142,9 +140,7 @@ class ExecutiveReportBuilder:
             gaps,
         )
         collaboration = _collaboration(observations, self.investigation.timeline)
-        copy_audit = _copy_quality_audit_unavailable()
         fixture_boundary = _fixture_boundary(self.investigation)
-        assurance = _investigation_assurance(copy_audit, fixture_boundary)
 
         brief = ExecutiveBrief(
             project_goal=goal,
@@ -156,6 +152,19 @@ class ExecutiveReportBuilder:
         )
 
         overview = _project_overview(self.investigation, observations, fixture_boundary)
+        draft_assurance = _investigation_assurance_method(fixture_boundary)
+        audit_sections = _copy_audit_sections(
+            brief=brief,
+            overview=overview,
+            milestones=milestones,
+            collaboration=collaboration,
+            decisions=decisions,
+            confidence=confidence,
+            gaps=gaps,
+            assurance=draft_assurance,
+        )
+        copy_audit = CopyQualityAuditor().audit(audit_sections)
+        assurance = _investigation_assurance(copy_audit, fixture_boundary)
 
         return ExecutiveReport(
             schema_version=EXECUTIVE_SCHEMA_VERSION,
@@ -216,8 +225,8 @@ def _project_goal(observations: tuple[Observation, ...]) -> ExecutiveFinding:
             id="GOAL-001",
             title="Project goal",
             summary=(
-                "The available evidence does not contain an explicit statement "
-                "of the project's overall goal."
+                "No explicit statement of the project's overall goal appears "
+                "in the supplied evidence."
             ),
             status="unknown",
             rationale=(
@@ -310,8 +319,8 @@ def _project_outputs(observations: tuple[Observation, ...]) -> tuple[ExecutiveFi
                 id="OUT-001",
                 title="Project outputs",
                 summary=(
-                    "The available evidence does not establish a completed or "
-                    "planned project-level output."
+                    "No completed or planned project-level output is established "
+                    "by the supplied evidence."
                 ),
                 status="not_established",
                 rationale=(
@@ -371,7 +380,7 @@ def _key_milestones(
                 status=reason,
                 evidence_ids=tuple(data["evidence_ids"]),
                 evidence_refs=tuple(data["evidence_refs"]),
-                rationale=f"Included as a key milestone because it contains {reason}.",
+                rationale=_milestone_rationale(reason),
             )
         )
     if milestones:
@@ -381,8 +390,8 @@ def _key_milestones(
             id="MS-001",
             title="Key milestones",
             summary=(
-                "The available evidence does not establish significant project "
-                "milestones under the v1 milestone rules."
+                "No project milestones are established under the v1 milestone "
+                "rules."
             ),
             status="not_established",
             rationale="Routine observations are not promoted to milestones.",
@@ -403,6 +412,16 @@ def _milestone_reason(items: list[Observation]) -> str:
     if _matches(text, CORRECTION_PATTERNS):
         return "a major correction or reversal"
     return ""
+
+
+def _milestone_rationale(reason: str) -> str:
+    return {
+        "an explicit decision": "Decision evidence makes this a key milestone.",
+        "a completed or created output": "Completed-output evidence makes this a key milestone.",
+        "a material requirement change": "Requirement-change evidence makes this a key milestone.",
+        "a validated implementation milestone": "Validation evidence makes this a key milestone.",
+        "a major correction or reversal": "Correction evidence makes this a key milestone.",
+    }.get(reason, "Captured evidence supports this key milestone.")
 
 
 def _milestone_key(items: list[Observation], event: TimelineEvent) -> str:
@@ -450,16 +469,6 @@ def _milestone_summary(reason: str, items: list[Observation]) -> str:
     if not items:
         return "The available evidence establishes a project milestone."
     plain = _plain_statement(items[0].statement)
-    if reason == "an explicit decision":
-        return f"A decision was recorded: {plain}"
-    if reason == "a completed or created output":
-        return f"Completed work was recorded: {plain}"
-    if reason == "a material requirement change":
-        return f"A requirement or scope change was recorded: {plain}"
-    if reason == "a validated implementation milestone":
-        return f"Validation evidence was recorded: {plain}"
-    if reason == "a major correction or reversal":
-        return f"A correction or reversal was recorded: {plain}"
     return plain
 
 
@@ -545,7 +554,7 @@ def _collaboration_profile(
         return "The captured evidence primarily shows human activity."
     if category_counts["ai_tool_activity"]:
         return "The captured evidence primarily shows AI/tool activity."
-    return "The available evidence does not establish a collaboration pattern."
+    return "Workprint could not establish a collaboration pattern from the supplied evidence."
 
 
 def _decisions(
@@ -569,7 +578,7 @@ def _decisions(
                 evidence_ids=event.source_observation_ids,
                 evidence_refs=event.evidence_refs,
                 alternative_interpretations=(
-                    "Workprint cannot determine whether the same decision was discussed outside the supplied evidence.",
+                    _decision_alternative(_decision_summary(items)),
                 ),
             )
         )
@@ -596,7 +605,15 @@ def _is_decision_event(items: list[Observation]) -> bool:
 def _decision_summary(items: list[Observation]) -> str:
     if not items:
         return "A decision was recorded."
-    return f"A decision was recorded: {_plain_statement(items[0].statement)}"
+    return _plain_statement(items[0].statement)
+
+
+def _decision_alternative(summary: str) -> str:
+    subject = _compact(summary.rstrip("."), 72)
+    return (
+        f"{subject}: other supplied sources do not show whether this decision "
+        "was discussed elsewhere."
+    )
 
 
 def classify_decision_leadership(items: list[Observation]) -> tuple[str, str]:
@@ -844,14 +861,79 @@ def _copy_quality_audit_unavailable() -> CopyQualityAudit:
         pinned_revision=UNSLOP_TEXT_PINNED_REVISION,
         scanned_sections=COPY_AUDITED_SECTIONS,
         structural_review_completed=False,
+        audit_implementation_version="1.0",
+        upstream_author=UNSLOP_TEXT_AUTHOR,
+        upstream_project=UNSLOP_TEXT_PROJECT,
+        upstream_revision=UNSLOP_TEXT_PINNED_REVISION,
+        upstream_license=UNSLOP_TEXT_LICENSE,
+        attribution_notice="third_party/vibecoded-design-tells/NOTICE.md",
+        scanner_available=False,
+        lexical_review_completed=False,
+        severity_counts={},
+        evidence_preservation_confirmed=False,
+        limitations=(
+            "The audit identifies documented lexical and structural writing patterns.",
+            "The audit does not determine whether text was written by a human or an AI.",
+        ),
         disclosure=(
-            "The unslop-text scanner is pinned for future integration but was "
-            "not run for this report, so the copy-quality audit is unavailable."
+            "Workprint is configured to incorporate JCarterJohnson's "
+            "`unslop-text` scanner from the `vibecoded-design-tells` project, "
+            "but the pinned scanner was unavailable for this run. The lexical "
+            "review was not completed."
         ),
     )
 
 
-def _investigation_assurance(copy_audit: CopyQualityAudit, fixture_boundary: dict[str, object]) -> str:
+def _copy_audit_sections(
+    *,
+    brief: ExecutiveBrief,
+    overview: tuple[ExecutiveFinding, ...],
+    milestones: tuple[ExecutiveFinding, ...],
+    collaboration: tuple[ExecutiveFinding, ...],
+    decisions: tuple[ExecutiveDecision, ...],
+    confidence: ConfidenceAssessment,
+    gaps: tuple[EvidenceGap, ...],
+    assurance: str,
+) -> dict[str, str]:
+    return {
+        "Executive Brief": "\n\n".join((
+            brief.project_goal.summary,
+            " ".join(item.summary for item in brief.project_outputs),
+            brief.evolution_summary,
+            brief.collaboration_summary,
+            brief.confidence_summary,
+            brief.unknowns_summary,
+        )),
+        "Project Overview narrative": "\n\n".join(
+            f"{item.summary}\n{item.rationale}" for item in overview
+        ),
+        "Key Milestone summaries": "\n\n".join(
+            f"{item.summary}\n{item.rationale}" for item in milestones
+        ),
+        "Human-AI Collaboration narrative": "\n\n".join(
+            f"{item.summary}\n{item.rationale}" for item in collaboration
+        ),
+        "Decision Analysis prose": "\n\n".join(
+            f"{item.summary}\n{item.rationale}\n{' '.join(item.alternative_interpretations)}"
+            for item in decisions
+        ),
+        "Confidence Assessment rationale": "\n\n".join((
+            confidence.evidence_strength,
+            confidence.coverage,
+            confidence.corroboration,
+            confidence.conflicts,
+            confidence.gaps,
+            confidence.rationale,
+        )),
+        "Evidence Gaps prose": "\n\n".join(
+            f"{item.summary}\n{item.why_it_matters}\n{item.would_reduce_gap}"
+            for item in gaps
+        ),
+        "Investigation Assurance": assurance,
+    }
+
+
+def _investigation_assurance_method(fixture_boundary: dict[str, object]) -> str:
     fixture_text = ""
     if fixture_boundary.get("all_selected_evidence_is_fixture"):
         fixture_text = (
@@ -865,15 +947,50 @@ def _investigation_assurance(copy_audit: CopyQualityAudit, fixture_boundary: dic
         "captured evidence, extracts traceable observations, and summarizes "
         "project evolution, collaboration, decisions, confidence, and unknowns. "
         "The report does not infer authorship, ownership, effort, value, or "
-        "contribution percentages. Narrative language is designed for future "
-        "copy-quality review, but the copy-quality audit status for this report "
-        f"is {copy_audit.status}. Wording does not change the underlying "
+        "contribution percentages. Wording does not change the underlying "
         "evidence, confidence, or attribution; every substantive claim remains "
         "traceable to evidence. When evidence is incomplete, unavailable, "
         "ambiguous, or unsupported, Workprint states that limitation rather "
         "than filling the gap with speculation."
         + fixture_text
     )
+
+
+def _investigation_assurance(copy_audit: CopyQualityAudit, fixture_boundary: dict[str, object]) -> str:
+    base = _investigation_assurance_method(fixture_boundary)
+    if copy_audit.status == "unavailable":
+        audit_text = (
+            " Workprint is configured to incorporate JCarterJohnson's "
+            "`unslop-text` scanner from the `vibecoded-design-tells` project, "
+            "but the pinned scanner was unavailable for this run. The lexical "
+            "review was not completed."
+        )
+    elif copy_audit.status == "failed":
+        audit_text = (
+            " The lexical portion of this review incorporates the `unslop-text` "
+            "scanner and methodology developed by JCarterJohnson for the "
+            "`vibecoded-design-tells` project. Workprint records the exact "
+            "reviewed revision and preserves attribution and licensing "
+            "information. Workprint adds deterministic structural checks "
+            "because lexical findings alone cannot assess overall writing "
+            "quality. The copy-quality audit failed, so this report must not be "
+            "described as assured or fully audited."
+        )
+    else:
+        audit_text = (
+            " The lexical portion of this review incorporates the `unslop-text` "
+            "scanner and methodology developed by JCarterJohnson for the "
+            "`vibecoded-design-tells` project. Workprint records the exact "
+            "reviewed revision and preserves attribution and licensing "
+            "information. Workprint adds deterministic structural checks and "
+            "evidence-preservation validation. Structural checks complement the "
+            "lexical review because lexical findings alone cannot assess overall "
+            "writing quality. A passing audit indicates that the generated "
+            "narrative satisfied the configured lexical and structural review. "
+            "It does not establish human authorship or prove that AI was not "
+            "involved."
+        )
+    return base + audit_text
 
 
 def _project_tools(observations: tuple[Observation, ...]) -> ExecutiveFinding:
@@ -1004,13 +1121,12 @@ def _evolution_summary(milestones: tuple[ExecutiveFinding, ...]) -> str:
     established = [item for item in milestones if item.status != "not_established"]
     if not established:
         return (
-            "The available evidence does not establish significant project "
-            "milestones under the v1 rules."
+            "Workprint did not identify project milestones under the v1 rules."
         )
     unique_statuses = list(dict.fromkeys(item.status for item in established))
     labels = _join_natural(unique_statuses[:3])
     return (
-        f"Workprint identified {len(established)} significant milestone(s), "
+        f"Workprint identified {len(established)} key milestone(s), "
         f"including {labels}."
     )
 
@@ -1018,7 +1134,7 @@ def _evolution_summary(milestones: tuple[ExecutiveFinding, ...]) -> str:
 def _collaboration_summary(collaboration: tuple[ExecutiveFinding, ...]) -> str:
     profile = next(
         (item.summary for item in collaboration if item.id == "COL-003"),
-        "The available evidence does not establish a collaboration pattern.",
+        "Workprint could not establish a collaboration pattern from the supplied evidence.",
     )
     return profile
 
