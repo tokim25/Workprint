@@ -84,3 +84,33 @@ export function formatDate(value: string | null) {
     year: "numeric",
   }).format(new Date(value));
 }
+
+export function formatTimestamp(value: string) {
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+export function recordedLineChanges(commit: GitRecentCommit) {
+  const additions = commit.file_changes.reduce(
+    (total, change) => total + (change.additions ?? 0),
+    0,
+  );
+  const deletions = commit.file_changes.reduce(
+    (total, change) => total + (change.deletions ?? 0),
+    0,
+  );
+  const hasLineCounts = commit.file_changes.some(
+    (change) => change.additions !== null || change.deletions !== null,
+  );
+
+  if (!hasLineCounts) {
+    return null;
+  }
+
+  return { additions, deletions };
+}
