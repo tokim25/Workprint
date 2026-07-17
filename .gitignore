@@ -9,3 +9,7 @@ build/
 workprint-output/
 report.md
 observations.json
+node_modules/
+.next/
+out/
+tsconfig.tsbuildinfo
