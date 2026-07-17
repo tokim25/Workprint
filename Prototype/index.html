@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Workprint</title>
+  <meta name="description" content="See what you did, what AI did, and how the work came together." />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main id="app" class="app-shell">
+    <header class="site-header">
+      <a class="wordmark" href="#" aria-label="Workprint home">Workprint</a>
+      <button id="restartButton" class="text-button" type="button" hidden>Start over</button>
+    </header>
+
+    <section class="screen active" data-screen="start" aria-labelledby="start-title">
+      <div class="content narrow">
+        <p class="eyebrow">A clearer record of human and AI collaboration</p>
+        <h1 id="start-title">See what you did, what AI did, and how the work came together.</h1>
+        <p class="lede">
+          Workprint reviews the places where a project happened and turns the available evidence
+          into a careful, understandable story.
+        </p>
+        <div class="actions">
+          <button class="primary-button" type="button" data-next="sources">Begin</button>
+        </div>
+        <p class="trust-note">
+          Workprint does not assign contribution percentages or claim the evidence can determine authorship.
+        </p>
+      </div>
+    </section>
+
+    <section class="screen" data-screen="sources" aria-labelledby="sources-title">
+      <div class="content medium">
+        <p class="eyebrow">Step 1 of 3</p>
+        <h1 id="sources-title">Add where the work happened.</h1>
+        <p class="lede">
+          Choose the records Workprint should consider. This prototype uses sample evidence and does not upload files.
+        </p>
+
+        <div class="source-list" role="group" aria-label="Project sources">
+          <label class="source-card">
+            <input type="checkbox" value="repository" checked />
+            <span>
+              <strong>Repository history</strong>
+              <small>Commits, branches, and changes over time</small>
+            </span>
+          </label>
+          <label class="source-card">
+            <input type="checkbox" value="documents" checked />
+            <span>
+              <strong>Project files</strong>
+              <small>Briefs, drafts, plans, and working documents</small>
+            </span>
+          </label>
+          <label class="source-card">
+            <input type="checkbox" value="conversations" checked />
+            <span>
+              <strong>Conversations</strong>
+              <small>Prompts, responses, comments, and decisions</small>
+            </span>
+          </label>
+        </div>
+
+        <div class="actions">
+          <button class="primary-button" type="button" id="investigateButton">Investigate sample project</button>
+          <button class="secondary-button" type="button" data-back="start">Back</button>
+        </div>
+        <p class="trust-note">
+          A source can reveal patterns, but no single source is a complete account of the work.
+        </p>
+      </div>
+    </section>
+
+    <section class="screen" data-screen="investigating" aria-labelledby="investigating-title">
+      <div class="content narrow">
+        <p class="eyebrow">Reviewing the available evidence</p>
+        <h1 id="investigating-title">Investigating your project.</h1>
+        <ol class="progress-list" aria-live="polite">
+          <li data-stage="0"><span class="stage-mark"></span>Reading your project</li>
+          <li data-stage="1"><span class="stage-mark"></span>Finding important moments</li>
+          <li data-stage="2"><span class="stage-mark"></span>Preparing your discoveries</li>
+        </ol>
+        <p class="trust-note">
+          Workprint looks for supported patterns and preserves uncertainty where the evidence is incomplete.
+        </p>
+      </div>
+    </section>
+
+    <section class="screen" data-screen="discoveries" aria-labelledby="discoveries-title">
+      <div class="content wide">
+        <div class="discovery-header">
+          <div>
+            <p class="eyebrow">First discovery</p>
+            <h1 id="discoveries-title">You consistently set the direction.</h1>
+          </div>
+          <span class="confidence-badge">Confidence: strong</span>
+        </div>
+
+        <p class="lede discovery-lede">
+          Across the available records, the project repeatedly changed after you clarified the goal,
+          narrowed the scope, or defined what a trustworthy result needed to include.
+        </p>
+
+        <div class="evidence-grid">
+          <article class="evidence-card">
+            <p class="card-label">Why Workprint believes this</p>
+            <h2>Direction appeared before execution.</h2>
+            <p>
+              Early project notes established the evidence boundaries and product promise before implementation began.
+            </p>
+          </article>
+          <article class="evidence-card">
+            <p class="card-label">Pattern in the record</p>
+            <h2>You repeatedly reduced ambiguity.</h2>
+            <p>
+              Revisions simplified the experience from a larger screen set into four clear stages with one purpose each.
+            </p>
+          </article>
+          <article class="evidence-card">
+            <p class="card-label">What changed because of you</p>
+            <h2>Trust became a product requirement.</h2>
+            <p>
+              The work moved away from contribution scoring and toward evidence, confidence, and explicit unknowns.
+            </p>
+          </article>
+        </div>
+
+        <details class="unknowns">
+          <summary>What Workprint cannot determine</summary>
+          <p>
+            The available evidence cannot prove authorship, effort, ownership, intent, or the complete history of every decision.
+            This discovery is an interpretation of visible patterns, not a definitive attribution.
+          </p>
+        </details>
+
+        <div class="actions">
+          <button class="primary-button" type="button" id="showEvidenceButton">View supporting evidence</button>
+          <button class="secondary-button" type="button" id="restartFromEnd">Review another project</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="evidenceDialog">
+    <div class="dialog-inner">
+      <button class="dialog-close" type="button" aria-label="Close evidence">Close</button>
+      <p class="eyebrow">Sample supporting evidence</p>
+      <h2>Moments that support this interpretation</h2>
+      <div class="timeline">
+        <article>
+          <span>Product contract</span>
+          <h3>Defined the central promise</h3>
+          <p>Established that Workprint must show supported contributions and clearly state what evidence cannot determine.</p>
+        </article>
+        <article>
+          <span>Experience revision</span>
+          <h3>Reduced the flow to four screens</h3>
+          <p>Reframed the experience around Start, Add where the work happened, Investigating, and Discoveries.</p>
+        </article>
+        <article>
+          <span>Visual direction</span>
+          <h3>Chose “Warm Investigator”</h3>
+          <p>Balanced recognition and warmth with precision, evidence proximity, and honest unknowns.</p>
+        </article>
+      </div>
+      <p class="trust-note">
+        These examples demonstrate the interaction model. They are not the output of a live project analysis.
+      </p>
+    </div>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
