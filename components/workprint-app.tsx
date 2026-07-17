@@ -4,9 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent, DragEvent, RefObject } from "react";
 import { ConfidenceIndicator } from "@/components/confidence-indicator";
 import { EvidenceDrawer } from "@/components/evidence-drawer";
+import { GitTimeline } from "@/components/git-timeline";
 import { SourceStatusList } from "@/components/source-status-list";
 import {
-  formatDate,
   gitDiscoveryClaim,
   gitDiscoverySupport,
   type GitSummary,
@@ -668,29 +668,7 @@ export function WorkprintApp() {
                 {activeUnknown}
               </p>
             </section>
-            {gitSummary ? (
-              <section className="mt-10 max-w-4xl border-t border-[var(--line)] pt-6">
-                <h2 className="text-2xl font-semibold tracking-[-0.03em]">
-                  Recent Git timeline
-                </h2>
-                <div className="mt-4 space-y-4">
-                  {gitSummary.recent_commits.map((commit) => (
-                    <article
-                      className="border-l-2 border-[var(--line)] pl-4 text-sm leading-6"
-                      key={commit.commit_sha}
-                    >
-                      <p className="font-semibold text-[var(--foreground)]">
-                        {commit.abbreviated_sha}: {commit.message}
-                      </p>
-                      <p className="text-[var(--muted)]">
-                        {formatDate(commit.committed_at)} · The commit author
-                        field contains &quot;{commit.author}&quot;.
-                      </p>
-                    </article>
-                  ))}
-                </div>
-              </section>
-            ) : null}
+            {gitSummary ? <GitTimeline summary={gitSummary} /> : null}
             <div className="mt-8">
               <button
                 className="rounded-full border border-[var(--line)] px-6 py-4 font-semibold"
