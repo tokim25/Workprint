@@ -1,12 +1,15 @@
 import type { ProjectSource } from "@/lib/sample-data";
 
 export type LocalProjectFile = {
+  file?: File;
   name: string;
   path: string;
+  size?: number;
 };
 
 export type LocalProjectSummary = {
   fileCount: number;
+  files: LocalProjectFile[];
   folderName: string;
   sources: ProjectSource[];
 };
@@ -132,6 +135,7 @@ export function summarizeLocalProject(
 
   return {
     fileCount: files.length,
+    files,
     folderName,
     sources: [
       {

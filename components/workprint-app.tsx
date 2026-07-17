@@ -5,6 +5,7 @@ import type { ChangeEvent, DragEvent, RefObject } from "react";
 import { ConfidenceIndicator } from "@/components/confidence-indicator";
 import { EvidenceDrawer } from "@/components/evidence-drawer";
 import { GitTimeline } from "@/components/git-timeline";
+import { ProjectFileEvidence } from "@/components/project-file-evidence";
 import { SourceStatusList } from "@/components/source-status-list";
 import {
   gitDiscoveryClaim,
@@ -17,6 +18,7 @@ import {
   type LocalProjectFile,
   type LocalProjectSummary,
 } from "@/lib/local-project-sources";
+import type { ProjectFileEvidenceFact } from "@/lib/project-file-evidence";
 import { evidenceItems, insight, projectSources } from "@/lib/sample-data";
 
 type Screen = "start" | "sources" | "investigating" | "discoveries";
@@ -64,6 +66,8 @@ export function WorkprintApp() {
   const [gitSummary, setGitSummary] = useState<GitSummary | null>(null);
   const [gitSummaryError, setGitSummaryError] = useState("");
   const [gitSummaryLoading, setGitSummaryLoading] = useState(false);
+  const [projectFileFacts, setProjectFileFacts] = useState<ProjectFileEvidenceFact[]>([]);
+  const [projectFileSession, setProjectFileSession] = useState(0);
   const startHeadingRef = useRef<HTMLHeadingElement>(null);
   const sourcesHeadingRef = useRef<HTMLHeadingElement>(null);
   const investigatingHeadingRef = useRef<HTMLHeadingElement>(null);
@@ -80,9 +84,10 @@ export function WorkprintApp() {
   const activeUnknown = gitSummary
     ? gitSummary.limitations.join(" ")
     : insight.unknown;
-  const activeEvidence = gitSummary
-    ? gitEvidenceItems(gitSummary)
-    : evidenceItems;
+  const activeEvidence = [
+    ...(gitSummary ? gitEvidenceItems(gitSummary) : evidenceItems),
+    ...projectFileEvidenceItems(projectFileFacts),
+  ];
   const readyCount = useMemo(
     () => visibleSources.filter((source) => source.status !== "unsupported").length,
     [visibleSources],
@@ -157,6 +162,8 @@ export function WorkprintApp() {
     setGitSummary(null);
     setGitSummaryError("");
     setRepositoryPath("");
+    setProjectFileFacts([]);
+    setProjectFileSession((current) => current + 1);
     setProjectStatusMessage("Showing sample project places.");
     window.requestAnimationFrame(() => {
       chooseProjectButtonRef.current?.focus();
@@ -169,6 +176,8 @@ export function WorkprintApp() {
     setGitSummary(null);
     setGitSummaryError("");
     setRepositoryPath("");
+    setProjectFileFacts([]);
+    setProjectFileSession((current) => current + 1);
     setProjectStatusMessage("Removed the selected project. Sample project places are shown.");
     if (projectInputRef.current) {
       projectInputRef.current.value = "";
@@ -189,6 +198,8 @@ export function WorkprintApp() {
     setSelectionMode("local");
     setGitSummary(null);
     setGitSummaryError("");
+    setProjectFileFacts([]);
+    setProjectFileSession((current) => current + 1);
     setProjectStatusMessage(
       `Found ${summary.fileCount} ${summary.fileCount === 1 ? "file" : "files"} in ${summary.folderName}.`,
     );
@@ -199,8 +210,10 @@ export function WorkprintApp() {
 
   function handleProjectInputChange(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []).map((file) => ({
+      file,
       name: file.name,
       path: file.webkitRelativePath || file.name,
+      size: file.size,
     }));
 
     applyLocalFiles(files, "Selected project");
@@ -486,6 +499,13 @@ export function WorkprintApp() {
               </div>
             ) : null}
           </section>
+          {localProject ? (
+            <ProjectFileEvidence
+              files={localProject.files}
+              key={projectFileSession}
+              onFactsChange={setProjectFileFacts}
+            />
+          ) : null}
           <details className="mt-6 max-w-3xl text-sm leading-6 text-[var(--muted)]">
             <summary className="cursor-pointer font-semibold text-[var(--foreground)]">
               What these sources may miss
@@ -668,6 +688,47 @@ export function WorkprintApp() {
                 {activeUnknown}
               </p>
             </section>
+            {projectFileFacts.length > 0 ? (
+              <section className="mt-10 max-w-4xl border-t border-[var(--line)] pt-8">
+                <h2 className="text-2xl font-semibold tracking-[-0.03em]">
+                  Project files read in this browser
+                </h2>
+                <p className="mt-4 text-sm leading-6 text-[var(--muted)]">
+                  Workprint read {projectFileFacts.length} selected{" "}
+                  {projectFileFacts.length === 1 ? "file" : "files"} after
+                  confirmation and recorded only filenames, paths, byte sizes,
+                  line counts, and bounded plain-text excerpts.
+                </p>
+                <div className="mt-5 space-y-4">
+                  {projectFileFacts.slice(0, 3).map((fact) => (
+                    <article
+                      className="border-l-2 border-[var(--line)] pl-5"
+                      key={fact.path}
+                    >
+                      <p className="break-words font-semibold">{fact.path}</p>
+                      <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
+                        {fact.manifestType ?? (fact.extension || "No extension")};{" "}
+                        {fact.size} {fact.size === 1 ? "byte" : "bytes"};{" "}
+                        {fact.lineCount}{" "}
+                        {fact.lineCount === 1 ? "line" : "lines"}.
+                      </p>
+                    </article>
+                  ))}
+                </div>
+                {projectFileFacts.length > 3 ? (
+                  <p className="mt-4 text-sm leading-6 text-[var(--muted)]">
+                    {projectFileFacts.length - 3} additional read{" "}
+                    {projectFileFacts.length - 3 === 1 ? "file is" : "files are"}{" "}
+                    available in the evidence drawer.
+                  </p>
+                ) : null}
+                <p className="mt-5 rounded-2xl bg-[var(--surface-soft)] p-4 text-sm leading-6 text-[var(--muted)]">
+                  These file facts do not determine authorship, effort,
+                  ownership, importance, correctness, completeness,
+                  originality, or AI involvement.
+                </p>
+              </section>
+            ) : null}
             {gitSummary ? <GitTimeline summary={gitSummary} /> : null}
             <div className="mt-8">
               <button
@@ -765,6 +826,19 @@ function gitEvidenceItems(summary: GitSummary) {
   }));
 }
 
+function projectFileEvidenceItems(facts: ProjectFileEvidenceFact[]) {
+  return facts.map((fact) => ({
+    id: `project-file-${fact.path}`,
+    source: "Project file",
+    title: fact.path,
+    excerpt: fact.excerpt || "(Empty file)",
+    supports:
+      `This supports the file evidence section because Workprint read ${fact.path} in the browser and recorded ${fact.size} ${fact.size === 1 ? "byte" : "bytes"} and ${fact.lineCount} ${fact.lineCount === 1 ? "line" : "lines"}.`,
+    doesNotProve:
+      "It does not prove authorship, effort, ownership, importance, correctness, originality, completeness, intent, or AI involvement.",
+  }));
+}
+
 async function getDroppedProjectFiles(dataTransfer: DataTransfer) {
   const entries = Array.from(dataTransfer.items)
     .map(getEntryFromDataTransferItem)
@@ -772,8 +846,10 @@ async function getDroppedProjectFiles(dataTransfer: DataTransfer) {
 
   if (entries.length === 0) {
     return Array.from(dataTransfer.files).map((file) => ({
+      file,
       name: file.name,
       path: file.webkitRelativePath || file.name,
+      size: file.size,
     }));
   }
 
@@ -800,7 +876,12 @@ async function readEntryMetadata(
   if (entry.isFile) {
     return new Promise((resolve) => {
       (entry as BrowserFileSystemFileEntry).file(
-        (file) => resolve([{ name: file.name, path: entryPath }]),
+        (file) => resolve([{
+          file,
+          name: file.name,
+          path: entryPath,
+          size: file.size,
+        }]),
         () => resolve([]),
       );
     });
