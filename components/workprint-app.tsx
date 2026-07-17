@@ -1,13 +1,42 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { RefObject } from "react";
+import type { ChangeEvent, DragEvent, RefObject } from "react";
 import { ConfidenceIndicator } from "@/components/confidence-indicator";
 import { EvidenceDrawer } from "@/components/evidence-drawer";
 import { SourceStatusList } from "@/components/source-status-list";
+import {
+  summarizeLocalProject,
+  type LocalProjectFile,
+  type LocalProjectSummary,
+} from "@/lib/local-project-sources";
 import { evidenceItems, insight, projectSources } from "@/lib/sample-data";
 
 type Screen = "start" | "sources" | "investigating" | "discoveries";
+type SelectionMode = "sample" | "local";
+
+type BrowserFileSystemEntry = {
+  isDirectory: boolean;
+  isFile: boolean;
+  name: string;
+};
+
+type BrowserFileSystemFileEntry = BrowserFileSystemEntry & {
+  file: (successCallback: (file: File) => void, errorCallback?: () => void) => void;
+};
+
+type BrowserFileSystemDirectoryEntry = BrowserFileSystemEntry & {
+  createReader: () => {
+    readEntries: (
+      successCallback: (entries: BrowserFileSystemEntry[]) => void,
+      errorCallback?: () => void,
+    ) => void;
+  };
+};
+
+type DataTransferItemWithEntry = {
+  webkitGetAsEntry?: () => BrowserFileSystemEntry | null;
+};
 
 const stages = [
   "Reading your project",
@@ -20,16 +49,24 @@ export function WorkprintApp() {
   const [projectAnswer, setProjectAnswer] = useState("");
   const [stageIndex, setStageIndex] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [selectionMode, setSelectionMode] = useState<SelectionMode>("sample");
+  const [localProject, setLocalProject] = useState<LocalProjectSummary | null>(null);
+  const [projectStatusMessage, setProjectStatusMessage] = useState("");
+  const [dragActive, setDragActive] = useState(false);
   const startHeadingRef = useRef<HTMLHeadingElement>(null);
   const sourcesHeadingRef = useRef<HTMLHeadingElement>(null);
   const investigatingHeadingRef = useRef<HTMLHeadingElement>(null);
   const discoveriesHeadingRef = useRef<HTMLHeadingElement>(null);
+  const projectInputRef = useRef<HTMLInputElement>(null);
+  const projectSummaryRef = useRef<HTMLDivElement>(null);
+  const chooseProjectButtonRef = useRef<HTMLButtonElement>(null);
   const evidenceButtonRef = useRef<HTMLButtonElement>(null);
   const progressTimersRef = useRef<number[]>([]);
 
+  const visibleSources = localProject?.sources ?? projectSources;
   const readyCount = useMemo(
-    () => projectSources.filter((source) => source.status !== "unsupported").length,
-    [],
+    () => visibleSources.filter((source) => source.status !== "unsupported").length,
+    [visibleSources],
   );
   const currentStage = stages[Math.min(stageIndex, stages.length - 1)];
 
@@ -86,6 +123,85 @@ export function WorkprintApp() {
   function openSampleReport() {
     setProjectAnswer("Sample product prototype");
     goTo("discoveries");
+  }
+
+  function openProjectPicker() {
+    if (projectInputRef.current) {
+      projectInputRef.current.value = "";
+    }
+    projectInputRef.current?.click();
+  }
+
+  function selectSampleMode() {
+    setSelectionMode("sample");
+    setLocalProject(null);
+    setProjectStatusMessage("Showing sample project places.");
+    window.requestAnimationFrame(() => {
+      chooseProjectButtonRef.current?.focus();
+    });
+  }
+
+  function removeLocalProject() {
+    setLocalProject(null);
+    setSelectionMode("sample");
+    setProjectStatusMessage("Removed the selected project. Sample project places are shown.");
+    if (projectInputRef.current) {
+      projectInputRef.current.value = "";
+    }
+    window.requestAnimationFrame(() => {
+      chooseProjectButtonRef.current?.focus();
+    });
+  }
+
+  function applyLocalFiles(files: LocalProjectFile[], fallbackFolderName: string) {
+    if (files.length === 0) {
+      setProjectStatusMessage("No local project files were found.");
+      return;
+    }
+
+    const summary = summarizeLocalProject(files, fallbackFolderName);
+    setLocalProject(summary);
+    setSelectionMode("local");
+    setProjectStatusMessage(
+      `Found ${summary.fileCount} ${summary.fileCount === 1 ? "file" : "files"} in ${summary.folderName}.`,
+    );
+    window.requestAnimationFrame(() => {
+      projectSummaryRef.current?.focus({ preventScroll: true });
+    });
+  }
+
+  function handleProjectInputChange(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? []).map((file) => ({
+      name: file.name,
+      path: file.webkitRelativePath || file.name,
+    }));
+
+    applyLocalFiles(files, "Selected project");
+  }
+
+  function handleDragOver(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+    setDragActive(true);
+  }
+
+  function handleDragLeave(event: DragEvent<HTMLDivElement>) {
+    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+      setDragActive(false);
+    }
+  }
+
+  async function handleDrop(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    setDragActive(false);
+
+    const droppedFiles = await getDroppedProjectFiles(event.dataTransfer);
+    const fallbackFolderName =
+      Array.from(event.dataTransfer.items)
+        .map((item) => (item as DataTransferItemWithEntry).webkitGetAsEntry?.()?.name)
+        .find(Boolean) ?? "Dropped project";
+
+    applyLocalFiles(droppedFiles, fallbackFolderName);
   }
 
   function closeDrawer() {
@@ -203,28 +319,107 @@ export function WorkprintApp() {
             Give Workprint the places where the work happened.
           </h1>
           <div className="mt-10 rounded-[32px] border border-dashed border-[var(--line)] bg-[var(--surface-soft)] p-8">
-            <p className="text-xl font-semibold">Sample project places</p>
+            <p className="text-xl font-semibold">
+              {localProject ? "Selected project" : "Choose a project folder"}
+            </p>
             <p className="mt-3 max-w-2xl leading-7 text-[var(--muted)]">
-              This prototype uses sample evidence. It does not upload files,
-              parse folders, call APIs, or inspect your computer.
+              Files remain on your device. Workprint only looks at filenames,
+              folder paths, extensions, and counts for this prototype.
+            </p>
+            <div
+              className={`mt-6 rounded-[24px] border border-dashed p-6 transition ${
+                dragActive
+                  ? "border-[var(--accent)] bg-[var(--accent-soft)]"
+                  : "border-[var(--line)]"
+              }`}
+              data-local-project-dropzone
+              onDragLeave={handleDragLeave}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+            >
+              <p className="font-semibold">
+                Drop a local project folder here, or choose one with the button.
+              </p>
+              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                Drag-and-drop is optional. The folder picker is the keyboard
+                path and asks for access only after you choose it.
+              </p>
+              <input
+                aria-describedby="folder-picker-help"
+                className="sr-only"
+                id="project-folder-input"
+                multiple
+                onChange={handleProjectInputChange}
+                ref={projectInputRef}
+                tabIndex={-1}
+                type="file"
+                {...{ webkitdirectory: "", directory: "" }}
+              />
+              <div className="mt-5 flex flex-wrap gap-3">
+                <button
+                  className="rounded-full bg-[var(--accent)] px-6 py-4 font-semibold text-white transition hover:bg-[var(--accent-strong)]"
+                  onClick={openProjectPicker}
+                  ref={chooseProjectButtonRef}
+                  type="button"
+                >
+                  Choose project folder
+                </button>
+                <button
+                  className="rounded-full border border-[var(--line)] px-6 py-4 font-semibold"
+                  onClick={selectSampleMode}
+                  type="button"
+                >
+                  Use sample project
+                </button>
+              </div>
+              <p
+                className="mt-4 text-sm leading-6 text-[var(--muted)]"
+                id="folder-picker-help"
+              >
+                Workprint does not upload, persist, or display file contents.
+              </p>
+            </div>
+            <p aria-live="polite" className="sr-only" role="status">
+              {projectStatusMessage}
             </p>
           </div>
           <section className="mt-10 rounded-[28px] bg-[var(--surface-soft)] p-6 sm:p-8">
             <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-              <div>
+              <div ref={projectSummaryRef} tabIndex={-1}>
                 <h2 className="text-2xl font-semibold tracking-[-0.03em]">
-                  Added places
+                  {localProject ? localProject.folderName : "Sample project places"}
                 </h2>
                 <p className="mt-2 text-sm text-[var(--muted)]">
-                  {readyCount} sample places are readable. One item shows a
-                  recovery state.
+                  {localProject
+                    ? `${localProject.fileCount} ${localProject.fileCount === 1 ? "file" : "files"} visible to the browser. ${readyCount} source categories found.`
+                    : `${readyCount} sample places are readable. One item shows a recovery state.`}
                 </p>
               </div>
               <p className="max-w-sm text-sm leading-6 text-[var(--muted)]">
-                Ready means readable evidence, not a complete project history.
+                {selectionMode === "local"
+                  ? "Found means recognized by local metadata, not analyzed."
+                  : "Found means readable sample evidence, not a complete project history."}
               </p>
             </div>
-            <SourceStatusList sources={projectSources} />
+            <SourceStatusList sources={visibleSources} />
+            {localProject ? (
+              <div className="mt-6 flex flex-wrap gap-3">
+                <button
+                  className="rounded-full border border-[var(--line)] px-5 py-3 text-sm font-semibold"
+                  onClick={openProjectPicker}
+                  type="button"
+                >
+                  Replace project
+                </button>
+                <button
+                  className="rounded-full border border-[var(--line)] px-5 py-3 text-sm font-semibold text-[var(--muted)]"
+                  onClick={removeLocalProject}
+                  type="button"
+                >
+                  Remove project
+                </button>
+              </div>
+            ) : null}
           </section>
           <details className="mt-6 max-w-3xl text-sm leading-6 text-[var(--muted)]">
             <summary className="cursor-pointer font-semibold text-[var(--foreground)]">
@@ -415,4 +610,79 @@ export function WorkprintApp() {
       />
     </>
   );
+}
+
+async function getDroppedProjectFiles(dataTransfer: DataTransfer) {
+  const entries = Array.from(dataTransfer.items)
+    .map(getEntryFromDataTransferItem)
+    .filter((entry): entry is BrowserFileSystemEntry => entry !== null);
+
+  if (entries.length === 0) {
+    return Array.from(dataTransfer.files).map((file) => ({
+      name: file.name,
+      path: file.webkitRelativePath || file.name,
+    }));
+  }
+
+  const entryFiles = await Promise.all(
+    entries.map((entry) => readEntryMetadata(entry)),
+  );
+
+  return entryFiles.flat();
+}
+
+function getEntryFromDataTransferItem(
+  item: DataTransferItem,
+): BrowserFileSystemEntry | null {
+  const itemWithEntry = item as unknown as DataTransferItemWithEntry;
+  return itemWithEntry.webkitGetAsEntry?.() ?? null;
+}
+
+async function readEntryMetadata(
+  entry: BrowserFileSystemEntry,
+  parentPath = "",
+): Promise<LocalProjectFile[]> {
+  const entryPath = `${parentPath}${entry.name}`;
+
+  if (entry.isFile) {
+    return new Promise((resolve) => {
+      (entry as BrowserFileSystemFileEntry).file(
+        (file) => resolve([{ name: file.name, path: entryPath }]),
+        () => resolve([]),
+      );
+    });
+  }
+
+  if (!entry.isDirectory) {
+    return [];
+  }
+
+  const directoryEntry = entry as BrowserFileSystemDirectoryEntry;
+  const reader = directoryEntry.createReader();
+  const childEntries = await readAllDirectoryEntries(reader);
+  const childFiles = await Promise.all(
+    childEntries.map((childEntry) =>
+      readEntryMetadata(childEntry, `${entryPath}/`),
+    ),
+  );
+
+  return childFiles.flat();
+}
+
+async function readAllDirectoryEntries(
+  reader: ReturnType<BrowserFileSystemDirectoryEntry["createReader"]>,
+) {
+  const entries: BrowserFileSystemEntry[] = [];
+
+  while (true) {
+    const batch = await new Promise<BrowserFileSystemEntry[]>((resolve) => {
+      reader.readEntries(resolve, () => resolve([]));
+    });
+
+    if (batch.length === 0) {
+      return entries;
+    }
+
+    entries.push(...batch);
+  }
 }

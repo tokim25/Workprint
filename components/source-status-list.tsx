@@ -5,9 +5,9 @@ type SourceStatusListProps = {
 };
 
 const statusLabels: Record<SourceStatus, string> = {
-  ready: "Ready",
+  ready: "Found",
   limited: "Limited",
-  unsupported: "Needs action",
+  unsupported: "Not available",
 };
 
 const statusStyles: Record<SourceStatus, string> = {
@@ -40,6 +40,11 @@ export function SourceStatusList({ sources }: SourceStatusListProps) {
               {statusLabels[source.status]}
             </span>
           </summary>
+          {typeof source.count === "number" && source.countLabel ? (
+            <p className="mt-3 text-sm font-semibold text-[var(--foreground)]">
+              {source.count} {source.countLabel}
+            </p>
+          ) : null}
           <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--muted)]">
             {source.note}
           </p>

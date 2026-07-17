@@ -6,6 +6,8 @@ export type ProjectSource = {
   description: string;
   status: SourceStatus;
   note: string;
+  count?: number;
+  countLabel?: string;
 };
 
 export type EvidenceItem = {
