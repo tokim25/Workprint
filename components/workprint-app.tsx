@@ -6,6 +6,13 @@ import { ConfidenceIndicator } from "@/components/confidence-indicator";
 import { EvidenceDrawer } from "@/components/evidence-drawer";
 import { SourceStatusList } from "@/components/source-status-list";
 import {
+  formatDate,
+  gitDiscoveryClaim,
+  gitDiscoverySupport,
+  type GitSummary,
+  type GitSummaryResponse,
+} from "@/lib/git-summary";
+import {
   summarizeLocalProject,
   type LocalProjectFile,
   type LocalProjectSummary,
@@ -53,6 +60,10 @@ export function WorkprintApp() {
   const [localProject, setLocalProject] = useState<LocalProjectSummary | null>(null);
   const [projectStatusMessage, setProjectStatusMessage] = useState("");
   const [dragActive, setDragActive] = useState(false);
+  const [repositoryPath, setRepositoryPath] = useState("");
+  const [gitSummary, setGitSummary] = useState<GitSummary | null>(null);
+  const [gitSummaryError, setGitSummaryError] = useState("");
+  const [gitSummaryLoading, setGitSummaryLoading] = useState(false);
   const startHeadingRef = useRef<HTMLHeadingElement>(null);
   const sourcesHeadingRef = useRef<HTMLHeadingElement>(null);
   const investigatingHeadingRef = useRef<HTMLHeadingElement>(null);
@@ -64,6 +75,14 @@ export function WorkprintApp() {
   const progressTimersRef = useRef<number[]>([]);
 
   const visibleSources = localProject?.sources ?? projectSources;
+  const activeClaim = gitSummary ? gitDiscoveryClaim(gitSummary) : insight.claim;
+  const activeSupport = gitSummary ? gitDiscoverySupport(gitSummary) : insight.support;
+  const activeUnknown = gitSummary
+    ? gitSummary.limitations.join(" ")
+    : insight.unknown;
+  const activeEvidence = gitSummary
+    ? gitEvidenceItems(gitSummary)
+    : evidenceItems;
   const readyCount = useMemo(
     () => visibleSources.filter((source) => source.status !== "unsupported").length,
     [visibleSources],
@@ -135,6 +154,9 @@ export function WorkprintApp() {
   function selectSampleMode() {
     setSelectionMode("sample");
     setLocalProject(null);
+    setGitSummary(null);
+    setGitSummaryError("");
+    setRepositoryPath("");
     setProjectStatusMessage("Showing sample project places.");
     window.requestAnimationFrame(() => {
       chooseProjectButtonRef.current?.focus();
@@ -144,6 +166,9 @@ export function WorkprintApp() {
   function removeLocalProject() {
     setLocalProject(null);
     setSelectionMode("sample");
+    setGitSummary(null);
+    setGitSummaryError("");
+    setRepositoryPath("");
     setProjectStatusMessage("Removed the selected project. Sample project places are shown.");
     if (projectInputRef.current) {
       projectInputRef.current.value = "";
@@ -162,6 +187,8 @@ export function WorkprintApp() {
     const summary = summarizeLocalProject(files, fallbackFolderName);
     setLocalProject(summary);
     setSelectionMode("local");
+    setGitSummary(null);
+    setGitSummaryError("");
     setProjectStatusMessage(
       `Found ${summary.fileCount} ${summary.fileCount === 1 ? "file" : "files"} in ${summary.folderName}.`,
     );
@@ -202,6 +229,44 @@ export function WorkprintApp() {
         .find(Boolean) ?? "Dropped project";
 
     applyLocalFiles(droppedFiles, fallbackFolderName);
+  }
+
+  async function readGitSummary() {
+    setGitSummaryLoading(true);
+    setGitSummaryError("");
+    setGitSummary(null);
+
+    try {
+      const response = await fetch("/api/git-summary", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          repositoryPath,
+          commitLimit: 5,
+        }),
+      });
+      const payload = (await response.json()) as GitSummaryResponse;
+
+      if (!response.ok || !payload.ok) {
+        setGitSummaryError(
+          payload.ok
+            ? "Workprint could not read Git metadata for this repository."
+            : payload.error.message,
+        );
+        return;
+      }
+
+      setGitSummary(payload);
+      setProjectStatusMessage(
+        `Git records ${payload.summary.total_commit_count} ${payload.summary.total_commit_count === 1 ? "commit" : "commits"}.`,
+      );
+    } catch {
+      setGitSummaryError("Workprint could not reach the local Git summary route.");
+    } finally {
+      setGitSummaryLoading(false);
+    }
   }
 
   function closeDrawer() {
@@ -431,6 +496,65 @@ export function WorkprintApp() {
               the captured conversation.
             </p>
           </details>
+          <section
+            aria-labelledby="git-history-heading"
+            className="mt-8 max-w-3xl rounded-[24px] bg-[var(--surface-soft)] p-6"
+          >
+            <h2
+              className="text-xl font-semibold tracking-[-0.02em]"
+              id="git-history-heading"
+            >
+              Git history
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
+              Choosing a browser folder does not grant Git-history access.
+              This local connection works only while Workprint is running on
+              your computer.
+            </p>
+            <label
+              className="mt-5 block text-sm font-semibold"
+              htmlFor="repository-path"
+            >
+              Local repository path
+            </label>
+            <input
+              className="mt-2 w-full rounded-full border border-[var(--line)] bg-[var(--surface)] px-5 py-3 text-sm"
+              id="repository-path"
+              onChange={(event) => setRepositoryPath(event.target.value)}
+              placeholder="/Users/you/path/to/project"
+              type="text"
+              value={repositoryPath}
+            />
+            <div className="mt-4 flex flex-wrap gap-3">
+              <button
+                className="rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)]"
+                disabled={gitSummaryLoading || !repositoryPath.trim()}
+                onClick={readGitSummary}
+                type="button"
+              >
+                {gitSummaryLoading ? "Reading Git metadata" : "Read Git metadata"}
+              </button>
+            </div>
+            {gitSummaryError ? (
+              <p className="mt-4 rounded-2xl bg-[var(--danger-soft)] p-4 text-sm leading-6 text-[var(--danger)]">
+                {gitSummaryError}
+              </p>
+            ) : null}
+            {gitSummary ? (
+              <div className="mt-4 rounded-2xl border border-[var(--line)] p-4 text-sm leading-6 text-[var(--muted)]">
+                <p className="font-semibold text-[var(--foreground)]">
+                  Found Git metadata for {gitSummary.repository.name}.
+                </p>
+                <p className="mt-2">
+                  Git records {gitSummary.summary.total_commit_count}{" "}
+                  {gitSummary.summary.total_commit_count === 1 ? "commit" : "commits"}.
+                  {gitSummary.repository.current_branch
+                    ? ` Current branch: ${gitSummary.repository.current_branch}.`
+                    : " Current branch not available."}
+                </p>
+              </div>
+            ) : null}
+          </section>
           <div className="mt-10 flex flex-wrap gap-3">
             <button
               className="rounded-full bg-[var(--accent)] px-6 py-4 font-semibold text-white transition hover:bg-[var(--accent-strong)]"
@@ -525,7 +649,7 @@ export function WorkprintApp() {
               ref={discoveriesHeadingRef}
               tabIndex={-1}
             >
-              {insight.claim}
+              {activeClaim}
             </h1>
             <div className="mt-8">
               <ConfidenceIndicator label={insight.confidence} />
@@ -535,15 +659,38 @@ export function WorkprintApp() {
                 Why Workprint believes this
               </h2>
               <p className="mt-4 text-lg leading-8 text-[var(--muted)]">
-                {insight.support}
+                {activeSupport}
               </p>
               <p className="mt-5 rounded-2xl bg-[var(--surface-soft)] p-4 text-sm leading-6 text-[var(--muted)]">
                 <strong className="text-[var(--foreground)]">
                   What Workprint cannot determine:
                 </strong>{" "}
-                {insight.unknown}
+                {activeUnknown}
               </p>
             </section>
+            {gitSummary ? (
+              <section className="mt-10 max-w-4xl border-t border-[var(--line)] pt-6">
+                <h2 className="text-2xl font-semibold tracking-[-0.03em]">
+                  Recent Git timeline
+                </h2>
+                <div className="mt-4 space-y-4">
+                  {gitSummary.recent_commits.map((commit) => (
+                    <article
+                      className="border-l-2 border-[var(--line)] pl-4 text-sm leading-6"
+                      key={commit.commit_sha}
+                    >
+                      <p className="font-semibold text-[var(--foreground)]">
+                        {commit.abbreviated_sha}: {commit.message}
+                      </p>
+                      <p className="text-[var(--muted)]">
+                        {formatDate(commit.committed_at)} · The commit author
+                        field contains &quot;{commit.author}&quot;.
+                      </p>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            ) : null}
             <div className="mt-8">
               <button
                 className="rounded-full border border-[var(--line)] px-6 py-4 font-semibold"
@@ -603,13 +750,41 @@ export function WorkprintApp() {
         </section>
       ) : null}
       </main>
-      <EvidenceDrawer
-        evidence={evidenceItems}
+          <EvidenceDrawer
+        evidence={activeEvidence}
         onClose={closeDrawer}
         open={drawerOpen}
       />
     </>
   );
+}
+
+function gitEvidenceItems(summary: GitSummary) {
+  if (summary.recent_commits.length === 0) {
+    return [
+      {
+        id: "git-empty",
+        source: "Git",
+        title: "Git repository has no recorded commits",
+        excerpt: `Repository: ${summary.repository.name}`,
+        supports:
+          "This supports the Git discovery because Workprint read local Git metadata and found zero commits.",
+        doesNotProve:
+          "It does not prove no work happened outside Git, and it does not determine authorship, effort, ownership, intent, or AI involvement.",
+      },
+    ];
+  }
+
+  return summary.recent_commits.map((commit) => ({
+    id: `git-${commit.commit_sha}`,
+    source: "Git",
+    title: `${commit.abbreviated_sha}: ${commit.message}`,
+    excerpt: `The commit author field contains "${commit.author}" and Git records timestamp ${commit.committed_at}.`,
+    supports:
+      `This supports the Git discovery because the repository records commit ${commit.commit_sha} with ${commit.file_change_count} changed ${commit.file_change_count === 1 ? "file" : "files"}.`,
+    doesNotProve:
+      "It does not prove verified identity, authorship, ownership, effort, contribution, intent, or human-versus-AI involvement.",
+  }));
 }
 
 async function getDroppedProjectFiles(dataTransfer: DataTransfer) {
