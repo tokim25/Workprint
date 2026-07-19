@@ -13,3 +13,6 @@ node_modules/
 .next/
 out/
 tsconfig.tsbuildinfo
+release/
+dist-backend/
+build-backend/

@@ -1,13 +1,20 @@
-import { realpath, stat } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { readFile, realpath, rm, stat } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { spawn } from "node:child_process";
 import { NextResponse } from "next/server";
+import { workprintPythonCommand } from "@/lib/workprint-python-command";
 
 const MAX_PATH_LENGTH = 4096;
-// Longer than git-summary/claude-local-summary's 8s: a full investigation
-// does more work (loads every selected source's evidence, not just a
-// bounded summary) and the result is a one-time download, not a value
-// read on every keystroke.
-const PROCESS_TIMEOUT_MS = 30000;
+// Longer than git-summary/claude-local-summary's timeout: a full
+// investigation does more work (loads every selected source's evidence,
+// not just a bounded summary) and the result is a one-time download, not
+// a value read on every keystroke. Also generous for the same bundled-
+// binary and first-run-Gatekeeper-scan reasons documented in
+// app/api/git-summary/route.ts -- a real 504 was observed at 30s against
+// a packaged build's very first invocation of a freshly built binary.
+const PROCESS_TIMEOUT_MS = 60000;
 
 type InvestigateRequest = {
   projectPath?: unknown;
@@ -125,28 +132,43 @@ async function canonicalProjectPath(
   }
 }
 
-function runWebInvestigate(
+async function runWebInvestigate(
   projectPath: string,
   include: string | null,
   projectName: string | null,
   includeDesktopChatDeepParse: boolean,
-) {
-  return new Promise<
+): Promise<
+  | { ok: true; payload: unknown }
+  | { ok: false; code: SafeErrorCode; message: string; status: number }
+> {
+  // A full investigation's payload can be several megabytes. Piping that
+  // much through a subprocess's stdout was observed to hang indefinitely
+  // (well past this route's own timeout) specifically when the parent
+  // Node process is itself a child of a GUI-launched Electron app with
+  // no real terminal attached -- a real difference measured between
+  // launching the packaged app from a terminal (~12s, succeeds) versus
+  // via `open`/Finder (hangs). Writing to a temp file sidesteps pipe
+  // buffering/backpressure entirely regardless of root cause; see
+  // web_investigate.py's --output-file flag.
+  const outputFile = join(tmpdir(), `workprint-investigate-${randomUUID()}.json`);
+
+  const investigateArgs = ["--project", projectPath, "--output-file", outputFile];
+  if (include) {
+    investigateArgs.push("--include", include);
+  }
+  if (projectName) {
+    investigateArgs.push("--project-name", projectName);
+  }
+  if (includeDesktopChatDeepParse) {
+    investigateArgs.push("--include-desktop-chat-deep-parse");
+  }
+  const { command, args } = workprintPythonCommand("web-investigate", investigateArgs);
+
+  const result = await new Promise<
     | { ok: true; payload: unknown }
     | { ok: false; code: SafeErrorCode; message: string; status: number }
   >((resolve) => {
-    const args = ["-m", "workprint.web_investigate", "--project", projectPath];
-    if (include) {
-      args.push("--include", include);
-    }
-    if (projectName) {
-      args.push("--project-name", projectName);
-    }
-    if (includeDesktopChatDeepParse) {
-      args.push("--include-desktop-chat-deep-parse");
-    }
-
-    const child = spawn(process.env.WORKPRINT_PYTHON ?? "python3", args, {
+    const child = spawn(command, args, {
       env: {
         ...process.env,
         PYTHONPATH: "src",
@@ -213,6 +235,25 @@ function runWebInvestigate(
       resolve({ ok: true, payload: parsed.payload });
     });
   });
+
+  if (!result.ok) {
+    await rm(outputFile, { force: true });
+    return result;
+  }
+
+  try {
+    const fileContents = await readFile(outputFile, "utf8");
+    return { ok: true, payload: JSON.parse(fileContents) };
+  } catch {
+    return {
+      ok: false,
+      code: "adapter_failed",
+      message: "Workprint could not generate a report for this project.",
+      status: 500,
+    };
+  } finally {
+    await rm(outputFile, { force: true });
+  }
 }
 
 function parsePythonPayload(stdout: string):

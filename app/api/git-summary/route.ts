@@ -1,11 +1,18 @@
 import { realpath, stat } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { NextResponse } from "next/server";
+import { workprintPythonCommand } from "@/lib/workprint-python-command";
 
 const MAX_PATH_LENGTH = 4096;
 const DEFAULT_COMMIT_LIMIT = 5;
 const MAX_COMMIT_LIMIT = 20;
-const PROCESS_TIMEOUT_MS = 8000;
+// Generous relative to dev mode's plain `python3 -m` invocation: the
+// packaged app's bundled PyInstaller binary (see
+// lib/workprint-python-command.ts) has its own per-invocation
+// self-extraction overhead, and an unsigned/unnotarized binary's very
+// first execution on a machine can also incur a one-time macOS
+// Gatekeeper scan -- both real costs a warm python3 process doesn't pay.
+const PROCESS_TIMEOUT_MS = 15000;
 
 type GitSummaryRequest = {
   repositoryPath?: unknown;
@@ -144,25 +151,20 @@ function runGitSummary(repositoryPath: string, commitLimit: number) {
     | { ok: true; payload: unknown }
     | { ok: false; code: SafeErrorCode; message: string; status: number }
   >((resolve) => {
-    const child = spawn(
-      process.env.WORKPRINT_PYTHON ?? "python3",
-      [
-        "-m",
-        "workprint.git_summary",
-        "--repository",
-        repositoryPath,
-        "--limit",
-        String(commitLimit),
-      ],
-      {
-        env: {
-          ...process.env,
-          PYTHONPATH: "src",
-        },
-        shell: false,
-        stdio: ["ignore", "pipe", "pipe"],
+    const { command, args } = workprintPythonCommand("git-summary", [
+      "--repository",
+      repositoryPath,
+      "--limit",
+      String(commitLimit),
+    ]);
+    const child = spawn(command, args, {
+      env: {
+        ...process.env,
+        PYTHONPATH: "src",
       },
-    );
+      shell: false,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
     let stdout = "";
     let settled = false;
     const timeout = setTimeout(() => {
