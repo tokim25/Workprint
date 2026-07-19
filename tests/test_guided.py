@@ -145,6 +145,53 @@ class GuidedInvestigationTests(unittest.TestCase):
         self.assertIn("(claude-code)", rendered)
         self.assertIn("Investigation complete.", rendered)
 
+    def test_claude_cowork_session_can_be_selected(self):
+        with tempfile.TemporaryDirectory() as directory, \
+                tempfile.TemporaryDirectory() as cowork_home:
+            project_root = str(Path(directory).resolve())
+            metadata_path = Path(cowork_home) / "local_abc123.json"
+            metadata_path.write_text(
+                json.dumps(
+                    {
+                        "sessionId": "cowork-session-1",
+                        "userSelectedFolders": [project_root],
+                        "model": "claude-sonnet-5",
+                        "sessionType": "scheduled",
+                        "isArchived": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            transcript_dir = (
+                Path(cowork_home) / "local_abc123" / ".claude" / "projects" / "-sandbox-slug"
+            )
+            transcript_dir.mkdir(parents=True)
+            record = {
+                "type": "user",
+                "uuid": "u1",
+                "timestamp": "2026-01-01T00:00:00.000Z",
+                "cwd": "/internal/sandbox/outputs",
+                "isSidechain": False,
+                "message": {"role": "user", "content": "hello"},
+            }
+            (transcript_dir / "cowork-session-1.jsonl").write_text(
+                json.dumps(record) + "\n", encoding="utf-8"
+            )
+            output = io.StringIO()
+            answers = iter(["", "", "Claude Cowork Project", "", "", "", ""])
+
+            with patch.dict(os.environ, {"WORKPRINT_COWORK_HOME": cowork_home}):
+                result = guided_workflow(
+                    input_func=lambda prompt: next(answers),
+                    output=output,
+                    cwd=directory,
+                )
+
+        self.assertIsNotNone(result)
+        rendered = output.getvalue()
+        self.assertIn("(claude-cowork)", rendered)
+        self.assertIn("Investigation complete.", rendered)
+
     def test_cancel_before_generation_leaves_outputs_uncreated(self):
         with tempfile.TemporaryDirectory() as directory:
             self._copy_fixture(

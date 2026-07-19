@@ -20,6 +20,7 @@ usable by people with limited coding knowledge.
 - [x] Figma adapter
 - [x] Git adapter
 - [x] Claude Code adapter
+- [x] Claude Cowork adapter
 - [x] Report visual design and shareability
 - [x] Executive Report v1
 - [x] Project Discovery
@@ -382,6 +383,51 @@ Limitations:
 - Raw content excerpts are not reachable from the CLI in this milestone.
 - No Next.js Discoveries UI surfacing; CLI and Python API only.
 
+## Completed Milestone: Claude Session Evidence (Tier 1b)
+
+Status: Complete
+
+Goal: Extend Claude session evidence to local Claude Cowork sessions,
+originally assumed (in the Tier 1a write-up) to require the same
+undocumented LevelDB/app-cache handling as Claude Desktop's chat cache.
+
+Implemented scope:
+
+- `ClaudeCoworkAdapter` (canonical source ID `claude-cowork`, label "Claude
+  Cowork") implementing the existing `EvidenceAdapter` contract.
+- Discovery that each Cowork session runs in its own sandboxed Claude Code
+  home directory and writes a transcript in the same JSONL shape the Claude
+  Code adapter reads — no new dependency needed, unlike what Tier 1a's
+  write-up assumed for all of Tier 1b.
+- Session-to-project matching via `userSelectedFolders` in the session's
+  metadata file (`local_<uuid>.json`), not the transcript's own `cwd`,
+  which points at an internal sandbox output path. An unmatched project
+  finds nothing rather than a wrong guess.
+- The same bounding, structural-by-default content, and sidechain flagging
+  as the Claude Code adapter, implemented independently rather than by
+  refactoring the already-shipped Claude Code adapter.
+- Session metadata (`model`, `session_type`, `is_archived`) is included as
+  evidence; `title` and `initialMessage`, which can contain real prompt
+  text, are never read.
+- A best-effort cross-platform default location
+  (`WORKPRINT_COWORK_HOME` env var to override), verified only on macOS.
+- Registered in the adapter registry and wired into `workprint discover`,
+  `workprint import`/`investigate`/`validate`, and the `workprint guide`
+  terminal wizard, following the Git and Claude Code adapters' pattern.
+- No changes to the investigation engine, extractor, or other adapters.
+- No new dependencies; the format is parsed with the standard library.
+
+Limitations:
+
+- Covers Cowork sessions only. Claude Desktop's own chat cache (as opposed
+  to Cowork) is not covered; it is stored in an undocumented internal
+  LevelDB format and is tracked separately as Tier 1c.
+- Windows and Linux default paths are unverified; only macOS has been
+  confirmed against a real installation.
+- Cowork's own `audit.jsonl` action log is not read.
+- Raw content excerpts are not reachable from the CLI in this milestone.
+- No Next.js Discoveries UI surfacing; CLI and Python API only.
+
 ## Active Milestone: Low-Code/No-Code User Experience
 
 Status: Ready for definition
@@ -399,16 +445,14 @@ Detailed requirements: To be defined.
 
    Detailed requirements: To be defined.
 
-2. Claude Session Evidence (Tier 1b): Desktop chat cache and Cowork local
-   cache
+2. Claude Session Evidence (Tier 1c): Claude Desktop chat cache
 
-   Goal: Extend Claude session evidence to the Claude Desktop app's chat
-   cache and Claude Cowork's local session cache, both of which require
-   parsing undocumented internal LevelDB/app-cache storage formats and a new
-   dependency.
+   Goal: Extend Claude session evidence to Claude Desktop's own chat cache
+   (as opposed to Cowork, covered in Tier 1b), which requires parsing an
+   undocumented internal LevelDB storage format and a new dependency.
 
-   Detailed requirements: To be defined after Tier 1a validates the adapter
-   pattern and the dependency decision is explicitly approved.
+   Detailed requirements: To be defined; requires an explicit dependency
+   decision before implementation begins.
 
 ## Product UX Direction
 

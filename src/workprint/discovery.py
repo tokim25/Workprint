@@ -110,6 +110,22 @@ def _claude_code_result(root: Path) -> DiscoveryResult | None:
     )
 
 
+def _claude_cowork_result(root: Path) -> DiscoveryResult | None:
+    try:
+        metadata = get_adapter("claude-cowork").discover(root)
+    except ValueError:
+        return None
+    if metadata is None:
+        return None
+    return DiscoveryResult(
+        source="claude-cowork",
+        label="Claude Cowork",
+        file_count=1,
+        detected_files=(".",),
+        metadata={"record_count": metadata.get("record_count", 0)},
+    )
+
+
 def discover_project(path: str | Path = ".") -> ProjectDiscovery:
     root = Path(path).expanduser().resolve()
     if not root.exists():
@@ -120,7 +136,7 @@ def discover_project(path: str | Path = ".") -> ProjectDiscovery:
     adapters = [
         get_adapter(adapter_id)
         for adapter_id in available_adapters()
-        if adapter_id not in {"git", "claude-code"}
+        if adapter_id not in {"git", "claude-code", "claude-cowork"}
     ]
     grouped: dict[str, dict[str, Any]] = {}
 
@@ -158,6 +174,9 @@ def discover_project(path: str | Path = ".") -> ProjectDiscovery:
     claude_code_result = _claude_code_result(root)
     if claude_code_result is not None:
         results_list.append(claude_code_result)
+    claude_cowork_result = _claude_cowork_result(root)
+    if claude_cowork_result is not None:
+        results_list.append(claude_cowork_result)
     results = tuple(sorted(results_list, key=lambda item: item.source))
 
     return ProjectDiscovery(
@@ -186,6 +205,7 @@ def render_discovery(discovery: ProjectDiscovery) -> str:
             "- ChatGPT",
             "- Claude",
             "- Claude Code",
+            "- Claude Cowork",
             "- Google Docs",
             "- Figma",
             "",
@@ -209,7 +229,7 @@ def _summary_line(result: DiscoveryResult) -> str:
         count = result.metadata.get("record_count", 0)
         noun = "conversation" if count == 1 else "conversations"
         return f"{count} {noun}"
-    if result.source == "claude-code":
+    if result.source in {"claude-code", "claude-cowork"}:
         count = result.metadata.get("record_count", 0)
         noun = "session" if count == 1 else "sessions"
         return f"{count} {noun}"

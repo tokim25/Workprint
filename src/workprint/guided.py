@@ -206,7 +206,7 @@ def evidence_files_from_discovery(
             if result.source == "git":
                 path = Path(result.metadata.get("repository_root") or root)
                 rendered_path = str(path)
-            elif result.source == "claude-code":
+            elif result.source in {"claude-code", "claude-cowork"}:
                 path = root
                 rendered_path = str(path)
             files.append(
@@ -402,7 +402,7 @@ def _render_selection_summary(
     for source, count in sorted(counts.items()):
         if source == "git":
             noun = "repository" if count == 1 else "repositories"
-        elif source == "claude-code":
+        elif source in {"claude-code", "claude-cowork"}:
             noun = "session bundle" if count == 1 else "session bundles"
         else:
             noun = "file" if count == 1 else "files"

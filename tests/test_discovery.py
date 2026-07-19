@@ -79,6 +79,19 @@ class DiscoveryTests(unittest.TestCase):
         self.assertEqual(result.detected_files, (".",))
         self.assertEqual(result.metadata["record_count"], 1)
 
+    def test_detects_claude_cowork_session(self):
+        with tempfile.TemporaryDirectory() as directory, \
+                tempfile.TemporaryDirectory() as cowork_home:
+            project_root = str(Path(directory).resolve())
+            self._write_claude_cowork_session(Path(cowork_home), project_root)
+            with patch.dict(os.environ, {"WORKPRINT_COWORK_HOME": cowork_home}):
+                discovery = discover_project(directory)
+
+        result = self._result(discovery, "claude-cowork")
+        self.assertEqual(result.label, "Claude Cowork")
+        self.assertEqual(result.detected_files, (".",))
+        self.assertEqual(result.metadata["record_count"], 1)
+
     def test_detects_google_docs_fixture(self):
         with tempfile.TemporaryDirectory() as directory:
             self._copy_fixture(
@@ -237,6 +250,37 @@ class DiscoveryTests(unittest.TestCase):
             "message": {"role": "user", "content": "hello"},
         }
         (session_dir / "session-1.jsonl").write_text(
+            json.dumps(record) + "\n", encoding="utf-8"
+        )
+
+    @staticmethod
+    def _write_claude_cowork_session(cowork_home: Path, project_root: str) -> None:
+        metadata_path = cowork_home / "local_abc123.json"
+        metadata_path.write_text(
+            json.dumps(
+                {
+                    "sessionId": "cowork-session-1",
+                    "userSelectedFolders": [project_root],
+                    "model": "claude-sonnet-5",
+                    "sessionType": "scheduled",
+                    "isArchived": False,
+                }
+            ),
+            encoding="utf-8",
+        )
+        transcript_dir = (
+            cowork_home / "local_abc123" / ".claude" / "projects" / "-sandbox-slug"
+        )
+        transcript_dir.mkdir(parents=True)
+        record = {
+            "type": "user",
+            "uuid": "u1",
+            "timestamp": "2026-01-01T00:00:00.000Z",
+            "cwd": "/internal/sandbox/outputs",
+            "isSidechain": False,
+            "message": {"role": "user", "content": "hello"},
+        }
+        (transcript_dir / "cowork-session-1.jsonl").write_text(
             json.dumps(record) + "\n", encoding="utf-8"
         )
 
