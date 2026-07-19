@@ -81,6 +81,17 @@ knowledge.
 See [docs/guided-investigation.md](docs/guided-investigation.md) for the
 guided workflow, selection syntax, output behavior, and limitations.
 
+## Active Capability — Claude Session Evidence Discoveries UI
+
+Status: Complete
+
+Goal: Surface local Claude Code, Cowork, and Desktop Chat evidence (Tiers
+1a-1c) in the Next.js Discoveries UI, following the existing `git-summary`
+bridge pattern and `project-file-evidence.tsx`'s review-before-read
+philosophy. Verified end-to-end against this repository's own real local
+evidence in a running dev server. See [PROJECT_PLAN.md](PROJECT_PLAN.md)
+for implemented scope and limitations.
+
 ## Active Capability — Low-Code/No-Code User Experience
 
 Status: Ready for definition
