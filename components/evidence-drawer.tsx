@@ -5,11 +5,17 @@ import type { EvidenceItem } from "@/lib/sample-data";
 
 type EvidenceDrawerProps = {
   evidence: EvidenceItem[];
+  isSample: boolean;
   open: boolean;
   onClose: () => void;
 };
 
-export function EvidenceDrawer({ evidence, open, onClose }: EvidenceDrawerProps) {
+export function EvidenceDrawer({
+  evidence,
+  isSample,
+  open,
+  onClose,
+}: EvidenceDrawerProps) {
   const drawerRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -113,11 +119,12 @@ export function EvidenceDrawer({ evidence, open, onClose }: EvidenceDrawerProps)
             <p
               className="mb-2 text-sm font-semibold uppercase tracking-[0.18em] text-[var(--accent)]"
             >
-              Sample evidence
+              {isSample ? "Sample evidence" : "Evidence"}
             </p>
             <p className="sr-only" id="evidence-description">
-              This drawer lists the sample evidence behind the first supported
-              insight and explains what the evidence does not prove.
+              {isSample
+                ? "This drawer lists the sample evidence behind the first supported insight and explains what the evidence does not prove."
+                : "This drawer lists the evidence Workprint read from your local project and explains what the evidence does not prove."}
             </p>
             <h2
               className="text-3xl font-semibold tracking-[-0.03em] text-[var(--foreground)]"
@@ -162,8 +169,9 @@ export function EvidenceDrawer({ evidence, open, onClose }: EvidenceDrawerProps)
             </article>
           ))}
           <p className="rounded-2xl border border-[var(--line)] p-4 text-sm leading-6 text-[var(--muted)]">
-            These examples are sample evidence for the prototype. They are not
-            generated from live uploads or project parsing.
+            {isSample
+              ? "These examples are sample evidence for the prototype. They are not generated from live uploads or project parsing."
+              : "This evidence was read from your local project on this machine. It is not uploaded or shared."}
           </p>
         </div>
       </div>

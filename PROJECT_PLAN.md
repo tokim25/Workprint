@@ -516,7 +516,70 @@ Limitations:
   through the CLI.
 - Windows and Linux default paths are unverified; only macOS has been
   confirmed against a real installation.
-- No Next.js Discoveries UI surfacing; CLI and Python API only.
+- No Next.js Discoveries UI surfacing at the time this milestone shipped;
+  see "Completed Milestone: Claude Session Evidence Discoveries UI" below
+  for the follow-on that added it.
+
+## Completed Milestone: Claude Session Evidence Discoveries UI
+
+Status: Complete
+
+Goal: Surface local Claude Code, Cowork, and Desktop Chat evidence (Tiers
+1a-1c) in the Next.js Discoveries UI, so this evidence is visible in the
+actual product rather than the Python CLI only.
+
+Implemented scope:
+
+- `src/workprint/claude_local_summary.py`: a bounded Python entry point
+  mirroring `git_summary.py`'s pattern, aggregating all three adapters'
+  `read()` output for one project path into session/turn counts,
+  human/assistant/sidechain breakdowns, and tool-use tallies. An empty or
+  "not found" result from any of the three sources is not an error, unlike
+  Git; most projects will not have used all three.
+- `app/api/claude-local-summary/route.ts`: mirrors `git-summary`'s
+  spawn/timeout/path-validation/error-code-allowlist discipline exactly.
+- `lib/claude-local-summary.ts`: TS types matching the Python JSON, plus
+  pure claim/support-sentence helpers, mirroring `lib/git-summary.ts`.
+- `components/claude-session-evidence.tsx`: discoveries-screen rendering
+  for all three sources, mirroring `GitTimeline`'s pattern.
+- Sources-screen wiring: the "Local repository path" input and its
+  section were renamed and reused as a single shared "Local project path"
+  input, since the browser's File System Access API (used for the
+  drag-and-drop folder picker) never exposes a real OS path and cannot see
+  the fixed OS-level locations these three adapters read from. A "Read
+  Claude sessions" button sits next to the existing "Read Git metadata"
+  button, both keyed off the same path.
+- Claude Desktop Chat's deep-parse trade-off is an inline, off-by-default
+  expandable disclosure and checkbox next to that button, not a separate
+  screen or wizard step, per `docs/web-experience-v0.md`'s explicit "no
+  standalone trust page" guidance. The disclosure text matches
+  `discovery.py`'s `_claude_desktop_chat_disclosure()` almost verbatim.
+- `evidence-drawer.tsx`'s header and footer copy, previously hardcoded to
+  "Sample evidence" even though Git and project-file evidence were already
+  real, now reflects whether the currently displayed evidence is sample
+  data or was actually read from the local project.
+- Verified end-to-end against this repository's own real local Claude
+  Code, Cowork, and Desktop Chat data in a running dev server, including
+  the deep-parse checkbox path with the optional dependency installed
+  (correctly reported "detailed reading found nothing readable this
+  time," consistent with the Tier 1c verification finding) and invalid-path
+  error handling.
+
+Limitations:
+
+- No per-session review/opt-out UI (unlike `project-file-evidence.tsx`'s
+  per-file exclusion checkboxes): Claude Code/Cowork/Desktop Chat reads are
+  already bounded and structural-by-default at the adapter level, so there
+  is one fetch action per source rather than a discover-then-review-then-
+  read flow.
+- The top-level "First supported insight" headline still only arbitrates
+  between Git and sample data; Claude session evidence appears as its own
+  section and in the evidence drawer, but does not compete to become the
+  headline claim. Changing that selection logic was treated as a separate,
+  more consequential product decision outside this milestone's scope.
+- No automated JS/TS tests exist for this UI in either the pre-existing
+  code or this milestone; verification was manual, end-to-end, against
+  real data in a running dev server.
 
 ## Active Milestone: Low-Code/No-Code User Experience
 

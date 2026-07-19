@@ -2,11 +2,20 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent, DragEvent, RefObject } from "react";
+import { ClaudeSessionEvidence } from "@/components/claude-session-evidence";
 import { ConfidenceIndicator } from "@/components/confidence-indicator";
 import { EvidenceDrawer } from "@/components/evidence-drawer";
 import { GitTimeline } from "@/components/git-timeline";
 import { ProjectFileEvidence } from "@/components/project-file-evidence";
 import { SourceStatusList } from "@/components/source-status-list";
+import {
+  claudeCodeDiscoveryClaim,
+  claudeCoworkDiscoveryClaim,
+  claudeDesktopChatDiscoveryClaim,
+  sessionDiscoverySupport,
+  type ClaudeLocalSummary,
+  type ClaudeLocalSummaryResponse,
+} from "@/lib/claude-local-summary";
 import {
   gitDiscoveryClaim,
   gitDiscoverySupport,
@@ -66,6 +75,11 @@ export function WorkprintApp() {
   const [gitSummary, setGitSummary] = useState<GitSummary | null>(null);
   const [gitSummaryError, setGitSummaryError] = useState("");
   const [gitSummaryLoading, setGitSummaryLoading] = useState(false);
+  const [claudeSummary, setClaudeSummary] = useState<ClaudeLocalSummary | null>(null);
+  const [claudeSummaryError, setClaudeSummaryError] = useState("");
+  const [claudeSummaryLoading, setClaudeSummaryLoading] = useState(false);
+  const [desktopChatDeepParseRequested, setDesktopChatDeepParseRequested] =
+    useState(false);
   const [projectFileFacts, setProjectFileFacts] = useState<ProjectFileEvidenceFact[]>([]);
   const [projectFileSession, setProjectFileSession] = useState(0);
   const startHeadingRef = useRef<HTMLHeadingElement>(null);
@@ -87,6 +101,7 @@ export function WorkprintApp() {
   const activeEvidence = [
     ...(gitSummary ? gitEvidenceItems(gitSummary) : evidenceItems),
     ...projectFileEvidenceItems(projectFileFacts),
+    ...(claudeSummary ? claudeSessionEvidenceItems(claudeSummary) : []),
   ];
   const readyCount = useMemo(
     () => visibleSources.filter((source) => source.status !== "unsupported").length,
@@ -164,6 +179,9 @@ export function WorkprintApp() {
     setRepositoryPath("");
     setProjectFileFacts([]);
     setProjectFileSession((current) => current + 1);
+    setClaudeSummary(null);
+    setClaudeSummaryError("");
+    setDesktopChatDeepParseRequested(false);
     setProjectStatusMessage("Showing sample project places.");
     window.requestAnimationFrame(() => {
       chooseProjectButtonRef.current?.focus();
@@ -178,6 +196,9 @@ export function WorkprintApp() {
     setRepositoryPath("");
     setProjectFileFacts([]);
     setProjectFileSession((current) => current + 1);
+    setClaudeSummary(null);
+    setClaudeSummaryError("");
+    setDesktopChatDeepParseRequested(false);
     setProjectStatusMessage("Removed the selected project. Sample project places are shown.");
     if (projectInputRef.current) {
       projectInputRef.current.value = "";
@@ -200,6 +221,9 @@ export function WorkprintApp() {
     setGitSummaryError("");
     setProjectFileFacts([]);
     setProjectFileSession((current) => current + 1);
+    setClaudeSummary(null);
+    setClaudeSummaryError("");
+    setDesktopChatDeepParseRequested(false);
     setProjectStatusMessage(
       `Found ${summary.fileCount} ${summary.fileCount === 1 ? "file" : "files"} in ${summary.folderName}.`,
     );
@@ -279,6 +303,48 @@ export function WorkprintApp() {
       setGitSummaryError("Workprint could not reach the local Git summary route.");
     } finally {
       setGitSummaryLoading(false);
+    }
+  }
+
+  async function readClaudeSummary() {
+    setClaudeSummaryLoading(true);
+    setClaudeSummaryError("");
+    setClaudeSummary(null);
+
+    try {
+      const response = await fetch("/api/claude-local-summary", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          projectPath: repositoryPath,
+          includeDesktopChatDeepParse: desktopChatDeepParseRequested,
+        }),
+      });
+      const payload = (await response.json()) as ClaudeLocalSummaryResponse;
+
+      if (!response.ok || !payload.ok) {
+        setClaudeSummaryError(
+          payload.ok
+            ? "Workprint could not read local Claude session evidence."
+            : payload.error.message,
+        );
+        return;
+      }
+
+      setClaudeSummary(payload);
+      const sessionCount =
+        payload.claude_code.session_count + payload.claude_cowork.session_count;
+      setProjectStatusMessage(
+        `Found ${sessionCount} local Claude ${sessionCount === 1 ? "session" : "sessions"}.`,
+      );
+    } catch {
+      setClaudeSummaryError(
+        "Workprint could not reach the local Claude session summary route.",
+      );
+    } finally {
+      setClaudeSummaryLoading(false);
     }
   }
 
@@ -517,25 +583,26 @@ export function WorkprintApp() {
             </p>
           </details>
           <section
-            aria-labelledby="git-history-heading"
+            aria-labelledby="local-history-heading"
             className="mt-8 max-w-3xl rounded-[24px] bg-[var(--surface-soft)] p-6"
           >
             <h2
               className="text-xl font-semibold tracking-[-0.02em]"
-              id="git-history-heading"
+              id="local-history-heading"
             >
-              Git history
+              Local project path
             </h2>
             <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
-              Choosing a browser folder does not grant Git-history access.
-              This local connection works only while Workprint is running on
-              your computer.
+              Choosing a browser folder above does not grant this access.
+              Reading Git history or local Claude sessions works only while
+              Workprint is running on your computer, using the path you type
+              below.
             </p>
             <label
               className="mt-5 block text-sm font-semibold"
               htmlFor="repository-path"
             >
-              Local repository path
+              Local project path
             </label>
             <input
               className="mt-2 w-full rounded-full border border-[var(--line)] bg-[var(--surface)] px-5 py-3 text-sm"
@@ -554,6 +621,16 @@ export function WorkprintApp() {
               >
                 {gitSummaryLoading ? "Reading Git metadata" : "Read Git metadata"}
               </button>
+              <button
+                className="rounded-full border border-[var(--line)] px-5 py-3 text-sm font-semibold"
+                disabled={claudeSummaryLoading || !repositoryPath.trim()}
+                onClick={readClaudeSummary}
+                type="button"
+              >
+                {claudeSummaryLoading
+                  ? "Reading Claude sessions"
+                  : "Read Claude sessions"}
+              </button>
             </div>
             {gitSummaryError ? (
               <p className="mt-4 rounded-2xl bg-[var(--danger-soft)] p-4 text-sm leading-6 text-[var(--danger)]">
@@ -571,6 +648,69 @@ export function WorkprintApp() {
                   {gitSummary.repository.current_branch
                     ? ` Current branch: ${gitSummary.repository.current_branch}.`
                     : " Current branch not available."}
+                </p>
+              </div>
+            ) : null}
+            <details className="mt-5 rounded-2xl border border-[var(--line)] p-4 text-sm leading-6 text-[var(--muted)]">
+              <summary className="cursor-pointer font-semibold text-[var(--foreground)]">
+                Claude Desktop chat: read in more detail? (experimental)
+              </summary>
+              <div className="mt-3 space-y-2">
+                <p>
+                  Workprint can optionally read your local Claude Desktop
+                  chat cache in more detail using an experimental, opt-in
+                  parser. Before turning it on, it helps to know the
+                  trade-off:
+                </p>
+                <p>
+                  <strong className="text-[var(--foreground)]">
+                    Without it:
+                  </strong>{" "}
+                  Workprint only notes that the cache exists and when it last
+                  changed. No conversation content is read.
+                </p>
+                <p>
+                  <strong className="text-[var(--foreground)]">
+                    With it:
+                  </strong>{" "}
+                  Workprint attempts to extract real chat turns, but this
+                  evidence is account-wide, not specific to this project,
+                  because claude.ai chat has no concept of a project folder.
+                </p>
+                <p>
+                  <strong className="text-[var(--foreground)]">
+                    Either way:
+                  </strong>{" "}
+                  this stays entirely on your machine. Nothing is uploaded.
+                </p>
+              </div>
+              <label className="mt-4 flex items-center gap-2 text-sm font-semibold text-[var(--foreground)]">
+                <input
+                  checked={desktopChatDeepParseRequested}
+                  onChange={(event) =>
+                    setDesktopChatDeepParseRequested(event.target.checked)
+                  }
+                  type="checkbox"
+                />
+                Enable detailed reading for the next &ldquo;Read Claude
+                sessions&rdquo;
+              </label>
+            </details>
+            {claudeSummaryError ? (
+              <p className="mt-4 rounded-2xl bg-[var(--danger-soft)] p-4 text-sm leading-6 text-[var(--danger)]">
+                {claudeSummaryError}
+              </p>
+            ) : null}
+            {claudeSummary ? (
+              <div className="mt-4 space-y-2 rounded-2xl border border-[var(--line)] p-4 text-sm leading-6 text-[var(--muted)]">
+                <p className="font-semibold text-[var(--foreground)]">
+                  {claudeCodeDiscoveryClaim(claudeSummary.claude_code)}
+                </p>
+                <p className="font-semibold text-[var(--foreground)]">
+                  {claudeCoworkDiscoveryClaim(claudeSummary.claude_cowork)}
+                </p>
+                <p className="font-semibold text-[var(--foreground)]">
+                  {claudeDesktopChatDiscoveryClaim(claudeSummary.claude_desktop_chat)}
                 </p>
               </div>
             ) : null}
@@ -730,6 +870,9 @@ export function WorkprintApp() {
               </section>
             ) : null}
             {gitSummary ? <GitTimeline summary={gitSummary} /> : null}
+            {claudeSummary ? (
+              <ClaudeSessionEvidence summary={claudeSummary} />
+            ) : null}
             <div className="mt-8">
               <button
                 className="rounded-full border border-[var(--line)] px-6 py-4 font-semibold"
@@ -791,6 +934,7 @@ export function WorkprintApp() {
       </main>
           <EvidenceDrawer
         evidence={activeEvidence}
+        isSample={!gitSummary && !claudeSummary && projectFileFacts.length === 0}
         onClose={closeDrawer}
         open={drawerOpen}
       />
@@ -837,6 +981,62 @@ function projectFileEvidenceItems(facts: ProjectFileEvidenceFact[]) {
     doesNotProve:
       "It does not prove authorship, effort, ownership, importance, correctness, originality, completeness, intent, or AI involvement.",
   }));
+}
+
+function claudeSessionEvidenceItems(summary: ClaudeLocalSummary) {
+  const items: {
+    id: string;
+    source: string;
+    title: string;
+    excerpt: string;
+    supports: string;
+    doesNotProve: string;
+  }[] = [];
+
+  if (summary.claude_code.turn_count > 0) {
+    items.push({
+      id: "claude-code",
+      source: "Claude Code",
+      title: claudeCodeDiscoveryClaim(summary.claude_code),
+      excerpt: sessionDiscoverySupport(summary.claude_code),
+      supports:
+        `This supports the Claude Code discovery because Workprint read ${summary.claude_code.session_count} local ${summary.claude_code.session_count === 1 ? "session" : "sessions"} and recorded ${summary.claude_code.turn_count} structural turns.`,
+      doesNotProve:
+        "It does not prove effort, ownership, value, contribution, or the content of any conversation.",
+    });
+  }
+
+  if (summary.claude_cowork.turn_count > 0) {
+    items.push({
+      id: "claude-cowork",
+      source: "Claude Cowork",
+      title: claudeCoworkDiscoveryClaim(summary.claude_cowork),
+      excerpt: sessionDiscoverySupport(summary.claude_cowork),
+      supports:
+        `This supports the Claude Cowork discovery because Workprint read ${summary.claude_cowork.session_count} local ${summary.claude_cowork.session_count === 1 ? "session" : "sessions"} and recorded ${summary.claude_cowork.turn_count} structural turns.`,
+      doesNotProve:
+        "It does not prove effort, ownership, value, contribution, or the content of any conversation.",
+    });
+  }
+
+  if (summary.claude_desktop_chat.cache_detected) {
+    items.push({
+      id: "claude-desktop-chat",
+      source: "Claude Desktop Chat",
+      title: claudeDesktopChatDiscoveryClaim(summary.claude_desktop_chat),
+      excerpt:
+        summary.claude_desktop_chat.deep_parse_found_turns &&
+        summary.claude_desktop_chat.turns
+          ? sessionDiscoverySupport(summary.claude_desktop_chat.turns)
+          : "Presence-only: no conversation content was read.",
+      supports:
+        "This supports that a local Claude Desktop chat cache exists on this machine.",
+      doesNotProve:
+        "It does not prove this evidence relates to this specific project, since claude.ai chat has no project-folder concept, and it does not prove effort, ownership, value, or contribution.",
+    });
+  }
+
+  return items;
 }
 
 async function getDroppedProjectFiles(dataTransfer: DataTransfer) {
