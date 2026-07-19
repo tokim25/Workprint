@@ -1,0 +1,18 @@
+2026/07/19-10:29:15.450 2589 Creating DB /Users/tonykim/Library/Application Support/Google/Chrome/Default/IndexedDB/https_example.com_0.indexeddb.leveldb since it was missing.
+2026/07/19-10:29:15.452 2589 Reusing MANIFEST /Users/tonykim/Library/Application Support/Google/Chrome/Default/IndexedDB/https_example.com_0.indexeddb.leveldb/MANIFEST-000001
+2026/07/19-10:30:18.677 2589 Level-0 table #5: started
+2026/07/19-10:30:18.678 2589 Level-0 table #5: 1554 bytes OK
+2026/07/19-10:30:18.679 2589 Delete type=0 #3
+2026/07/19-10:30:18.679 2589 Manual compaction at level-0 from '\x00\x01\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x02\x00\x00\x00' @ 0 : 0; will stop at (end)
+2026/07/19-10:30:20.683 258a Level-0 table #7: started
+2026/07/19-10:30:20.684 258a Level-0 table #7: 249 bytes OK
+2026/07/19-10:30:20.686 258a Delete type=0 #4
+2026/07/19-10:30:20.687 258a Manual compaction at level-0 from (begin) .. (end); will stop at (end)
+2026/07/19-10:30:20.687 258a Manual compaction at level-1 from (begin) .. (end); will stop at '\x00\x00\x00\x002\x02\x02\x01\x00\x00\x00\x00\x00\x00\x00\x00' @ 80 : 0
+2026/07/19-10:30:20.687 258a Compacting 1@1 + 1@2 files
+2026/07/19-10:30:20.688 258a Generated table #8@1: 6 keys, 268 bytes
+2026/07/19-10:30:20.688 258a Compacted 1@1 + 1@2 files => 268 bytes
+2026/07/19-10:30:20.689 258a compacted to: files[ 0 0 1 0 0 0 0 ]
+2026/07/19-10:30:20.690 258a Delete type=2 #7
+2026/07/19-10:30:20.690 258a Delete type=2 #5
+2026/07/19-10:30:20.690 258a Manual compaction at level-1 from '\x00\x00\x00\x002\x02\x02\x01\x00\x00\x00\x00\x00\x00\x00\x00' @ 80 : 0 .. (end); will stop at (end)

@@ -103,20 +103,32 @@ Confirmed against a real local installation:
   are real and must be skipped without aborting the scan; this was not a
   hypothetical concern; it happened on the first real record encountered
   during verification.
+- The heuristic turn-scanning logic (`_as_candidate_turn`,
+  `_walk_candidate_turns`) correctly finds and classifies turn-shaped
+  records once a readable value is available. This was confirmed not
+  against hand-crafted bytes, but against a database written by an actual
+  Chrome browser through the real `indexedDB.open()`/`put()` APIs — so the
+  on-disk encoding is genuinely Chromium's, not a guess at what it might
+  look like. That fixture is committed at
+  `fixtures/claude-desktop-chat/synthetic-keyval-store.indexeddb.leveldb`
+  (containing only synthetic text written for this test, not real user
+  data) and exercised by
+  `test_deep_parse_against_genuine_chromium_encoded_fixture` whenever the
+  optional dependency is installed.
 
 Not yet confirmed:
 
-- Whether `keyval-store`'s `keyval` object store reliably holds recoverable
-  conversation content. Across several dogfood runs against the live
-  database (Claude Desktop actively running throughout, not a copy), one
-  run's full `workprint discover` pipeline did report finding one
-  candidate turn, confirming the code path executes successfully
-  end-to-end when a readable record exists. It could not be reproduced for
-  closer inspection: three immediately following runs found nothing
-  readable. This is consistent with reading a database the running app is
-  actively writing to, not necessarily a defect, but it means the
-  heuristic turn-scanning logic (`_walk_candidate_turns`) has been
-  exercised against real data only inconsistently, not confirmed reliable.
+- Whether claude.ai's own real `keyval-store` value, on a given machine at
+  a given time, is actually readable and actually contains the
+  conversation-shaped structure the heuristic looks for. What's confirmed
+  above is that the *code* correctly finds and classifies that shape when
+  it is present and readable — not that claude.ai's web client reliably
+  produces a readable value of that shape in practice. Across several
+  dogfood runs against the live real cache (Claude Desktop actively
+  running throughout, not a copy), one run's full `workprint discover`
+  pipeline did report finding one candidate turn; three immediately
+  following runs found nothing readable, consistent with reading a
+  database the running app is actively writing to.
 - Windows and Linux default paths, which follow the platform's usual
   Electron app-data convention but were not independently checked.
 

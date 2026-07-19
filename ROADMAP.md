@@ -122,11 +122,14 @@ Presence-only detection (does the cache exist, when was it last touched) is
 verified and on by default. An opt-in, explicitly experimental deep-parse
 mode scans a specific, verified database using a pinned optional
 dependency; a verification pass against real data caught and fixed two
-real bugs (a mismatched dependency and a database-enumeration assumption)
-but could not confirm the heuristic turn-scanning logic against readable
-content, since the one real record found had no recoverable value. Its
-evidence is account-wide, not specific to the project under investigation,
-since claude.ai chat has no folder concept to match against.
+real bugs (a mismatched dependency and a database-enumeration assumption),
+and a second pass confirmed the turn-classification heuristic itself
+against a real Chrome-written fixture, since the one live record found in
+the actual local cache during the first pass had no recoverable value.
+Whether claude.ai's real cache reliably produces a *readable* value in
+ordinary use is still open. Its evidence is account-wide, not specific to
+the project under investigation, since claude.ai chat has no folder
+concept to match against.
 
 See [docs/claude-desktop-chat-adapter.md](docs/claude-desktop-chat-adapter.md)
 and [PROJECT_PLAN.md](PROJECT_PLAN.md) for the full trade-off, privacy, and
