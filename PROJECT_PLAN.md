@@ -780,12 +780,15 @@ Implemented scope:
   `executive.py`'s "built from an `Investigation`, not part of the core
   evidence model" pattern) that reorganizes existing observations under
   the framework's four competencies. Delegation surfaces which evidence
-  sources were used (with counts); Diligence surfaces test-file changes
-  and AI-tool mentions in commit messages. Description and Discernment
-  are present in every report but explicitly marked as not yet
-  supported, rather than silently omitted -- Workprint does not yet
-  extract structural evidence for prompt-description quality or
-  correlate AI sessions with later revision commits.
+  sources were used (with counts). Description counts human-authored
+  turns per session, distinguishing single-turn from multi-turn
+  sessions, as a structural (not content-reading) signal. Discernment
+  checks whether a Git commit's timestamp falls within 72 hours after
+  an AI session's last recorded turn -- a timing correlation, not
+  confirmation that review happened. Diligence surfaces test-file
+  changes and AI-tool mentions in commit messages. Every competency
+  always renders alongside a scope note explaining exactly what its
+  signal does and does not check.
 - Wired into both report formats: `render_json_dict` (`ai_fluency` key)
   and `render_markdown` (a new "AI Fluency Evidence" section), and into
   the MCP server's bounded response (compact enough to include by
@@ -812,21 +815,30 @@ Implemented scope:
   trade-off and the condition that this must be revisited if Workprint
   ever becomes commercial.
 - Verified against real data: dogfooding against this repository's own
-  Git history caught and fixed a real false-positive bug (a bare
-  `spec/` directory -- this repo's own product-spec documents, not
-  tests -- was matching a too-loose test-file pattern) before it shipped,
-  with a regression test added for the exact case.
+  Git and Claude Code history caught and fixed two real bugs before
+  shipping, both with regression tests added. (1) A bare `spec/`
+  directory -- this repo's own product-spec documents, not tests -- was
+  matching a too-loose test-file pattern. (2) `AI_SOURCE_LABELS` was
+  keyed on the hyphenated adapter id (`"claude-code"`, used for CLI
+  `--include` selection) instead of `Observation.source`'s actual value
+  (each adapter's `source_name`, e.g. `"Claude Code"`) -- a different
+  string for the same adapter. This silently broke Delegation's
+  "no AI source" check (it fired even with thousands of real Claude
+  Code observations present) and made Description and Discernment
+  produce zero real evidence, while unit tests passed throughout,
+  because the test fixtures made the identical wrong assumption. Fixed
+  by keying on the real source strings and adding a test that imports
+  the adapter classes directly and asserts the labels match, so a
+  future rename is caught immediately rather than silently.
 
 Limitations:
 
-- Description and Discernment have no structural evidence yet (see
-  above); the worksheet still includes them so the four competencies are
-  always presented together, with an honest "not yet supported" note
-  instead of evidence.
-- Diligence's signals (test-file changes, commit-message AI mentions) are
-  narrow and heuristic; their absence does not prove verification or
-  disclosure did not happen, only that these two specific traces were not
-  found in Git history.
+- Diligence's signals (test-file changes, commit-message AI mentions)
+  and Discernment's timing correlation are narrow and heuristic; their
+  absence does not prove verification, disclosure, or review did not
+  happen, only that these specific traces were not found. Description's
+  turn-count signal does not evaluate whether a prompt was well
+  described, only whether a session had more than one human turn.
 - No automated JS/TS test exists for the new "Download Playbook
   Worksheet" button, matching the pre-existing state of this codebase's
   frontend test coverage; verification was manual and end-to-end
