@@ -31,6 +31,7 @@ usable by people with limited coding knowledge.
 - [x] Multi-source investigations
 - [x] Exact, source-aware duplicate suppression
 - [x] Executive Report copy-quality audit integration
+- [x] AI Fluency Evidence & Playbook Worksheet
 
 ## Completed Milestone: Timeline Report
 
@@ -708,12 +709,21 @@ Limitations:
   production build path (`electron:dev` always spawns a development
   server, not a pre-built standalone bundle). See `docs/desktop-app.md`
   for the itemized remaining work.
-- The Electron native-dialog UX could not be fully self-verified: native
-  desktop windows are outside the tooling available for automated
-  browser-based verification in this environment. The process launch,
-  IPC wiring, and `dialog.showOpenDialog` call were verified by code
-  review and a healthy process tree; a human click-test was requested but
-  its outcome is not independently confirmed here.
+- The Electron native-dialog UX has since been manually confirmed working
+  by the project owner in a real running Electron window (the native
+  macOS "Open" folder dialog, not the browser's file-input picker),
+  including a fix for a real bug this surfaced: the dock icon initially
+  showed the generic Electron icon and the label "Electron" instead of
+  Workprint, because `BrowserWindow`'s `icon` option only sets the
+  title-bar icon on Windows/Linux -- the macOS Dock icon needs a
+  separate `app.dock.setIcon()` call, added in the brand-identity work.
+  The "Electron" text label itself is expected to persist until real
+  packaging (see Distribution below) bakes a `productName` into an
+  actual `.app` bundle.
+- Two folder-picker-looking buttons with near-identical labels made the
+  native connection easy to miss below the fold; fixed by reordering (in
+  Electron) so it renders first, and renaming both buttons to be
+  distinct ("Add files for evidence" vs "Connect Project Folder").
 - No custom in-app folder-browser fallback for plain-browser/dev-mode use
   (the deliberately deferred second half of the "native dialog first"
   phased plan) -- that context still uses the manual text field.
@@ -726,6 +736,102 @@ Limitations:
   report-generation UI, matching the pre-existing state of this
   codebase's frontend test coverage; verification was manual and
   end-to-end against real data in a running dev server.
+
+## Completed Milestone: Brand Identity
+
+Status: Complete
+
+Goal: Replace the plain-text "Workprint" wordmark with the project's real
+visual identity across every surface that previously had none.
+
+Implemented scope:
+
+- Real Workprint SVG assets (icon mark, monochrome/reversed variants, and
+  a teal app-icon square) provided as source files and wired into the
+  shared header (`components/workprint-app.tsx`, via `next/image`), the
+  browser favicon and Apple touch icon (`app/icon.svg`, `app/apple-icon.png`,
+  picked up automatically by Next.js's file-based metadata convention,
+  rasterized with `sharp`), and the Electron dock/window icon
+  (`electron/icon.png`, wired via `app.dock.setIcon()` on macOS since
+  `BrowserWindow`'s `icon` option alone does not reach the Dock when
+  running unpackaged).
+- All four provided SVG variants are committed to `public/brand/` for
+  future reuse even though only one is wired into the UI today.
+
+Limitations:
+
+- No production app-bundle icon (`.icns`) exists yet; that is part of the
+  still-open production-packaging gap (see the Low-Code/No-Code
+  milestone's Distribution limitation).
+
+## Completed Milestone: AI Fluency Evidence & Playbook Worksheet
+
+Status: Complete
+
+Goal: Help users reflect on how they are using AI, using evidence Workprint
+already gathers, organized under Anthropic's AI Fluency Framework
+(Delegation, Description, Discernment, Diligence) -- without Workprint
+scoring or rating anyone, matching "Decision Leadership Over Contribution
+Scoring" in `PRODUCT_PRINCIPLES.md`.
+
+Implemented scope:
+
+- `src/workprint/ai_fluency.py`: a new derived-report module (mirroring
+  `executive.py`'s "built from an `Investigation`, not part of the core
+  evidence model" pattern) that reorganizes existing observations under
+  the framework's four competencies. Delegation surfaces which evidence
+  sources were used (with counts); Diligence surfaces test-file changes
+  and AI-tool mentions in commit messages. Description and Discernment
+  are present in every report but explicitly marked as not yet
+  supported, rather than silently omitted -- Workprint does not yet
+  extract structural evidence for prompt-description quality or
+  correlate AI sessions with later revision commits.
+- Wired into both report formats: `render_json_dict` (`ai_fluency` key)
+  and `render_markdown` (a new "AI Fluency Evidence" section), and into
+  the MCP server's bounded response (compact enough to include by
+  default, alongside `executive_brief`).
+- **AI Collaboration Playbook Worksheet**: a separate downloadable
+  Markdown export (`build_playbook_worksheet_markdown`, surfaced as
+  `playbookMarkdown` from `web_investigate.py` and a new "Download
+  Playbook Worksheet" button in the discoveries screen) that lays the
+  same evidence out as a fill-in table per competency -- Workprint fills
+  in the "evidence found" column from real project history, and leaves
+  the reflection/action columns blank for the user, optionally to bring
+  into a Claude chat or Cowork session to fill in together, the same
+  workflow the project owner had already used manually before this
+  feature existed.
+- Every evidence item carries the same `statement` / `supports` /
+  `does_not_prove` boundary pattern used throughout the rest of
+  Workprint's reports.
+- Licensing: the framework and its terminology are CC BY-NC-SA 4.0
+  (non-commercial, attribution required to Prof. Rick Dakan and Prof.
+  Joseph Feller). Workprint uses the official terms directly with a
+  visible attribution line in every render; see
+  `docs/foundation/DECISION_LOG.md` ("AI Fluency Reporting Uses
+  Anthropic's Named Framework, With Attribution") for the full
+  trade-off and the condition that this must be revisited if Workprint
+  ever becomes commercial.
+- Verified against real data: dogfooding against this repository's own
+  Git history caught and fixed a real false-positive bug (a bare
+  `spec/` directory -- this repo's own product-spec documents, not
+  tests -- was matching a too-loose test-file pattern) before it shipped,
+  with a regression test added for the exact case.
+
+Limitations:
+
+- Description and Discernment have no structural evidence yet (see
+  above); the worksheet still includes them so the four competencies are
+  always presented together, with an honest "not yet supported" note
+  instead of evidence.
+- Diligence's signals (test-file changes, commit-message AI mentions) are
+  narrow and heuristic; their absence does not prove verification or
+  disclosure did not happen, only that these two specific traces were not
+  found in Git history.
+- No automated JS/TS test exists for the new "Download Playbook
+  Worksheet" button, matching the pre-existing state of this codebase's
+  frontend test coverage; verification was manual and end-to-end
+  (including a real fetch against the running dev server, not just a
+  static read of the button's presence).
 
 ## Upcoming Milestones
 

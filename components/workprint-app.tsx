@@ -43,6 +43,7 @@ type InvestigateResult = {
   sources: string[];
   markdown: string;
   json: unknown;
+  playbookMarkdown: string;
 };
 
 type InvestigateResponse =
@@ -436,13 +437,19 @@ export function WorkprintApp() {
     }
   }
 
-  function downloadReport(format: "markdown" | "json") {
+  function downloadReport(format: "markdown" | "json" | "playbook") {
     if (!investigateResult) {
       return;
     }
     const safeName = investigateResult.project.replace(/[^a-z0-9-]+/gi, "-").toLowerCase() || "report";
     if (format === "markdown") {
       downloadTextFile(`${safeName}.md`, investigateResult.markdown, "text/markdown");
+    } else if (format === "playbook") {
+      downloadTextFile(
+        `${safeName}-ai-fluency-playbook.md`,
+        investigateResult.playbookMarkdown,
+        "text/markdown",
+      );
     } else {
       downloadTextFile(
         `${safeName}.json`,
@@ -1092,6 +1099,24 @@ export function WorkprintApp() {
                   type="button"
                 >
                   Download as JSON
+                </button>
+              </div>
+              <div className="mt-6 rounded-[24px] border border-dashed border-[var(--line)] bg-[var(--surface-soft)] p-6">
+                <p className="text-lg font-semibold">AI Fluency Playbook Worksheet</p>
+                <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                  Organized under Anthropic&rsquo;s AI Fluency Framework
+                  (Delegation, Description, Discernment, Diligence). Workprint
+                  fills in real evidence from this project; you fill in the
+                  reflection and next-time columns yourself &mdash; or bring
+                  this into a Claude chat to think through it together.
+                  Workprint does not score or rate AI fluency.
+                </p>
+                <button
+                  className="mt-4 rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)]"
+                  onClick={() => downloadReport("playbook")}
+                  type="button"
+                >
+                  Download Playbook Worksheet
                 </button>
               </div>
               <details className="mt-6 rounded-[24px] bg-[var(--surface-soft)] p-6">

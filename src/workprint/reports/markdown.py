@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from workprint.ai_fluency import build_ai_fluency_reflection
 from workprint.executive import build_executive_report
 from workprint.models import Investigation
 from workprint.timeline import build_timeline, summarize_timeline
@@ -258,6 +259,36 @@ def _evidence_refs(refs: tuple[str, ...]) -> str:
     return ", ".join(f"`{ref}`" for ref in refs)
 
 
+def _ai_fluency_section(investigation: Investigation) -> list[str]:
+    reflection = build_ai_fluency_reflection(investigation)
+    lines: list[str] = [
+        "## AI Fluency Evidence",
+        "",
+        reflection.attribution,
+        "",
+        reflection.disclaimer,
+        "",
+    ]
+    for competency in reflection.competencies:
+        lines.extend([
+            f"### {competency.name}",
+            "",
+            competency.definition,
+            "",
+        ])
+        if competency.note:
+            lines.extend([f"_{competency.note}_", ""])
+        for item in competency.evidence:
+            lines.extend([
+                f"- {item.statement}",
+                f"  - Supports: {item.supports}",
+                f"  - Does not prove: {item.does_not_prove}",
+                f"  - Evidence: {_evidence_refs(item.evidence_ids)}",
+            ])
+        lines.append("")
+    return lines
+
+
 def render_markdown(investigation: Investigation) -> str:
     timeline = investigation.timeline or build_timeline(list(investigation.observations))
     timeline_summary = investigation.timeline_summary or summarize_timeline(timeline)
@@ -378,6 +409,8 @@ def render_markdown(investigation: Investigation) -> str:
             ),
             "",
         ])
+
+    lines.extend(_ai_fluency_section(investigation))
 
     lines.extend(["## Unknowns", ""])
     for item in investigation.unknowns:

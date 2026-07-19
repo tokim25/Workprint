@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Sequence
 
+from workprint.ai_fluency import build_playbook_worksheet_markdown
 from workprint.discovery import discover_project
 from workprint.engine import build_investigation
 from workprint.guided import evidence_files_from_discovery, select_evidence_files
@@ -75,6 +76,7 @@ def build_web_investigation(
         "sources": sorted({item.source for item in selected}),
         "markdown": render_markdown(investigation),
         "json": render_json_dict(investigation),
+        "playbookMarkdown": build_playbook_worksheet_markdown(investigation),
     }
 
 

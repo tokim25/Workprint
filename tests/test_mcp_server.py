@@ -106,6 +106,8 @@ class McpServerTests(unittest.TestCase):
         self.assertNotIn("timeline", investigation)
         self.assertIn("observation_count", investigation)
         self.assertIn("executive_brief", investigation)
+        self.assertIn("ai_fluency", investigation)
+        self.assertEqual(len(investigation["ai_fluency"]["competencies"]), 4)
         for finding in investigation["findings"]:
             self.assertLessEqual(
                 len(finding["evidence_ids"]), DEFAULT_EVIDENCE_ID_PREVIEW
