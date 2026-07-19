@@ -29,8 +29,18 @@ claude-desktop-chat = [
     "ccl_chromium_reader @ git+https://github.com/cclgroupltd/ccl_chromium_reader.git@9639a318ce0f7b546e1d8d02d89423ab6b4ae202",
 ]
 
+# Opt-in extra for running Workprint as a local MCP server, so it is
+# callable from inside Claude Desktop or Claude Code rather than only the
+# CLI or web app. `mcp` is the official Model Context Protocol Python SDK
+# (modelcontextprotocol/python-sdk on PyPI as `mcp`), verified installed
+# and imported successfully, and its own requires-python (>=3.10) matches
+# this project's. Unlike claude-desktop-chat's dependency, it is a normal
+# published, versioned PyPI release, not a git-pinned commit.
+mcp = ["mcp[cli]>=1.0"]
+
 [project.scripts]
 workprint = "workprint.cli:main"
+workprint-mcp = "workprint.mcp_server:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

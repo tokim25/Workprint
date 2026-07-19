@@ -22,6 +22,7 @@ usable by people with limited coding knowledge.
 - [x] Claude Code adapter
 - [x] Claude Cowork adapter
 - [x] Claude Desktop Chat adapter (experimental deep-parse mode)
+- [x] Local MCP server
 - [x] Report visual design and shareability
 - [x] Executive Report v1
 - [x] Project Discovery
@@ -580,6 +581,71 @@ Limitations:
 - No automated JS/TS tests exist for this UI in either the pre-existing
   code or this milestone; verification was manual, end-to-end, against
   real data in a running dev server.
+
+## Completed Milestone: Local MCP Server
+
+Status: Complete
+
+Goal: Make Workprint's discovery and investigation capabilities callable
+directly from inside Claude Desktop or Claude Code over the Model Context
+Protocol (MCP), the first "runs inside the tool" surface, rather than
+requiring the CLI or the separate web app.
+
+Implemented scope:
+
+- `src/workprint/mcp_server.py`: a `FastMCP`-based server exposing three
+  read-only tools (`readOnlyHint: true`, `destructiveHint: false`,
+  `openWorldHint: false`) that wrap the existing discovery/investigation
+  pipeline unchanged: `list_supported_sources`, `discover_project`
+  (mirrors `workprint discover`), and `investigate_project` (reuses
+  `guided.py`'s `evidence_files_from_discovery`/`select_evidence_files`
+  selection logic and the existing multi-source investigation pipeline,
+  without its interactive prompts or file-writing side effects).
+- `mcp` (the official `modelcontextprotocol/python-sdk`, verified
+  installed and imported successfully, `requires-python` matching this
+  project's) is a new optional extra (`pip install '.[mcp]'`), keeping
+  the base package dependency-free. A `workprint-mcp` console script
+  entry point runs it over stdio, the standard local transport.
+- `investigate_project`'s response is deliberately bounded, not the full
+  report: measuring a real investigation's complete JSON on this
+  project's own history found several megabytes (2,169 evidence IDs on a
+  single finding, 2.2MB of raw observations) -- far too large for a
+  conversational tool result. By default, findings carry only the first
+  10 evidence IDs plus a total count, the executive brief is included but
+  the rest of the executive report is not, and observations/timeline are
+  represented only as counts. `include_full_report`,
+  `include_observations`, and `include_timeline` parameters opt into the
+  complete data. This brought a real investigation's tool response from
+  3.5MB down to under 5KB by default.
+- `include_desktop_chat_deep_parse` parameter, defaulting to `false`,
+  matching every other Workprint surface's default for that source.
+- `docs/mcp-server.md`: installation, verified Claude Desktop config file
+  location and format, Claude Code `.mcp.json`/`claude mcp add` config,
+  tool reference, evidence boundaries, and explicit out-of-scope items.
+
+Verification: confirmed the `mcp` PyPI package's repository metadata
+matches the real `modelcontextprotocol/python-sdk` GitHub org before
+depending on it (see "External Dependencies Are Verified, Not Assumed" in
+`docs/foundation/ENGINEERING_PRINCIPLES.md`). Beyond unit tests, ran the
+actual server as a subprocess and connected with a real MCP client
+session (the same stdio protocol Claude Desktop and Claude Code use) to
+call all three tools against this repository's own real evidence,
+including bad-path error handling.
+
+Limitations:
+
+- No write tools; the server cannot modify files, evidence, or its own
+  configuration.
+- No project-selection or ambient context: every tool call requires an
+  explicit `project_path` argument.
+- Claude Desktop and Claude Code configuration was verified by inspecting
+  this project's own real `claude_desktop_config.json` location and
+  format; the actual MCP entry was not added to a live config as part of
+  this milestone, since that would modify the user's real application
+  settings.
+- No automated tests exist that drive the server through an actual Claude
+  Desktop or Claude Code session; verification used the official MCP
+  Python client SDK directly.
 
 ## Active Milestone: Low-Code/No-Code User Experience
 
