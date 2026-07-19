@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { ChangeEvent, DragEvent, RefObject } from "react";
+import Image from "next/image";
 import { ClaudeSessionEvidence } from "@/components/claude-session-evidence";
 import { ConfidenceIndicator } from "@/components/confidence-indicator";
 import { EvidenceDrawer } from "@/components/evidence-drawer";
@@ -757,10 +758,17 @@ export function WorkprintApp() {
       >
       <header className="mx-auto flex max-w-6xl items-center justify-between">
         <button
-          className="text-lg font-semibold tracking-[-0.02em]"
+          className="flex items-center gap-2 text-lg font-semibold tracking-[-0.02em]"
           onClick={() => goTo("start")}
           type="button"
         >
+          <Image
+            alt=""
+            className="h-6 w-9"
+            height={24}
+            src="/brand/workprint-trace-color.svg"
+            width={36}
+          />
           Workprint
         </button>
         {screen !== "start" ? (
