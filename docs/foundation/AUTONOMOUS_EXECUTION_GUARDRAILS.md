@@ -1,20 +1,20 @@
 # Autonomous Execution Guardrails
 
 Status: Foundation guide
-Purpose: Defines when Codex may execute approved milestones autonomously and
-when it must escalate for human direction
+Purpose: Defines when a coding agent may execute approved milestones
+autonomously and when it must escalate for human direction
 Expected Update Frequency: Update when agent autonomy or approval boundaries
 change
 
-Workprint should let Codex complete clearly scoped milestones without asking
-for approval at every routine step. That autonomy is useful only when it
-preserves the approved product contract, evidence boundaries, trust model,
-privacy expectations, architecture, and user experience.
+Workprint should let a coding agent complete clearly scoped milestones
+without asking for approval at every routine step. That autonomy is useful
+only when it preserves the approved product contract, evidence boundaries,
+trust model, privacy expectations, architecture, and user experience.
 
-Codex may move from planning through implementation, validation, dogfooding,
-and self-review when the milestone is clear. Codex must stop when the work
-requires a consequential product, UX, trust, evidence, privacy, licensing, or
-architectural decision.
+A coding agent may move from planning through implementation, validation,
+dogfooding, and self-review when the milestone is clear. It must stop when
+the work requires a consequential product, UX, trust, evidence, privacy,
+licensing, or architectural decision.
 
 ## Product Contract
 
@@ -29,9 +29,9 @@ Every meaningful milestone begins with:
 - Trust and Usability Risks
 - Explicitly Out of Scope
 
-Codex may choose implementation details, but it may not redefine this product
-contract. If the contract is missing, unclear, or internally conflicting,
-Codex must stop and ask for direction before implementation.
+A coding agent may choose implementation details, but it may not redefine
+this product contract. If the contract is missing, unclear, or internally
+conflicting, the agent must stop and ask for direction before implementation.
 
 Every product milestone must also include a concrete dogfood scenario.
 
@@ -44,7 +44,7 @@ line."
 
 ## Allowed Autonomous Decisions
 
-Codex may decide:
+A coding agent may decide:
 
 - internal helper structure
 - function and class organization
@@ -58,7 +58,7 @@ privacy expectations, licensing obligations, and architecture.
 
 ## Mandatory Stop Conditions
 
-Codex must stop and ask for direction before:
+A coding agent must stop and ask for direction before:
 
 - changing the user story or product promise
 - choosing a major UX flow
@@ -81,7 +81,7 @@ Workprint should not let implementation momentum override product trust.
 
 ## Autonomous Execution Sequence
 
-For approved milestones, Codex should perform:
+For approved milestones, a coding agent should perform:
 
 1. Interpret the product contract.
 2. Inspect the repository.
@@ -99,8 +99,8 @@ a mandatory stop condition is triggered.
 
 ## Required Self-Review
 
-Before reporting completion, Codex must evaluate the result through these
-lenses.
+Before reporting completion, a coding agent must evaluate the result through
+these lenses.
 
 ### VP of User Experience
 
@@ -126,7 +126,7 @@ lenses.
 
 ## Required Completion Report
 
-Before commit, Codex must report:
+Before commit, a coding agent must report:
 
 - Product contract followed
 - What We Built
@@ -140,13 +140,13 @@ Before commit, Codex must report:
 - What Remains Incomplete
 - Recommended next action
 
-Codex must not report only "implemented successfully." The completion report
-must make clear what changed for the user, what was validated, and what still
-requires judgment.
+A coding agent must not report only "implemented successfully." The
+completion report must make clear what changed for the user, what was
+validated, and what still requires judgment.
 
 ## Communication Order
 
-When reporting plans, progress, or completion, Codex should:
+When reporting plans, progress, or completion, a coding agent should:
 
 1. Lead with a short summary.
 2. Provide an "Explain Like I'm 5" explanation.
@@ -157,10 +157,10 @@ asked to parse implementation detail.
 
 ## Approval Boundary
 
-Codex must always stop before commit unless the user has explicitly approved
-autonomous committing for that specific milestone.
+A coding agent must always stop before commit unless the user has explicitly
+approved autonomous committing for that specific milestone.
 
-Codex must not commit directly to `main`.
+A coding agent must not commit directly to `main`.
 
-If a milestone is complete but risks remain unresolved, Codex must report the
-risks and wait for human direction before committing.
+If a milestone is complete but risks remain unresolved, the agent must report
+the risks and wait for human direction before committing.
