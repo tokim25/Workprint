@@ -61,14 +61,14 @@ the roadmap.
 Before executing a milestone autonomously, read
 `docs/foundation/AUTONOMOUS_EXECUTION_GUARDRAILS.md`.
 
-Codex may carry a clearly scoped and approved milestone from planning through
-implementation, validation, dogfooding, and self-review without asking for
-approval at every routine step.
+A coding agent may carry a clearly scoped and approved milestone from planning
+through implementation, validation, dogfooding, and self-review without asking
+for approval at every routine step.
 
-Codex must stop and ask for direction before consequential product, UX, trust,
-evidence, privacy, licensing, third-party attribution, or architectural
-decisions. It must also stop before commit unless the user has explicitly
-approved committing for that specific milestone.
+A coding agent must stop and ask for direction before consequential product,
+UX, trust, evidence, privacy, licensing, third-party attribution, or
+architectural decisions. It must also stop before commit unless the user has
+explicitly approved committing for that specific milestone.
 
 When reporting plans, progress, or completion:
 

@@ -1,18 +1,19 @@
-# Codex Working Context
+# Agent Working Context
 
 Status: Foundation guide
-Purpose: Gives Codex tasks the user, UX, and product framing required before
+Purpose: Gives coding agents the user, UX, and product framing required before
 repository work begins
-Expected Update Frequency: Update when Codex workflow expectations change
+Expected Update Frequency: Update when coding-agent workflow expectations change
 
-Codex work on Workprint should begin with product context, not file context
-alone. A task may involve documentation, tests, adapters, reports, or user
-flows, but the first question is always what the user will understand or do
-after the work is complete.
+Coding-agent work on Workprint should begin with product context, not file
+context alone. A task may involve documentation, tests, adapters, reports, or
+user flows, but the first question is always what the user will understand or
+do after the work is complete.
 
 ## Required Starting Frame
 
-Before proposing or implementing a milestone, Codex should summarize:
+Before proposing or implementing a milestone, the coding agent should
+summarize:
 
 - User problem: What is difficult, confusing, or impossible today?
 - User story: What new thing will the user be able to do?
@@ -23,19 +24,19 @@ Before proposing or implementing a milestone, Codex should summarize:
 - Risk: What could confuse users, reduce trust, or pull Workprint away from
   its core promise?
 
-Codex should also answer:
+The coding agent should also answer:
 
 "Does this help the user understand or demonstrate what they did, what AI did,
 or how they worked together?"
 
-If the answer is no, Codex should explain why the work still belongs in the
-roadmap before implementation proceeds.
+If the answer is no, the coding agent should explain why the work still
+belongs in the roadmap before implementation proceeds.
 
 ## Plain-Language First
 
-Codex should explain roadmap and implementation changes in plain language
-first. A useful response starts with the human consequence of the work, then
-adds technical detail only as needed.
+The coding agent should explain roadmap and implementation changes in plain
+language first. A useful response starts with the human consequence of the
+work, then adds technical detail only as needed.
 
 Use an "Explain Like I'm 5" summary before technical detail when reporting a
 completed milestone, a planned milestone, or a pull-request-ready change. Keep
@@ -47,7 +48,7 @@ when possible.
 
 ## Lenses To Apply
 
-Codex should carry three lenses through each phase of work:
+The coding agent should carry three lenses through each phase of work:
 
 - VP of User Experience: challenge confusing flows, advocate for novice users,
   prioritize clarity and trust, and push back when implementation language
@@ -61,7 +62,7 @@ Codex should carry three lenses through each phase of work:
 
 ## End-Of-Work Frame
 
-At the end of a milestone or pull request, Codex should report:
+At the end of a milestone or pull request, the coding agent should report:
 
 - What We Built
 - Explain Like I'm 5

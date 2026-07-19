@@ -16,17 +16,19 @@ milestone priority, final judgment, and decisions that change Workprint's
 philosophy. The human may also supply evidence, constraints, design intent,
 review feedback, and approval gates.
 
-ChatGPT is often used for product thinking, documentation drafting, strategy,
-design critique, or conceptual synthesis. When used this way, it helps shape
-language and explore alternatives, but it does not replace human decision
-making.
+Conversational AI assistants are often used for product thinking,
+documentation drafting, strategy, design critique, or conceptual synthesis.
+When used this way, they help shape language and explore alternatives, but
+they do not replace human decision making.
 
-Codex is used for repository work: reading the codebase, proposing scoped
-implementation plans, editing files, running tests, checking diffs, and
-reporting validation. Codex should follow `AGENTS.md`, preserve source
-boundaries, avoid unrelated changes, follow
+A coding agent is used for repository work: reading the codebase, proposing
+scoped implementation plans, editing files, running tests, checking diffs, and
+reporting validation. The coding agent should follow `AGENTS.md`, preserve
+source boundaries, avoid unrelated changes, follow
 `AUTONOMOUS_EXECUTION_GUARDRAILS.md`, and never commit, push, merge, or delete
-branches unless explicitly asked.
+branches unless explicitly asked. Workprint has used more than one coding
+agent over its history; these responsibilities apply to whichever agent is
+doing the work.
 
 These roles can overlap in practice, but the distinction is useful. Strategy,
 product design, technical design, implementation, testing, dogfooding, review,
@@ -115,29 +117,30 @@ the repository state has been reviewed.
 
 ## Autonomous Execution With Escalation
 
-For a clearly scoped and approved milestone, Codex may continue through
-planning, implementation, validation, dogfooding, and self-review without
-asking for approval between routine steps. Routine steps include repository
-inspection, helper organization, implementation details, focused tests,
-validation commands, and dogfooding the approved user journey.
+For a clearly scoped and approved milestone, the coding agent may continue
+through planning, implementation, validation, dogfooding, and self-review
+without asking for approval between routine steps. Routine steps include
+repository inspection, helper organization, implementation details, focused
+tests, validation commands, and dogfooding the approved user journey.
 
 This autonomy exists to reduce unnecessary handoffs, not to transfer product
-authority. Codex must escalate when the work requires a consequential product,
-UX, trust, evidence, privacy, licensing, third-party attribution, or
-architecture decision.
+authority. The coding agent must escalate when the work requires a
+consequential product, UX, trust, evidence, privacy, licensing, third-party
+attribution, or architecture decision.
 
-Codex must stop and ask for direction before changing the user story, changing
-the product promise, choosing a major UX flow, introducing new user-facing
-terminology, making enduring architecture decisions, breaking compatibility,
-changing confidence or attribution rules, adding dependencies, expanding
-scope, removing existing behavior, changing unrelated files, proceeding from
-unclear requirements, making unsupported claims, continuing when dogfood
-contradicts tests, or committing with unresolved risks.
+The coding agent must stop and ask for direction before changing the user
+story, changing the product promise, choosing a major UX flow, introducing new
+user-facing terminology, making enduring architecture decisions, breaking
+compatibility, changing confidence or attribution rules, adding dependencies,
+expanding scope, removing existing behavior, changing unrelated files,
+proceeding from unclear requirements, making unsupported claims, continuing
+when dogfood contradicts tests, or committing with unresolved risks.
 
-Before reporting completion, Codex should review the result through the VP of
-User Experience, product and technical partner, and world-class marketer
-lenses. Completion reports should begin with a short summary, then an
-"Explain Like I'm 5" explanation, then technical detail only as needed.
+Before reporting completion, the coding agent should review the result
+through the VP of User Experience, product and technical partner, and
+world-class marketer lenses. Completion reports should begin with a short
+summary, then an "Explain Like I'm 5" explanation, then technical detail only
+as needed.
 
 ## Why Strategy Is Separate From Implementation
 
