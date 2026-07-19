@@ -87,9 +87,23 @@ Status: Ready for definition
 
 Goal: Make Workprint usable without requiring command-line knowledge.
 
+## Active Capability — Claude Session Evidence (Tier 1a)
+
+Status: Planned
+
+Goal: Automatically discover and normalize evidence from local Claude Code
+sessions and imported claude.ai Export Data archives, so AI collaboration
+evidence does not depend on a user remembering a manual export step for
+every source.
+
+See [PROJECT_PLAN.md](PROJECT_PLAN.md) for requirements and limitations.
+
 ## Upcoming Capabilities
 
 1. Semantic correlation only after deterministic behavior is trustworthy
+2. Claude Session Evidence (Tier 1b) — Claude Desktop chat cache and Claude
+   Cowork local cache, deferred from Tier 1a because both require parsing
+   undocumented internal storage formats and a new dependency
 
 Detailed requirements for upcoming capabilities are tracked in
 [PROJECT_PLAN.md](PROJECT_PLAN.md).

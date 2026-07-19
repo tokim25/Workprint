@@ -341,6 +341,60 @@ Goal: Make Workprint usable without requiring terminal knowledge.
 
 Detailed requirements: To be defined.
 
+## Active Milestone: Claude Session Evidence (Tier 1a)
+
+Status: Planned
+
+Goal: Automatically discover and normalize evidence from local Claude Code
+sessions and imported claude.ai Export Data archives, extending Workprint's
+AI-collaboration evidence beyond the existing manual-export-only workflow.
+
+User problem: Workprint only sees AI collaboration evidence today if someone
+manually exports a claude.ai conversation and imports it. Claude Code
+sessions produce no evidence at all unless a user takes an extra manual step
+most people will not remember to take.
+
+Requirements:
+
+- New adapter implementing the existing `EvidenceAdapter` contract that
+  discovers and reads local Claude Code JSONL session transcripts for the
+  current project directory only.
+- Audit of the existing Claude adapter against the actual current schema of
+  Anthropic's official claude.ai Export Data archive, with fixes if the
+  schema has drifted from what the adapter assumes.
+- Both sources exposed through `workprint discover` and the existing
+  multi-source investigation pipeline; no changes to the investigation
+  engine's source-specific logic.
+- Bounded reads: capped session count, capped excerpt length, structural
+  evidence (turn counts, timestamps, referenced files) by default rather
+  than raw transcript content.
+- No new dependencies; both formats are parsed with the standard library.
+
+Trust and evidence boundaries:
+
+- Session transcripts may contain anything pasted into a prompt, including
+  credentials or personal text. Content excerpts must be opt-in; structural
+  evidence is the default.
+- Matching a project directory to its Claude Code sessions relies on Claude
+  Code's own local path-to-session-directory convention, which is not a
+  published contract. The adapter must fail closed (report nothing) rather
+  than guess and misattribute a session to the wrong project.
+- claude.ai Export Data is a manual, user-initiated, time-boxed download;
+  Workprint imports it but never fetches it automatically.
+
+Explicitly out of scope for this milestone:
+
+- Claude Desktop chat cache and Claude Cowork local cache. Both are only
+  reachable through undocumented internal LevelDB/app-cache formats and
+  would require a new dependency; tracked separately as Tier 1b below.
+- Next.js Discoveries UI surfacing of these new evidence types.
+- Any MCP or in-tool integration surface.
+- Any inference about AI contribution beyond normalized, evidence-linked
+  records.
+
+Detailed acceptance criteria: to be finalized at Technical Design, before
+implementation begins.
+
 ## Upcoming Milestones
 
 1. Semantic correlation only after deterministic behavior is trustworthy
@@ -349,6 +403,17 @@ Detailed requirements: To be defined.
    handling, traceability, and limitations are reliable.
 
    Detailed requirements: To be defined.
+
+2. Claude Session Evidence (Tier 1b): Desktop chat cache and Cowork local
+   cache
+
+   Goal: Extend Claude session evidence to the Claude Desktop app's chat
+   cache and Claude Cowork's local session cache, both of which require
+   parsing undocumented internal LevelDB/app-cache storage formats and a new
+   dependency.
+
+   Detailed requirements: To be defined after Tier 1a validates the adapter
+   pattern and the dependency decision is explicitly approved.
 
 ## Product UX Direction
 
