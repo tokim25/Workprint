@@ -1,5 +1,6 @@
 import io
 import json
+import os
 import shutil
 import subprocess
 import tempfile
@@ -7,6 +8,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import workprint.guided as guided_module
 from workprint.cli import main
 from workprint.discovery import discover_project
 from workprint.guided import (
@@ -22,6 +24,19 @@ GIT = shutil.which("git")
 
 
 class GuidedInvestigationTests(unittest.TestCase):
+    def setUp(self):
+        # See the matching setUp in tests/test_discovery.py: Claude Desktop
+        # Chat evidence is account-wide and would otherwise be picked up
+        # from whatever real cache exists on the machine running these
+        # tests. Tests that specifically exercise this adapter override the
+        # variable themselves.
+        patcher = patch.dict(
+            os.environ,
+            {"WORKPRINT_CLAUDE_DESKTOP_HOME": "/nonexistent/workprint-test-path"},
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def test_guided_workflow_generates_markdown_and_json_reports(self):
         with tempfile.TemporaryDirectory() as directory:
             self._copy_fixture(
@@ -110,6 +125,157 @@ class GuidedInvestigationTests(unittest.TestCase):
         self.assertIn("Git repository: found", rendered)
         self.assertIn("(git)", rendered)
         self.assertIn("Investigation complete.", rendered)
+
+    def test_claude_code_session_can_be_selected(self):
+        with tempfile.TemporaryDirectory() as directory, \
+                tempfile.TemporaryDirectory() as claude_home:
+            project_root = str(Path(directory).resolve())
+            session_dir = Path(claude_home) / "-tmp-project"
+            session_dir.mkdir(parents=True)
+            record = {
+                "type": "user",
+                "uuid": "u1",
+                "sessionId": "session-1",
+                "timestamp": "2026-01-01T00:00:00.000Z",
+                "cwd": project_root,
+                "isSidechain": False,
+                "message": {"role": "user", "content": "hello"},
+            }
+            (session_dir / "session-1.jsonl").write_text(
+                json.dumps(record) + "\n", encoding="utf-8"
+            )
+            output = io.StringIO()
+            answers = iter(["", "", "Claude Code Project", "", "", "", ""])
+
+            with patch.dict(os.environ, {"WORKPRINT_CLAUDE_HOME": claude_home}):
+                result = guided_workflow(
+                    input_func=lambda prompt: next(answers),
+                    output=output,
+                    cwd=directory,
+                )
+
+        self.assertIsNotNone(result)
+        rendered = output.getvalue()
+        self.assertIn("(claude-code)", rendered)
+        self.assertIn("Investigation complete.", rendered)
+
+    def test_claude_cowork_session_can_be_selected(self):
+        with tempfile.TemporaryDirectory() as directory, \
+                tempfile.TemporaryDirectory() as cowork_home:
+            project_root = str(Path(directory).resolve())
+            metadata_path = Path(cowork_home) / "local_abc123.json"
+            metadata_path.write_text(
+                json.dumps(
+                    {
+                        "sessionId": "cowork-session-1",
+                        "userSelectedFolders": [project_root],
+                        "model": "claude-sonnet-5",
+                        "sessionType": "scheduled",
+                        "isArchived": False,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            transcript_dir = (
+                Path(cowork_home) / "local_abc123" / ".claude" / "projects" / "-sandbox-slug"
+            )
+            transcript_dir.mkdir(parents=True)
+            record = {
+                "type": "user",
+                "uuid": "u1",
+                "timestamp": "2026-01-01T00:00:00.000Z",
+                "cwd": "/internal/sandbox/outputs",
+                "isSidechain": False,
+                "message": {"role": "user", "content": "hello"},
+            }
+            (transcript_dir / "cowork-session-1.jsonl").write_text(
+                json.dumps(record) + "\n", encoding="utf-8"
+            )
+            output = io.StringIO()
+            answers = iter(["", "", "Claude Cowork Project", "", "", "", ""])
+
+            with patch.dict(os.environ, {"WORKPRINT_COWORK_HOME": cowork_home}):
+                result = guided_workflow(
+                    input_func=lambda prompt: next(answers),
+                    output=output,
+                    cwd=directory,
+                )
+
+        self.assertIsNotNone(result)
+        rendered = output.getvalue()
+        self.assertIn("(claude-cowork)", rendered)
+        self.assertIn("Investigation complete.", rendered)
+
+    def test_claude_desktop_chat_offers_deep_parse_consent_and_defaults_to_declining(self):
+        with tempfile.TemporaryDirectory() as directory, \
+                tempfile.TemporaryDirectory() as indexeddb_home:
+            output = io.StringIO()
+            answers = iter(
+                ["", "", "n", "Desktop Chat Project", "", "", "", ""]
+            )
+            prompts: list[str] = []
+
+            def recording_input(prompt: str) -> str:
+                prompts.append(prompt)
+                return next(answers)
+
+            env = {"WORKPRINT_CLAUDE_DESKTOP_HOME": indexeddb_home}
+            os.environ.pop("WORKPRINT_CLAUDE_DESKTOP_DEEP_PARSE", None)
+            with patch.dict(os.environ, env):
+                result = guided_workflow(
+                    input_func=recording_input,
+                    output=output,
+                    cwd=directory,
+                )
+
+        self.assertIsNotNone(result)
+        self.assertTrue(
+            any("Enable experimental deep parsing" in prompt for prompt in prompts)
+        )
+        rendered = output.getvalue()
+        self.assertIn("account-wide, not specific to this project", rendered)
+        self.assertNotIn("WORKPRINT_CLAUDE_DESKTOP_DEEP_PARSE", os.environ)
+        self.assertIn("Investigation complete.", rendered)
+
+    def test_claude_desktop_chat_consent_accepted_enables_deep_parse_for_the_run(self):
+        # The optional ccl_chromium_reader dependency is not installed in
+        # this environment, so accepting deep parsing here hits the same
+        # real DeepParseUnavailableError path exercised in
+        # test_claude_desktop_chat_adapter.py. This test only confirms the
+        # "y" answer actually flips the environment variable before
+        # load_observations runs, not that deep parsing succeeds.
+        with tempfile.TemporaryDirectory() as directory, \
+                tempfile.TemporaryDirectory() as indexeddb_home:
+            output = io.StringIO()
+            answers = iter(
+                ["", "", "y", "Desktop Chat Project", "", "", "", ""]
+            )
+            observed_at_load_time: list[bool] = []
+            real_load_observations = guided_module.load_observations
+
+            def spying_load_observations(inputs):
+                observed_at_load_time.append(
+                    os.environ.get("WORKPRINT_CLAUDE_DESKTOP_DEEP_PARSE") == "1"
+                )
+                return real_load_observations(inputs)
+
+            env = {"WORKPRINT_CLAUDE_DESKTOP_HOME": indexeddb_home}
+            os.environ.pop("WORKPRINT_CLAUDE_DESKTOP_DEEP_PARSE", None)
+            with patch.dict(os.environ, env), \
+                    patch.object(guided_module, "load_observations", spying_load_observations):
+                with self.assertRaises(guided_module.GuidedError) as ctx:
+                    guided_workflow(
+                        input_func=lambda prompt: next(answers),
+                        output=output,
+                        cwd=directory,
+                    )
+
+        self.assertIn("claude-desktop-chat", str(ctx.exception))
+        # By the time evidence is actually loaded, the "y" answer should
+        # have already taken effect; the env var is then cleaned up once
+        # the patched environment unwinds.
+        self.assertEqual(observed_at_load_time, [True])
+        self.assertNotIn("WORKPRINT_CLAUDE_DESKTOP_DEEP_PARSE", os.environ)
 
     def test_cancel_before_generation_leaves_outputs_uncreated(self):
         with tempfile.TemporaryDirectory() as directory:

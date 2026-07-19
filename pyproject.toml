@@ -12,6 +12,13 @@ authors = [{name = "Tony Kim"}]
 license = {text = "All rights reserved"}
 dependencies = []
 
+[project.optional-dependencies]
+# Opt-in extra for deep parsing of the Claude Desktop chat cache
+# (an undocumented Chromium IndexedDB/LevelDB format). The base
+# `workprint` package stays dependency-free; installing this extra is a
+# deliberate choice, not a requirement for any other capability.
+claude-desktop-chat = ["ccl_chromium_reader"]
+
 [project.scripts]
 workprint = "workprint.cli:main"
 

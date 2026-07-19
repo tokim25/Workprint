@@ -1,6 +1,9 @@
 from .base import EvidenceAdapter
 from .chatgpt import ChatGPTAdapter
 from .claude import ClaudeAdapter
+from .claude_code import ClaudeCodeAdapter
+from .claude_cowork import ClaudeCoworkAdapter
+from .claude_desktop_chat import ClaudeDesktopChatAdapter
 from .figma import FigmaAdapter
 from .git import GitAdapter
 from .google_docs import GoogleDocsAdapter
@@ -10,6 +13,9 @@ __all__ = [
     "EvidenceAdapter",
     "ChatGPTAdapter",
     "ClaudeAdapter",
+    "ClaudeCodeAdapter",
+    "ClaudeCoworkAdapter",
+    "ClaudeDesktopChatAdapter",
     "FigmaAdapter",
     "GitAdapter",
     "GoogleDocsAdapter",

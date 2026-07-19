@@ -87,9 +87,55 @@ Status: Ready for definition
 
 Goal: Make Workprint usable without requiring command-line knowledge.
 
+## Active Capability — Claude Session Evidence (Tier 1a)
+
+Status: Complete
+
+Goal: Automatically discover and normalize evidence from local Claude Code
+sessions and imported claude.ai Export Data archives, so AI collaboration
+evidence does not depend on a user remembering a manual export step for
+every source.
+
+See [docs/claude-code-adapter.md](docs/claude-code-adapter.md) and
+[PROJECT_PLAN.md](PROJECT_PLAN.md) for implemented scope and limitations.
+
+## Active Capability — Claude Session Evidence (Tier 1b)
+
+Status: Complete
+
+Goal: Extend Claude session evidence to local Claude Cowork sessions. Each
+Cowork session turned out to write a transcript in the same JSONL shape
+Claude Code uses, inside its own sandboxed session directory, so this needed
+no new dependency — only a different project-matching rule, since a Cowork
+transcript's own working directory is an internal sandbox path rather than
+the user's real project folder.
+
+See [docs/claude-cowork-adapter.md](docs/claude-cowork-adapter.md) and
+[PROJECT_PLAN.md](PROJECT_PLAN.md) for implemented scope and limitations.
+
+## Active Capability — Claude Session Evidence (Tier 1c)
+
+Status: Complete (experimental deep-parse mode)
+
+Goal: Report on the Claude desktop app's local claude.ai chat cache.
+Presence-only detection (does the cache exist, when was it last touched) is
+verified and on by default. An opt-in, explicitly experimental deep-parse
+mode can extract real conversation turns using a new optional dependency,
+but that mode was not run against real data during development — no
+Python 3.10+ environment with the dependency installed was available — and
+its evidence is account-wide, not specific to the project under
+investigation, since claude.ai chat has no folder concept to match against.
+
+See [docs/claude-desktop-chat-adapter.md](docs/claude-desktop-chat-adapter.md)
+and [PROJECT_PLAN.md](PROJECT_PLAN.md) for the full trade-off, privacy, and
+verification status.
+
 ## Upcoming Capabilities
 
-1. Semantic correlation only after deterministic behavior is trustworthy
+1. Semantic correlation only after deterministic behavior is trustworthy —
+   this is also the prerequisite for ever attributing Claude Desktop Chat
+   evidence (Tier 1c) to a specific project, since that source has no
+   folder concept of its own to match against.
 
 Detailed requirements for upcoming capabilities are tracked in
 [PROJECT_PLAN.md](PROJECT_PLAN.md).

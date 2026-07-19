@@ -94,6 +94,57 @@ def _git_result(root: Path) -> DiscoveryResult | None:
     )
 
 
+def _claude_code_result(root: Path) -> DiscoveryResult | None:
+    try:
+        metadata = get_adapter("claude-code").discover(root)
+    except ValueError:
+        return None
+    if metadata is None:
+        return None
+    return DiscoveryResult(
+        source="claude-code",
+        label="Claude Code",
+        file_count=1,
+        detected_files=(".",),
+        metadata={"record_count": metadata.get("record_count", 0)},
+    )
+
+
+def _claude_cowork_result(root: Path) -> DiscoveryResult | None:
+    try:
+        metadata = get_adapter("claude-cowork").discover(root)
+    except ValueError:
+        return None
+    if metadata is None:
+        return None
+    return DiscoveryResult(
+        source="claude-cowork",
+        label="Claude Cowork",
+        file_count=1,
+        detected_files=(".",),
+        metadata={"record_count": metadata.get("record_count", 0)},
+    )
+
+
+def _claude_desktop_chat_result(root: Path) -> DiscoveryResult | None:
+    try:
+        metadata = get_adapter("claude-desktop-chat").discover(root)
+    except ValueError:
+        return None
+    if metadata is None:
+        return None
+    return DiscoveryResult(
+        source="claude-desktop-chat",
+        label="Claude Desktop Chat",
+        file_count=1,
+        detected_files=(".",),
+        metadata={
+            "record_count": metadata.get("record_count", 0),
+            "deep_parse": metadata.get("deep_parse", False),
+        },
+    )
+
+
 def discover_project(path: str | Path = ".") -> ProjectDiscovery:
     root = Path(path).expanduser().resolve()
     if not root.exists():
@@ -104,7 +155,8 @@ def discover_project(path: str | Path = ".") -> ProjectDiscovery:
     adapters = [
         get_adapter(adapter_id)
         for adapter_id in available_adapters()
-        if adapter_id != "git"
+        if adapter_id
+        not in {"git", "claude-code", "claude-cowork", "claude-desktop-chat"}
     ]
     grouped: dict[str, dict[str, Any]] = {}
 
@@ -139,6 +191,15 @@ def discover_project(path: str | Path = ".") -> ProjectDiscovery:
     git_result = _git_result(root)
     if git_result is not None:
         results_list.append(git_result)
+    claude_code_result = _claude_code_result(root)
+    if claude_code_result is not None:
+        results_list.append(claude_code_result)
+    claude_cowork_result = _claude_cowork_result(root)
+    if claude_cowork_result is not None:
+        results_list.append(claude_cowork_result)
+    claude_desktop_chat_result = _claude_desktop_chat_result(root)
+    if claude_desktop_chat_result is not None:
+        results_list.append(claude_desktop_chat_result)
     results = tuple(sorted(results_list, key=lambda item: item.source))
 
     return ProjectDiscovery(
@@ -157,6 +218,10 @@ def render_discovery(discovery: ProjectDiscovery) -> str:
     for result in discovery.results:
         lines.append(result.label)
         lines.append(_summary_line(result))
+        if result.source == "claude-desktop-chat" and not result.metadata.get(
+            "deep_parse", False
+        ):
+            lines.extend(_claude_desktop_chat_disclosure())
         lines.append("")
 
     if not discovery.ready:
@@ -166,6 +231,9 @@ def render_discovery(discovery: ProjectDiscovery) -> str:
             "Supported sources:",
             "- ChatGPT",
             "- Claude",
+            "- Claude Code",
+            "- Claude Cowork",
+            "- Claude Desktop Chat",
             "- Google Docs",
             "- Figma",
             "",
@@ -184,11 +252,39 @@ def render_discovery(discovery: ProjectDiscovery) -> str:
     return "\n".join(lines)
 
 
+def _claude_desktop_chat_disclosure() -> list[str]:
+    return [
+        "  Workprint can optionally read this cache in more detail using an",
+        "  experimental, opt-in parser (not on by default). Before turning it on,",
+        "  it helps to know what that trade-off actually is:",
+        "  - Without it: Workprint only notes that the cache exists and when it",
+        "    last changed. No conversation content is read.",
+        "  - With it: Workprint attempts to extract real chat turns, but this",
+        "    evidence is account-wide, not specific to this project, because",
+        "    claude.ai chat has no concept of a project folder. It may also",
+        "    surface conversations you deleted from claude.ai, since the local",
+        "    cache does not always remove them right away.",
+        "  - Either way: this stays entirely on your machine. Nothing is",
+        "    uploaded, and the output is visible only to whoever runs this",
+        "    command.",
+    ]
+
+
 def _summary_line(result: DiscoveryResult) -> str:
     if result.source in {"chatgpt", "claude"}:
         count = result.metadata.get("record_count", 0)
         noun = "conversation" if count == 1 else "conversations"
         return f"{count} {noun}"
+    if result.source in {"claude-code", "claude-cowork"}:
+        count = result.metadata.get("record_count", 0)
+        noun = "session" if count == 1 else "sessions"
+        return f"{count} {noun}"
+    if result.source == "claude-desktop-chat":
+        if result.metadata.get("deep_parse", False):
+            count = result.metadata.get("record_count", 0)
+            noun = "turn" if count == 1 else "turns"
+            return f"{count} candidate conversation {noun} (experimental, account-wide)"
+        return "cache detected (deep parsing not enabled)"
     if result.source == "google-docs":
         noun = "document" if result.file_count == 1 else "documents"
         return f"{result.file_count} {noun}"

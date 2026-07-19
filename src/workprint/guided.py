@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, TextIO
 
-from workprint.discovery import ProjectDiscovery, discover_project
+from workprint.adapters.claude_desktop_chat import DEEP_PARSE_ENV
+from workprint.discovery import ProjectDiscovery, _claude_desktop_chat_disclosure, discover_project
 from workprint.engine import build_investigation
 from workprint.multisource import EvidenceInput, load_observations
 from workprint.reports import render_json_dict, render_markdown
@@ -116,6 +118,11 @@ def guided_workflow(
     if not selected_files:
         raise GuidedError("no evidence files were selected")
 
+    if options.include is None and any(
+        item.source == "claude-desktop-chat" for item in selected_files
+    ):
+        _offer_claude_desktop_chat_deep_parse(input_func, output)
+
     project_name = options.project or _prompt_text(
         input_func,
         "Project name",
@@ -205,6 +212,9 @@ def evidence_files_from_discovery(
             rendered_path = relative_path
             if result.source == "git":
                 path = Path(result.metadata.get("repository_root") or root)
+                rendered_path = str(path)
+            elif result.source in {"claude-code", "claude-cowork"}:
+                path = root
                 rendered_path = str(path)
             files.append(
                 GuidedEvidenceFile(
@@ -399,6 +409,8 @@ def _render_selection_summary(
     for source, count in sorted(counts.items()):
         if source == "git":
             noun = "repository" if count == 1 else "repositories"
+        elif source in {"claude-code", "claude-cowork"}:
+            noun = "session bundle" if count == 1 else "session bundles"
         else:
             noun = "file" if count == 1 else "files"
         print(f"- {source}: {count} {noun}", file=output)
@@ -447,3 +459,18 @@ def _prompt_yes_no(input_func: InputFunc, label: str, *, default: bool) -> bool:
     if not raw:
         return default
     return raw in {"y", "yes"}
+
+
+def _offer_claude_desktop_chat_deep_parse(input_func: InputFunc, output: TextIO) -> None:
+    print("", file=output)
+    print("Claude Desktop Chat", file=output)
+    for line in _claude_desktop_chat_disclosure():
+        print(line, file=output)
+    enabled = _prompt_yes_no(
+        input_func,
+        "Enable experimental deep parsing for this investigation?",
+        default=False,
+    )
+    if enabled:
+        os.environ[DEEP_PARSE_ENV] = "1"
+    print("", file=output)

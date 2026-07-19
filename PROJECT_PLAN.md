@@ -19,6 +19,9 @@ usable by people with limited coding knowledge.
 - [x] Google Docs adapter
 - [x] Figma adapter
 - [x] Git adapter
+- [x] Claude Code adapter
+- [x] Claude Cowork adapter
+- [x] Claude Desktop Chat adapter (experimental deep-parse mode)
 - [x] Report visual design and shareability
 - [x] Executive Report v1
 - [x] Project Discovery
@@ -333,6 +336,160 @@ Limitations:
 - Guided import does not infer attribution beyond existing deterministic
   evidence handling.
 
+## Completed Milestone: Claude Session Evidence (Tier 1a)
+
+Status: Complete
+
+Goal: Automatically discover and normalize evidence from local Claude Code
+sessions and imported claude.ai Export Data archives, extending Workprint's
+AI-collaboration evidence beyond the existing manual-export-only workflow.
+
+Implemented scope:
+
+- `ClaudeCodeAdapter` (canonical source ID `claude-code`, label "Claude
+  Code") implementing the existing `EvidenceAdapter` contract.
+- Session-to-project matching by the `cwd` recorded inside each transcript,
+  not by reproducing Claude Code's internal directory-naming convention;
+  an unmatched project finds nothing rather than a wrong guess.
+- Bounded reads: up to 20 most recently modified matching sessions per
+  project, up to 5,000 transcript lines per session.
+- Structural evidence by default: turn counts, role, timestamps, and
+  tool-name counts for assistant turns (for example `Edit (2), Bash (1)`);
+  no raw prompt or response text unless the adapter is explicitly
+  constructed with `include_content_excerpts=True` (not yet exposed through
+  the CLI).
+- Sidechain (subagent) turns are recorded and flagged (`is_sidechain`)
+  rather than silently merged into the primary conversation.
+- `WORKPRINT_CLAUDE_HOME` environment variable overrides the default
+  `~/.claude/projects` lookup location, primarily for testability.
+- Registered in the adapter registry and wired into `workprint discover`,
+  `workprint import`/`investigate`/`validate`, and the `workprint guide`
+  terminal wizard, following the Git adapter's integration pattern.
+- Audited the existing Claude export adapter and its fixture against
+  Anthropic's documented Export Data format; confirmed no schema drift, no
+  changes required.
+- No changes to the investigation engine, extractor, or other adapters'
+  data models.
+- No new dependencies; the format is parsed with the standard library.
+
+Limitations:
+
+- Covers Claude Code and the manually exported claude.ai archive only.
+  Claude Desktop chat cache and Claude Cowork local cache are not covered;
+  both require parsing undocumented internal LevelDB/app-cache formats and
+  are tracked separately as Tier 1b below.
+- Session matching depends on Claude Code recording an accurate `cwd`; a
+  session that never recorded a matching working directory will not be
+  found.
+- Raw content excerpts are not reachable from the CLI in this milestone.
+- No Next.js Discoveries UI surfacing; CLI and Python API only.
+
+## Completed Milestone: Claude Session Evidence (Tier 1b)
+
+Status: Complete
+
+Goal: Extend Claude session evidence to local Claude Cowork sessions,
+originally assumed (in the Tier 1a write-up) to require the same
+undocumented LevelDB/app-cache handling as Claude Desktop's chat cache.
+
+Implemented scope:
+
+- `ClaudeCoworkAdapter` (canonical source ID `claude-cowork`, label "Claude
+  Cowork") implementing the existing `EvidenceAdapter` contract.
+- Discovery that each Cowork session runs in its own sandboxed Claude Code
+  home directory and writes a transcript in the same JSONL shape the Claude
+  Code adapter reads — no new dependency needed, unlike what Tier 1a's
+  write-up assumed for all of Tier 1b.
+- Session-to-project matching via `userSelectedFolders` in the session's
+  metadata file (`local_<uuid>.json`), not the transcript's own `cwd`,
+  which points at an internal sandbox output path. An unmatched project
+  finds nothing rather than a wrong guess.
+- The same bounding, structural-by-default content, and sidechain flagging
+  as the Claude Code adapter, implemented independently rather than by
+  refactoring the already-shipped Claude Code adapter.
+- Session metadata (`model`, `session_type`, `is_archived`) is included as
+  evidence; `title` and `initialMessage`, which can contain real prompt
+  text, are never read.
+- A best-effort cross-platform default location
+  (`WORKPRINT_COWORK_HOME` env var to override), verified only on macOS.
+- Registered in the adapter registry and wired into `workprint discover`,
+  `workprint import`/`investigate`/`validate`, and the `workprint guide`
+  terminal wizard, following the Git and Claude Code adapters' pattern.
+- No changes to the investigation engine, extractor, or other adapters.
+- No new dependencies; the format is parsed with the standard library.
+
+Limitations:
+
+- Covers Cowork sessions only. Claude Desktop's own chat cache (as opposed
+  to Cowork) is not covered; it is stored in an undocumented internal
+  LevelDB format and is tracked separately as Tier 1c.
+- Windows and Linux default paths are unverified; only macOS has been
+  confirmed against a real installation.
+- Cowork's own `audit.jsonl` action log is not read.
+- Raw content excerpts are not reachable from the CLI in this milestone.
+- No Next.js Discoveries UI surfacing; CLI and Python API only.
+
+## Completed Milestone: Claude Session Evidence (Tier 1c)
+
+Status: Complete (experimental deep-parse mode)
+
+Goal: Report on the Claude desktop app's local claude.ai chat cache
+(distinct from Cowork, covered in Tier 1b), the last of the three Claude
+surfaces this phase set out to cover.
+
+Implemented scope:
+
+- `ClaudeDesktopChatAdapter` (canonical source ID `claude-desktop-chat`,
+  label "Claude Desktop Chat") implementing the existing `EvidenceAdapter`
+  contract.
+- Presence-only mode (default, no dependency): reports only that the local
+  IndexedDB cache exists and when it was last modified. Verified against a
+  real local installation.
+- Opt-in `deep_parse=True` mode: attempts to extract real conversation
+  turns using a new optional dependency, `ccl_chromium_reader`
+  (`pip install 'workprint[claude-desktop-chat]'`), and a heuristic scan
+  for dict-shaped values resembling a chat turn. The base `workprint`
+  package's dependency list stays empty; this is an opt-in extra.
+- Every record from this source carries `project_specific: false`, because
+  claude.ai chat has no folder concept to match against a project — unlike
+  every other adapter in this codebase. Semantic correlation (matching
+  conversations to a project by content) is intentionally not attempted
+  here; it is tracked as a prerequisite, deferred upcoming capability.
+- Deep-parse records also carry `may_include_deleted_records: true`,
+  reflecting that IndexedDB does not always promptly remove deleted
+  claude.ai conversations from the local cache.
+- Plain-language trade-off disclosure (what presence-only vs. deep parsing
+  each reveal, the account-wide and deleted-record caveats, and
+  confirmation that everything stays local) shown by `workprint discover`
+  whenever the cache is detected, and offered as an explicit accept/decline
+  prompt by the `workprint guide` interactive wizard before any deep
+  parsing happens. Non-interactive or scripted `guide` runs never enable it.
+- `WORKPRINT_CLAUDE_DESKTOP_HOME` and `WORKPRINT_CLAUDE_DESKTOP_DEEP_PARSE`
+  environment variables for path override and (mainly wizard-internal)
+  consent propagation.
+- Registered in the adapter registry and wired into `workprint discover`,
+  `workprint import`/`investigate`/`validate`, and the `workprint guide`
+  wizard, following the existing adapters' pattern.
+
+Limitations:
+
+- The deep-parse path's extraction logic was not run against real data
+  during development: no Python 3.10+ environment with the dependency
+  installed was available. It is explicitly documented as experimental;
+  the first real test of it against real data is whoever enables it.
+  Presence-only mode has no such gap.
+- Evidence is account-wide only; it cannot currently be attributed to the
+  project under investigation.
+- Deep parsing may resurface conversations already deleted from claude.ai.
+- The IndexedDB/LevelDB format is undocumented by Anthropic and may change
+  without notice on a Claude Desktop update, unlike the other Claude
+  sources in this phase, which read formats Anthropic's own products
+  write and control.
+- `title` and `initialMessage`-equivalent full conversation content is
+  never read outside the opt-in excerpt flag, which is not exposed
+  through the CLI.
+- No Next.js Discoveries UI surfacing; CLI and Python API only.
+
 ## Active Milestone: Low-Code/No-Code User Experience
 
 Status: Ready for definition
@@ -346,7 +503,20 @@ Detailed requirements: To be defined.
 1. Semantic correlation only after deterministic behavior is trustworthy
 
    Goal: Add semantic matching or inference only after deterministic evidence
-   handling, traceability, and limitations are reliable.
+   handling, traceability, and limitations are reliable. This is also the
+   prerequisite for ever attributing Claude Desktop Chat evidence (Tier 1c)
+   to a specific project, since that source has no folder concept of its
+   own to match against — see the Limitations of that milestone above.
+
+   Detailed requirements: To be defined.
+
+2. Claude Session Evidence (Tier 1c) real-data verification
+
+   Goal: Run the experimental deep-parse path against real data in a
+   Python 3.10+ environment with the optional dependency installed, and
+   correct the heuristic extraction logic based on what is actually found,
+   since it was built and shipped without that verification (see Tier 1c's
+   Limitations above).
 
    Detailed requirements: To be defined.
 
