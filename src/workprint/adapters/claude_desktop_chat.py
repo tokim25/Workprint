@@ -16,13 +16,17 @@ INDEXEDDB_HOME_ENV = "WORKPRINT_CLAUDE_DESKTOP_HOME"
 DEEP_PARSE_ENV = "WORKPRINT_CLAUDE_DESKTOP_DEEP_PARSE"
 EXCERPT_LIMIT = 600
 
-# Empirically observed object-store name fragments in a real local cache on
-# this codebase's own development machine (macOS). Not documented by
-# Anthropic; may not hold on other versions of the Claude desktop app. The
-# deep-parse path tries these first and falls back to whatever
-# WrappedIndexDB exposes, since hardcoding a single guessed name would be
-# more fragile than trying several and skipping ones that don't work.
-_CANDIDATE_STORE_NAMES = ("keyval-store", "val-store")
+# Verified against a real local cache on this codebase's own development
+# machine (macOS, Claude desktop app, July 2026): that origin's IndexedDB
+# holds exactly four databases — "keyval-store", "claude-notifications",
+# "claude-device-binding", and "omelette-fs-access". Only "keyval-store" is
+# scanned. The other three are deliberately excluded: they are not
+# conversation-shaped, and "claude-device-binding" in particular plausibly
+# holds authentication/device-identity material that must never be treated
+# as scannable evidence. Not documented by Anthropic; may not hold on other
+# versions of the Claude desktop app, in which case deep parsing finds
+# nothing rather than guessing at an unverified database name.
+_SCANNED_DATABASE_NAMES = ("keyval-store",)
 
 # Field names a candidate record needs to plausibly be a chat turn, loosely
 # matching the shape workprint.adapters.claude already looks for in claude.ai
@@ -159,7 +163,25 @@ class DeepParseUnavailableError(ValueError):
     """Raised when deep_parse=True but the optional dependency is missing."""
 
 
-def _iter_deep_parsed_turns(indexeddb_home: Path) -> Iterator[tuple[str, _CandidateTurn]]:
+def _iter_deep_parsed_turns(indexeddb_home: Path) -> Iterator[tuple[str, Any]]:
+    """Yield (object_store_name, IndexedDbRecord) pairs from the scanned
+    databases only.
+
+    Uses ``cclgroupltd/ccl_chromium_reader`` (pinned in
+    ``pyproject.toml``'s ``claude-desktop-chat`` extra), whose
+    ``WrappedIndexDB.database_ids`` returns ``DatabaseId`` objects that must
+    be used as the index key directly — an earlier version of this function
+    assumed a ``(name, version)`` tuple shape, which does not match the real
+    API and was corrected after running against real data (see
+    docs/claude-desktop-chat-adapter.md).
+
+    Individual records can fail to read even when the database and object
+    store open successfully — most commonly because a record's value was
+    externally serialized to the sibling ``.blob`` directory and that blob
+    file is no longer present (observed on real data; Chromium's blob
+    garbage collection can outrun its LevelDB metadata). Such records are
+    skipped rather than aborting the whole scan.
+    """
     try:
         from ccl_chromium_reader import ccl_chromium_indexeddb
     except ImportError as exc:
@@ -177,41 +199,37 @@ def _iter_deep_parsed_turns(indexeddb_home: Path) -> Iterator[tuple[str, _Candid
             "format may not match what this experimental parser expects"
         ) from exc
 
-    database_ids = _database_ids(wrapper)
-    for database_name, database_version in database_ids:
+    for database_id in wrapper.database_ids:
+        if database_id.name not in _SCANNED_DATABASE_NAMES:
+            continue
         try:
-            database = wrapper[database_name, database_version]
+            database = wrapper[database_id]
         except Exception:  # noqa: BLE001 - keep scanning other databases
             continue
-        for store_name in _object_store_names(database):
+        for store_name in database.object_store_names:
             try:
-                store = database[store_name]
-                for record in store.iterate_records():
-                    yield store_name, record
+                store = database.get_object_store_by_name(store_name)
             except Exception:  # noqa: BLE001 - keep scanning other stores
                 continue
+            yield from _iter_store_records(store_name, store)
 
 
-def _database_ids(wrapper: Any) -> list[tuple[str, Any]]:
-    for attribute in ("database_ids", "database_names", "databases"):
-        candidate = getattr(wrapper, attribute, None)
-        if candidate:
-            try:
-                return list(candidate)
-            except TypeError:
-                continue
-    return []
-
-
-def _object_store_names(database: Any) -> list[str]:
-    for attribute in ("object_store_names", "object_stores"):
-        candidate = getattr(database, attribute, None)
-        if candidate:
-            try:
-                return list(candidate)
-            except TypeError:
-                continue
-    return list(_CANDIDATE_STORE_NAMES)
+def _iter_store_records(store_name: str, store: Any) -> Iterator[tuple[str, Any]]:
+    # live_only=True excludes deleted/superseded record versions, so
+    # deep parsing does not resurface conversations already deleted from
+    # claude.ai. Driven manually (rather than `for record in
+    # store.iterate_records(...)`) because the generator can raise mid
+    # iteration for a single unreadable record (see docstring above); a
+    # plain for-loop would let that abort every record after it too.
+    iterator = store.iterate_records(live_only=True)
+    while True:
+        try:
+            record = next(iterator)
+        except StopIteration:
+            return
+        except Exception:  # noqa: BLE001 - skip this record, keep going
+            continue
+        yield store_name, record
 
 
 class ClaudeDesktopChatAdapter(EvidenceAdapter[NormalizedMessage]):
@@ -230,13 +248,22 @@ class ClaudeDesktopChatAdapter(EvidenceAdapter[NormalizedMessage]):
     Default behavior only reports that the cache exists and when it was
     last modified (``deep_parse=False``, the default). Turning on
     ``deep_parse=True`` attempts to extract real conversation turns using
-    the optional ``ccl_chromium_reader`` dependency and a best-effort,
-    explicitly experimental heuristic scan of the deserialized values,
-    because the cache's actual internal schema is not documented by
-    Anthropic and was not directly verified against a running parser
-    (see docs/claude-desktop-chat-adapter.md). IndexedDB may also retain
-    deleted/stale record versions, so deep parsing can resurface
-    conversations no longer visible on claude.ai.
+    the pinned ``ccl_chromium_reader`` dependency, scanning only the
+    verified "keyval-store" database, and a best-effort, still-experimental
+    heuristic scan of each record's deserialized value for dicts shaped
+    like a chat turn.
+
+    What has been verified against real local data: the pinned dependency
+    correctly opens this store's real databases and object stores, and
+    individual unreadable records (most often a missing externally
+    serialized blob file) are skipped rather than aborting the scan.
+    ``live_only=True`` filtering means deep parsing should not resurface
+    conversations already deleted from claude.ai. What remains unverified:
+    whether the "keyval-store" database reliably holds *recoverable*
+    conversation content on a given machine at a given time — on the
+    machine this was verified against, its one live record's value could
+    not be read at all, for the missing-blob reason above. See "How This
+    Was Verified" in docs/claude-desktop-chat-adapter.md.
     """
 
     source_name = "Claude Desktop Chat"
@@ -380,6 +407,10 @@ class ClaudeDesktopChatAdapter(EvidenceAdapter[NormalizedMessage]):
                 "source_type": self.source_type,
                 "project_specific": False,
                 "experimental_deep_parse": True,
-                "may_include_deleted_records": True,
+                # Deep parsing reads only live_only=True records (see
+                # _iter_store_records), so deleted claude.ai conversations
+                # should not be resurfaced. Recorded explicitly rather than
+                # omitted so this mitigation stays visible and auditable.
+                "may_include_deleted_records": False,
             },
         )

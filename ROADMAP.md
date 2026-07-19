@@ -115,16 +115,18 @@ See [docs/claude-cowork-adapter.md](docs/claude-cowork-adapter.md) and
 
 ## Active Capability — Claude Session Evidence (Tier 1c)
 
-Status: Complete (experimental deep-parse mode)
+Status: Complete (experimental deep-parse mode, verified against real data)
 
 Goal: Report on the Claude desktop app's local claude.ai chat cache.
 Presence-only detection (does the cache exist, when was it last touched) is
 verified and on by default. An opt-in, explicitly experimental deep-parse
-mode can extract real conversation turns using a new optional dependency,
-but that mode was not run against real data during development — no
-Python 3.10+ environment with the dependency installed was available — and
-its evidence is account-wide, not specific to the project under
-investigation, since claude.ai chat has no folder concept to match against.
+mode scans a specific, verified database using a pinned optional
+dependency; a verification pass against real data caught and fixed two
+real bugs (a mismatched dependency and a database-enumeration assumption)
+but could not confirm the heuristic turn-scanning logic against readable
+content, since the one real record found had no recoverable value. Its
+evidence is account-wide, not specific to the project under investigation,
+since claude.ai chat has no folder concept to match against.
 
 See [docs/claude-desktop-chat-adapter.md](docs/claude-desktop-chat-adapter.md)
 and [PROJECT_PLAN.md](PROJECT_PLAN.md) for the full trade-off, privacy, and

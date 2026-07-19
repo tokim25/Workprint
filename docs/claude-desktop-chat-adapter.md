@@ -15,9 +15,11 @@ package, in two ways that matter before using it:
    record this adapter produces carries `project_specific: false`.
 2. **Its deep-parse mode is experimental**, in the literal sense: the
    on-disk format is Chromium's internal IndexedDB-over-LevelDB storage,
-   which Anthropic does not document and this adapter's author did not
-   independently verify against a running parser (see "How This Was Built"
-   below). Treat its output as a lead worth checking, not settled evidence.
+   which Anthropic does not document. The library it depends on, and the
+   specific database it scans, have been verified against real local data
+   (see "How This Was Verified" below) — but whether that database actually
+   holds *recoverable* conversation content on a given machine has not been.
+   Treat its output as a lead worth checking, not settled evidence.
 
 ## Two Modes
 
@@ -30,14 +32,21 @@ used automatically by `workprint discover`.
 
 ### Deep parse (opt-in, experimental)
 
-`ClaudeDesktopChatAdapter(deep_parse=True)` attempts to extract real
-conversation turns using the optional `ccl_chromium_reader` dependency
-(`pip install 'workprint[claude-desktop-chat]'`) plus a best-effort
-heuristic scan for dict-shaped values that look like a chat turn (a
-role/sender field plus a content/text field). If the dependency is missing,
-this raises a clear error rather than silently falling back. If the
-dependency is present but the heuristic scan finds nothing that looks like a
-turn, this falls back to the presence-only record rather than claiming zero
+`ClaudeDesktopChatAdapter(deep_parse=True)` scans only the verified
+`keyval-store` database (see "How This Was Verified") using the pinned
+`ccl_chromium_reader` dependency (`pip install 'workprint[claude-desktop-chat]'`),
+then runs a best-effort heuristic scan of each record's deserialized value
+for dicts shaped like a chat turn (a role/sender field plus a content/text
+field). Deleted/superseded record versions are excluded
+(`live_only=True`), so deep parsing should not resurface conversations
+already deleted from claude.ai. A record that fails to read — most commonly
+because its value was moved to an external "blob" file that IndexedDB's own
+metadata still references but which no longer exists on disk — is skipped
+rather than aborting the scan.
+
+If the dependency is missing, this raises a clear error rather than silently
+falling back. If the dependency is present but nothing readable is found,
+this falls back to the presence-only record rather than claiming zero
 conversations exist.
 
 The `workprint guide` terminal wizard offers this as an explicit choice
@@ -59,27 +68,57 @@ when the cache is detected:
 >   changed. No conversation content is read.
 > - With it: Workprint attempts to extract real chat turns, but this
 >   evidence is account-wide, not specific to this project, because
->   claude.ai chat has no concept of a project folder. It may also surface
->   conversations you deleted from claude.ai, since the local cache does
->   not always remove them right away.
+>   claude.ai chat has no concept of a project folder. It skips
+>   conversations already deleted from claude.ai, but it may still find
+>   nothing readable even when chat history exists, since some entries in
+>   this cache have been observed to be unrecoverable.
 > - Either way: this stays entirely on your machine. Nothing is uploaded,
 >   and the output is visible only to whoever runs this command.
 
-## How This Was Built
+## How This Was Verified
 
-The presence-only path was verified against a real local installation. The
-deep-parse path was written against `ccl_chromium_reader`'s documented API
-and empirically observed object-store name fragments (`keyval-store`,
-`val-store`) found by scanning a real local cache file for readable
-strings — which also turned up plausible message-shaped field names
-(`uuid`, `created_at`, message-role-adjacent text), suggesting real
-conversation data likely is recoverable. It was not run end-to-end against
-real data in the environment this adapter was built in, because that
-environment had no Python 3.10+ interpreter available (the dependency
-requires it) and could not install the package to verify. Anyone enabling
-deep parsing is the first real test of this path against their own data;
-if it produces nothing, it falls back to the presence-only record rather
-than failing the whole command.
+An earlier version of this adapter depended on a PyPI package
+("chromium-reader") that turned out to be an unrelated project from the one
+actually researched, with a real bug in its own metadata parsing. See
+`docs/foundation/DECISION_LOG.md`, "Claude Desktop Chat's Optional
+Dependency Is Pinned, Not Name-Matched," for the full story and the general
+principle it produced. What follows describes what was verified once that
+was corrected and the real dependency (`cclgroupltd/ccl_chromium_reader`,
+pinned to a specific commit) was actually run against real local data.
+
+Confirmed against a real local installation:
+
+- The pinned library correctly opens the store and enumerates its real
+  databases. This origin has exactly four: `keyval-store`,
+  `claude-notifications`, `claude-device-binding`, and
+  `omelette-fs-access`. Only `keyval-store` is scanned — the other three
+  are not conversation-shaped, and `claude-device-binding` in particular
+  plausibly holds authentication or device-identity material that should
+  never be treated as scannable evidence.
+- `keyval-store` has a single object store, `keyval`, consistent with the
+  `idb-keyval` JavaScript library's default naming — evidence that Claude's
+  web client most likely uses that library for local persistence here,
+  though that is an inference, not a documented fact.
+- Individual unreadable records (missing externally serialized blob files)
+  are real and must be skipped without aborting the scan; this was not a
+  hypothetical concern; it happened on the first real record encountered
+  during verification.
+
+Not yet confirmed:
+
+- Whether `keyval-store`'s `keyval` object store reliably holds recoverable
+  conversation content. Across several dogfood runs against the live
+  database (Claude Desktop actively running throughout, not a copy), one
+  run's full `workprint discover` pipeline did report finding one
+  candidate turn, confirming the code path executes successfully
+  end-to-end when a readable record exists. It could not be reproduced for
+  closer inspection: three immediately following runs found nothing
+  readable. This is consistent with reading a database the running app is
+  actively writing to, not necessarily a defect, but it means the
+  heuristic turn-scanning logic (`_walk_candidate_turns`) has been
+  exercised against real data only inconsistently, not confirmed reliable.
+- Windows and Linux default paths, which follow the platform's usual
+  Electron app-data convention but were not independently checked.
 
 ## Evidence Collected
 
@@ -87,9 +126,10 @@ In deep-parse mode, each recovered turn is recorded with a turn ID, role
 (`human` or `assistant`), and — when parseable — a timestamp. Content is
 structural by default (a fixed label, not the actual text); raw excerpts
 require `include_content_excerpts=True`, not currently exposed through the
-CLI. Every record's metadata includes `project_specific: false` and
-`experimental_deep_parse: true`, and `may_include_deleted_records: true` as
-a standing reminder of the IndexedDB retention risk described above.
+CLI. Every record's metadata includes `project_specific: false`,
+`experimental_deep_parse: true`, and `may_include_deleted_records: false`
+(reflecting the `live_only=True` filtering above, recorded explicitly so
+the mitigation stays visible and auditable rather than merely assumed).
 
 ## Evidence Semantics
 
@@ -104,9 +144,10 @@ the extraction is complete or accurate.
 
 - Presence-only mode reads nothing but a directory's existence and
   modification time.
-- Deep-parse mode can surface real prompt and response text, including
-  conversations already deleted from claude.ai's own interface, because
-  local caches do not always garbage-collect deleted records promptly.
+- Deep-parse mode can surface real prompt and response text. It excludes
+  already-deleted conversations by construction (`live_only=True`), and it
+  only ever opens the `keyval-store` database — `claude-device-binding` and
+  the other two databases in this origin are never opened, let alone read.
 - Nothing this adapter reads is ever sent anywhere; all processing is local.
 - The `title` and `initialMessage`-equivalent risk that applies to Cowork
   metadata does not apply here in the same way, but the same principle

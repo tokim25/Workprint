@@ -17,7 +17,17 @@ dependencies = []
 # (an undocumented Chromium IndexedDB/LevelDB format). The base
 # `workprint` package stays dependency-free; installing this extra is a
 # deliberate choice, not a requirement for any other capability.
-claude-desktop-chat = ["ccl_chromium_reader"]
+#
+# Pinned to a specific commit rather than a PyPI release: this library is
+# not published on PyPI under any name (a similarly named PyPI package,
+# "chromium-reader", is an unrelated project with a confirmed bug — see
+# docs/foundation/DECISION_LOG.md, "Claude Desktop Chat's Optional
+# Dependency Is Pinned, Not Name-Matched"). Pinning also matches this
+# project's existing precedent for vendored/pinned external code (see the
+# unslop-text upstream integration).
+claude-desktop-chat = [
+    "ccl_chromium_reader @ git+https://github.com/cclgroupltd/ccl_chromium_reader.git@9639a318ce0f7b546e1d8d02d89423ab6b4ae202",
+]
 
 [project.scripts]
 workprint = "workprint.cli:main"

@@ -431,7 +431,7 @@ Limitations:
 
 ## Completed Milestone: Claude Session Evidence (Tier 1c)
 
-Status: Complete (experimental deep-parse mode)
+Status: Complete (experimental deep-parse mode, verified against real data)
 
 Goal: Report on the Claude desktop app's local claude.ai chat cache
 (distinct from Cowork, covered in Tier 1b), the last of the three Claude
@@ -445,25 +445,27 @@ Implemented scope:
 - Presence-only mode (default, no dependency): reports only that the local
   IndexedDB cache exists and when it was last modified. Verified against a
   real local installation.
-- Opt-in `deep_parse=True` mode: attempts to extract real conversation
-  turns using a new optional dependency, `ccl_chromium_reader`
-  (`pip install 'workprint[claude-desktop-chat]'`), and a heuristic scan
-  for dict-shaped values resembling a chat turn. The base `workprint`
-  package's dependency list stays empty; this is an opt-in extra.
+- Opt-in `deep_parse=True` mode: scans only the `keyval-store` database
+  (verified against real data; three other databases in the same origin,
+  including one that plausibly holds authentication material, are
+  deliberately never opened) using the pinned `ccl_chromium_reader`
+  dependency, then a heuristic scan for dict-shaped values resembling a
+  chat turn. The base `workprint` package's dependency list stays empty;
+  this is an opt-in extra.
 - Every record from this source carries `project_specific: false`, because
   claude.ai chat has no folder concept to match against a project — unlike
   every other adapter in this codebase. Semantic correlation (matching
   conversations to a project by content) is intentionally not attempted
   here; it is tracked as a prerequisite, deferred upcoming capability.
-- Deep-parse records also carry `may_include_deleted_records: true`,
-  reflecting that IndexedDB does not always promptly remove deleted
-  claude.ai conversations from the local cache.
+- Deep-parse records carry `may_include_deleted_records: false`: records
+  are read with `live_only=True`, verified during the real-data pass to
+  exclude deleted/superseded entries.
 - Plain-language trade-off disclosure (what presence-only vs. deep parsing
-  each reveal, the account-wide and deleted-record caveats, and
-  confirmation that everything stays local) shown by `workprint discover`
-  whenever the cache is detected, and offered as an explicit accept/decline
-  prompt by the `workprint guide` interactive wizard before any deep
-  parsing happens. Non-interactive or scripted `guide` runs never enable it.
+  each reveal, the account-wide caveat, and confirmation that everything
+  stays local) shown by `workprint discover` whenever the cache is
+  detected, and offered as an explicit accept/decline prompt by the
+  `workprint guide` interactive wizard before any deep parsing happens.
+  Non-interactive or scripted `guide` runs never enable it.
 - `WORKPRINT_CLAUDE_DESKTOP_HOME` and `WORKPRINT_CLAUDE_DESKTOP_DEEP_PARSE`
   environment variables for path override and (mainly wizard-internal)
   consent propagation.
@@ -471,16 +473,29 @@ Implemented scope:
   `workprint import`/`investigate`/`validate`, and the `workprint guide`
   wizard, following the existing adapters' pattern.
 
+Verification pass (after initial implementation): the deep-parse path was
+built and initially shipped without being run against real data, because no
+Python 3.10+ environment was available at the time. Once one was set up, two
+real bugs surfaced and were fixed: the declared optional dependency
+resolved to an unrelated, buggy PyPI package rather than the library whose
+API the code was written against (see
+`docs/foundation/DECISION_LOG.md`, "Claude Desktop Chat's Optional
+Dependency Is Pinned, Not Name-Matched"), and the adapter's own database
+enumeration assumed the wrong shape for the real API's return value. Both
+are fixed; see `docs/claude-desktop-chat-adapter.md`, "How This Was
+Verified," for what is and is not confirmed as a result. The general lesson
+is recorded in `docs/foundation/ENGINEERING_PRINCIPLES.md`, "External
+Dependencies Are Verified, Not Assumed."
+
 Limitations:
 
-- The deep-parse path's extraction logic was not run against real data
-  during development: no Python 3.10+ environment with the dependency
-  installed was available. It is explicitly documented as experimental;
-  the first real test of it against real data is whoever enables it.
-  Presence-only mode has no such gap.
+- Whether the scanned database reliably holds *recoverable* conversation
+  content is still unconfirmed: on the machine this was verified against,
+  its one live record could not be read because its externally serialized
+  value was missing from disk. The heuristic turn-scanning logic has
+  therefore not yet been exercised against a real, readable value.
 - Evidence is account-wide only; it cannot currently be attributed to the
   project under investigation.
-- Deep parsing may resurface conversations already deleted from claude.ai.
 - The IndexedDB/LevelDB format is undocumented by Anthropic and may change
   without notice on a Claude Desktop update, unlike the other Claude
   sources in this phase, which read formats Anthropic's own products
@@ -488,6 +503,8 @@ Limitations:
 - `title` and `initialMessage`-equivalent full conversation content is
   never read outside the opt-in excerpt flag, which is not exposed
   through the CLI.
+- Windows and Linux default paths are unverified; only macOS has been
+  confirmed against a real installation.
 - No Next.js Discoveries UI surfacing; CLI and Python API only.
 
 ## Active Milestone: Low-Code/No-Code User Experience
@@ -510,13 +527,14 @@ Detailed requirements: To be defined.
 
    Detailed requirements: To be defined.
 
-2. Claude Session Evidence (Tier 1c) real-data verification
+2. Claude Session Evidence (Tier 1c) recoverable-content verification
 
-   Goal: Run the experimental deep-parse path against real data in a
-   Python 3.10+ environment with the optional dependency installed, and
-   correct the heuristic extraction logic based on what is actually found,
-   since it was built and shipped without that verification (see Tier 1c's
-   Limitations above).
+   Goal: Confirm the heuristic turn-scanning logic against a real,
+   readable `keyval-store` value. The dependency and database enumeration
+   are now verified (see Tier 1c above), but the one live record found
+   during that pass could not be read because its externally serialized
+   value was missing from disk, so the actual conversation-shape heuristic
+   remains unexercised against real content.
 
    Detailed requirements: To be defined.
 

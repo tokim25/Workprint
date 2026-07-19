@@ -187,3 +187,42 @@ v1. Reports must disclose shallow history and preserve the distinction between
 Git metadata and unsupported attribution.
 
 Status: Accepted.
+
+## Claude Desktop Chat's Optional Dependency Is Pinned, Not Name-Matched
+
+Context: The Claude Desktop Chat adapter's deep-parse mode needed a library
+that parses Chromium's undocumented IndexedDB-over-LevelDB format. A PyPI
+package name ("chromium-reader") was assumed to be the pip-installable form
+of a GitHub project actually researched (`cclgroupltd/ccl_chromium_reader`),
+and declared as the optional dependency in `pyproject.toml` without
+installing and running it. When a working Python 3.10+ environment later
+became available, the assumption proved wrong: "chromium-reader" is an
+unrelated package by a different author, with a confirmed bug in its own
+global-metadata string decoding that silently drops every real IndexedDB
+database record on real data. The correct library is not published on PyPI
+under any name; it is only installable from its GitHub source.
+
+Alternatives: Workprint could keep depending on the wrong PyPI package and
+patch around its bug, pick a different, differently shaped library, or
+declare the dependency directly against a pinned commit of the
+verified-correct source.
+
+Decision: The `claude-desktop-chat` optional dependency points at a pinned
+commit of `cclgroupltd/ccl_chromium_reader` via a direct `git+https://`
+reference, matching the precedent already set for the `unslop-text` upstream
+integration (see "Executive Copy-Quality Audit Uses A Pinned Upstream
+Scanner" above). Before any dependency is declared for a milestone going
+forward, it must be installed and imported at least once, and its PyPI
+project metadata, when applicable, cross-checked against the source actually
+researched (see "External Dependencies Are Verified, Not Assumed" in
+`ENGINEERING_PRINCIPLES.md`).
+
+Consequences: The dependency now resolves to code that actually implements
+the documented API. Pinning to a commit trades automatic upstream fixes for
+reproducibility, matching how Workprint already treats other vendored or
+pinned external code. This decision does not resolve whether deep parsing
+can reliably recover real conversation content on a given machine; see the
+Claude Desktop Chat adapter's own documentation for that separate, still-open
+finding.
+
+Status: Accepted.
