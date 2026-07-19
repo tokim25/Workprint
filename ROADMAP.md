@@ -89,14 +89,15 @@ Goal: Make Workprint usable without requiring command-line knowledge.
 
 ## Active Capability — Claude Session Evidence (Tier 1a)
 
-Status: Planned
+Status: Complete
 
 Goal: Automatically discover and normalize evidence from local Claude Code
 sessions and imported claude.ai Export Data archives, so AI collaboration
 evidence does not depend on a user remembering a manual export step for
 every source.
 
-See [PROJECT_PLAN.md](PROJECT_PLAN.md) for requirements and limitations.
+See [docs/claude-code-adapter.md](docs/claude-code-adapter.md) and
+[PROJECT_PLAN.md](PROJECT_PLAN.md) for implemented scope and limitations.
 
 ## Upcoming Capabilities
 

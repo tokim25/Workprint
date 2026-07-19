@@ -1,5 +1,6 @@
 import io
 import json
+import os
 import shutil
 import subprocess
 import tempfile
@@ -109,6 +110,39 @@ class GuidedInvestigationTests(unittest.TestCase):
         rendered = output.getvalue()
         self.assertIn("Git repository: found", rendered)
         self.assertIn("(git)", rendered)
+        self.assertIn("Investigation complete.", rendered)
+
+    def test_claude_code_session_can_be_selected(self):
+        with tempfile.TemporaryDirectory() as directory, \
+                tempfile.TemporaryDirectory() as claude_home:
+            project_root = str(Path(directory).resolve())
+            session_dir = Path(claude_home) / "-tmp-project"
+            session_dir.mkdir(parents=True)
+            record = {
+                "type": "user",
+                "uuid": "u1",
+                "sessionId": "session-1",
+                "timestamp": "2026-01-01T00:00:00.000Z",
+                "cwd": project_root,
+                "isSidechain": False,
+                "message": {"role": "user", "content": "hello"},
+            }
+            (session_dir / "session-1.jsonl").write_text(
+                json.dumps(record) + "\n", encoding="utf-8"
+            )
+            output = io.StringIO()
+            answers = iter(["", "", "Claude Code Project", "", "", "", ""])
+
+            with patch.dict(os.environ, {"WORKPRINT_CLAUDE_HOME": claude_home}):
+                result = guided_workflow(
+                    input_func=lambda prompt: next(answers),
+                    output=output,
+                    cwd=directory,
+                )
+
+        self.assertIsNotNone(result)
+        rendered = output.getvalue()
+        self.assertIn("(claude-code)", rendered)
         self.assertIn("Investigation complete.", rendered)
 
     def test_cancel_before_generation_leaves_outputs_uncreated(self):

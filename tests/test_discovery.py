@@ -1,10 +1,13 @@
 import io
+import json
+import os
 import shutil
 import subprocess
 import tempfile
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
+from unittest.mock import patch
 
 from workprint.cli import main
 from workprint.discovery import discover_project, render_discovery
@@ -61,6 +64,19 @@ class DiscoveryTests(unittest.TestCase):
 
         result = self._result(discovery, "claude")
         self.assertEqual(result.file_count, 1)
+        self.assertEqual(result.metadata["record_count"], 1)
+
+    def test_detects_claude_code_session(self):
+        with tempfile.TemporaryDirectory() as directory, \
+                tempfile.TemporaryDirectory() as claude_home:
+            project_root = str(Path(directory).resolve())
+            self._write_claude_code_session(Path(claude_home), project_root)
+            with patch.dict(os.environ, {"WORKPRINT_CLAUDE_HOME": claude_home}):
+                discovery = discover_project(directory)
+
+        result = self._result(discovery, "claude-code")
+        self.assertEqual(result.label, "Claude Code")
+        self.assertEqual(result.detected_files, (".",))
         self.assertEqual(result.metadata["record_count"], 1)
 
     def test_detects_google_docs_fixture(self):
@@ -206,6 +222,23 @@ class DiscoveryTests(unittest.TestCase):
     @staticmethod
     def _init_git(path: Path) -> None:
         subprocess.run([GIT, "-C", str(path), "init"], check=True, capture_output=True)
+
+    @staticmethod
+    def _write_claude_code_session(claude_home: Path, project_root: str) -> None:
+        session_dir = claude_home / "-tmp-project"
+        session_dir.mkdir(parents=True)
+        record = {
+            "type": "user",
+            "uuid": "u1",
+            "sessionId": "session-1",
+            "timestamp": "2026-01-01T00:00:00.000Z",
+            "cwd": project_root,
+            "isSidechain": False,
+            "message": {"role": "user", "content": "hello"},
+        }
+        (session_dir / "session-1.jsonl").write_text(
+            json.dumps(record) + "\n", encoding="utf-8"
+        )
 
     @staticmethod
     def _result(discovery, source: str):
