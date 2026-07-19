@@ -7,6 +7,7 @@ from workprint.adapters import (
     ClaudeAdapter,
     ClaudeCodeAdapter,
     ClaudeCoworkAdapter,
+    ClaudeDesktopChatAdapter,
     EvidenceAdapter,
     FigmaAdapter,
     GitAdapter,
@@ -33,6 +34,7 @@ class EvidenceAdapterTests(unittest.TestCase):
                 "claude",
                 "claude-code",
                 "claude-cowork",
+                "claude-desktop-chat",
                 "figma",
                 "git",
                 "google-docs",
@@ -50,6 +52,10 @@ class EvidenceAdapterTests(unittest.TestCase):
     def test_registry_returns_claude_cowork_adapter(self):
         adapter = get_adapter("claude-cowork")
         self.assertIsInstance(adapter, ClaudeCoworkAdapter)
+
+    def test_registry_returns_claude_desktop_chat_adapter(self):
+        adapter = get_adapter("claude-desktop-chat")
+        self.assertIsInstance(adapter, ClaudeDesktopChatAdapter)
 
     def test_registry_returns_google_docs_adapter(self):
         adapter = get_adapter("google-docs")

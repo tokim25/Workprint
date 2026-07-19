@@ -8,6 +8,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import workprint.guided as guided_module
 from workprint.cli import main
 from workprint.discovery import discover_project
 from workprint.guided import (
@@ -23,6 +24,19 @@ GIT = shutil.which("git")
 
 
 class GuidedInvestigationTests(unittest.TestCase):
+    def setUp(self):
+        # See the matching setUp in tests/test_discovery.py: Claude Desktop
+        # Chat evidence is account-wide and would otherwise be picked up
+        # from whatever real cache exists on the machine running these
+        # tests. Tests that specifically exercise this adapter override the
+        # variable themselves.
+        patcher = patch.dict(
+            os.environ,
+            {"WORKPRINT_CLAUDE_DESKTOP_HOME": "/nonexistent/workprint-test-path"},
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def test_guided_workflow_generates_markdown_and_json_reports(self):
         with tempfile.TemporaryDirectory() as directory:
             self._copy_fixture(
@@ -191,6 +205,77 @@ class GuidedInvestigationTests(unittest.TestCase):
         rendered = output.getvalue()
         self.assertIn("(claude-cowork)", rendered)
         self.assertIn("Investigation complete.", rendered)
+
+    def test_claude_desktop_chat_offers_deep_parse_consent_and_defaults_to_declining(self):
+        with tempfile.TemporaryDirectory() as directory, \
+                tempfile.TemporaryDirectory() as indexeddb_home:
+            output = io.StringIO()
+            answers = iter(
+                ["", "", "n", "Desktop Chat Project", "", "", "", ""]
+            )
+            prompts: list[str] = []
+
+            def recording_input(prompt: str) -> str:
+                prompts.append(prompt)
+                return next(answers)
+
+            env = {"WORKPRINT_CLAUDE_DESKTOP_HOME": indexeddb_home}
+            os.environ.pop("WORKPRINT_CLAUDE_DESKTOP_DEEP_PARSE", None)
+            with patch.dict(os.environ, env):
+                result = guided_workflow(
+                    input_func=recording_input,
+                    output=output,
+                    cwd=directory,
+                )
+
+        self.assertIsNotNone(result)
+        self.assertTrue(
+            any("Enable experimental deep parsing" in prompt for prompt in prompts)
+        )
+        rendered = output.getvalue()
+        self.assertIn("account-wide, not specific to this project", rendered)
+        self.assertNotIn("WORKPRINT_CLAUDE_DESKTOP_DEEP_PARSE", os.environ)
+        self.assertIn("Investigation complete.", rendered)
+
+    def test_claude_desktop_chat_consent_accepted_enables_deep_parse_for_the_run(self):
+        # The optional ccl_chromium_reader dependency is not installed in
+        # this environment, so accepting deep parsing here hits the same
+        # real DeepParseUnavailableError path exercised in
+        # test_claude_desktop_chat_adapter.py. This test only confirms the
+        # "y" answer actually flips the environment variable before
+        # load_observations runs, not that deep parsing succeeds.
+        with tempfile.TemporaryDirectory() as directory, \
+                tempfile.TemporaryDirectory() as indexeddb_home:
+            output = io.StringIO()
+            answers = iter(
+                ["", "", "y", "Desktop Chat Project", "", "", "", ""]
+            )
+            observed_at_load_time: list[bool] = []
+            real_load_observations = guided_module.load_observations
+
+            def spying_load_observations(inputs):
+                observed_at_load_time.append(
+                    os.environ.get("WORKPRINT_CLAUDE_DESKTOP_DEEP_PARSE") == "1"
+                )
+                return real_load_observations(inputs)
+
+            env = {"WORKPRINT_CLAUDE_DESKTOP_HOME": indexeddb_home}
+            os.environ.pop("WORKPRINT_CLAUDE_DESKTOP_DEEP_PARSE", None)
+            with patch.dict(os.environ, env), \
+                    patch.object(guided_module, "load_observations", spying_load_observations):
+                with self.assertRaises(guided_module.GuidedError) as ctx:
+                    guided_workflow(
+                        input_func=lambda prompt: next(answers),
+                        output=output,
+                        cwd=directory,
+                    )
+
+        self.assertIn("claude-desktop-chat", str(ctx.exception))
+        # By the time evidence is actually loaded, the "y" answer should
+        # have already taken effect; the env var is then cleaned up once
+        # the patched environment unwinds.
+        self.assertEqual(observed_at_load_time, [True])
+        self.assertNotIn("WORKPRINT_CLAUDE_DESKTOP_DEEP_PARSE", os.environ)
 
     def test_cancel_before_generation_leaves_outputs_uncreated(self):
         with tempfile.TemporaryDirectory() as directory:

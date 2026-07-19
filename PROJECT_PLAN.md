@@ -21,6 +21,7 @@ usable by people with limited coding knowledge.
 - [x] Git adapter
 - [x] Claude Code adapter
 - [x] Claude Cowork adapter
+- [x] Claude Desktop Chat adapter (experimental deep-parse mode)
 - [x] Report visual design and shareability
 - [x] Executive Report v1
 - [x] Project Discovery
@@ -428,6 +429,67 @@ Limitations:
 - Raw content excerpts are not reachable from the CLI in this milestone.
 - No Next.js Discoveries UI surfacing; CLI and Python API only.
 
+## Completed Milestone: Claude Session Evidence (Tier 1c)
+
+Status: Complete (experimental deep-parse mode)
+
+Goal: Report on the Claude desktop app's local claude.ai chat cache
+(distinct from Cowork, covered in Tier 1b), the last of the three Claude
+surfaces this phase set out to cover.
+
+Implemented scope:
+
+- `ClaudeDesktopChatAdapter` (canonical source ID `claude-desktop-chat`,
+  label "Claude Desktop Chat") implementing the existing `EvidenceAdapter`
+  contract.
+- Presence-only mode (default, no dependency): reports only that the local
+  IndexedDB cache exists and when it was last modified. Verified against a
+  real local installation.
+- Opt-in `deep_parse=True` mode: attempts to extract real conversation
+  turns using a new optional dependency, `ccl_chromium_reader`
+  (`pip install 'workprint[claude-desktop-chat]'`), and a heuristic scan
+  for dict-shaped values resembling a chat turn. The base `workprint`
+  package's dependency list stays empty; this is an opt-in extra.
+- Every record from this source carries `project_specific: false`, because
+  claude.ai chat has no folder concept to match against a project — unlike
+  every other adapter in this codebase. Semantic correlation (matching
+  conversations to a project by content) is intentionally not attempted
+  here; it is tracked as a prerequisite, deferred upcoming capability.
+- Deep-parse records also carry `may_include_deleted_records: true`,
+  reflecting that IndexedDB does not always promptly remove deleted
+  claude.ai conversations from the local cache.
+- Plain-language trade-off disclosure (what presence-only vs. deep parsing
+  each reveal, the account-wide and deleted-record caveats, and
+  confirmation that everything stays local) shown by `workprint discover`
+  whenever the cache is detected, and offered as an explicit accept/decline
+  prompt by the `workprint guide` interactive wizard before any deep
+  parsing happens. Non-interactive or scripted `guide` runs never enable it.
+- `WORKPRINT_CLAUDE_DESKTOP_HOME` and `WORKPRINT_CLAUDE_DESKTOP_DEEP_PARSE`
+  environment variables for path override and (mainly wizard-internal)
+  consent propagation.
+- Registered in the adapter registry and wired into `workprint discover`,
+  `workprint import`/`investigate`/`validate`, and the `workprint guide`
+  wizard, following the existing adapters' pattern.
+
+Limitations:
+
+- The deep-parse path's extraction logic was not run against real data
+  during development: no Python 3.10+ environment with the dependency
+  installed was available. It is explicitly documented as experimental;
+  the first real test of it against real data is whoever enables it.
+  Presence-only mode has no such gap.
+- Evidence is account-wide only; it cannot currently be attributed to the
+  project under investigation.
+- Deep parsing may resurface conversations already deleted from claude.ai.
+- The IndexedDB/LevelDB format is undocumented by Anthropic and may change
+  without notice on a Claude Desktop update, unlike the other Claude
+  sources in this phase, which read formats Anthropic's own products
+  write and control.
+- `title` and `initialMessage`-equivalent full conversation content is
+  never read outside the opt-in excerpt flag, which is not exposed
+  through the CLI.
+- No Next.js Discoveries UI surfacing; CLI and Python API only.
+
 ## Active Milestone: Low-Code/No-Code User Experience
 
 Status: Ready for definition
@@ -441,18 +503,22 @@ Detailed requirements: To be defined.
 1. Semantic correlation only after deterministic behavior is trustworthy
 
    Goal: Add semantic matching or inference only after deterministic evidence
-   handling, traceability, and limitations are reliable.
+   handling, traceability, and limitations are reliable. This is also the
+   prerequisite for ever attributing Claude Desktop Chat evidence (Tier 1c)
+   to a specific project, since that source has no folder concept of its
+   own to match against — see the Limitations of that milestone above.
 
    Detailed requirements: To be defined.
 
-2. Claude Session Evidence (Tier 1c): Claude Desktop chat cache
+2. Claude Session Evidence (Tier 1c) real-data verification
 
-   Goal: Extend Claude session evidence to Claude Desktop's own chat cache
-   (as opposed to Cowork, covered in Tier 1b), which requires parsing an
-   undocumented internal LevelDB storage format and a new dependency.
+   Goal: Run the experimental deep-parse path against real data in a
+   Python 3.10+ environment with the optional dependency installed, and
+   correct the heuristic extraction logic based on what is actually found,
+   since it was built and shipped without that verification (see Tier 1c's
+   Limitations above).
 
-   Detailed requirements: To be defined; requires an explicit dependency
-   decision before implementation begins.
+   Detailed requirements: To be defined.
 
 ## Product UX Direction
 

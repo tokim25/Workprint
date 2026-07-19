@@ -17,6 +17,20 @@ GIT = shutil.which("git")
 
 
 class DiscoveryTests(unittest.TestCase):
+    def setUp(self):
+        # Claude Desktop Chat evidence is account-wide, not project-scoped
+        # (see docs/claude-desktop-chat-adapter.md), so its default lookup
+        # would otherwise pick up whatever real cache exists on the machine
+        # running these tests. Point it at a path that cannot exist so
+        # other tests stay hermetic; tests that specifically exercise this
+        # adapter override the variable themselves.
+        patcher = patch.dict(
+            os.environ,
+            {"WORKPRINT_CLAUDE_DESKTOP_HOME": "/nonexistent/workprint-test-path"},
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def test_empty_directory_reports_no_supported_evidence(self):
         with tempfile.TemporaryDirectory() as directory:
             discovery = discover_project(directory)
@@ -91,6 +105,22 @@ class DiscoveryTests(unittest.TestCase):
         self.assertEqual(result.label, "Claude Cowork")
         self.assertEqual(result.detected_files, (".",))
         self.assertEqual(result.metadata["record_count"], 1)
+
+    def test_detects_claude_desktop_chat_presence(self):
+        with tempfile.TemporaryDirectory() as directory, \
+                tempfile.TemporaryDirectory() as indexeddb_home:
+            with patch.dict(
+                os.environ, {"WORKPRINT_CLAUDE_DESKTOP_HOME": indexeddb_home}
+            ):
+                discovery = discover_project(directory)
+                rendered = render_discovery(discovery)
+
+        result = self._result(discovery, "claude-desktop-chat")
+        self.assertEqual(result.label, "Claude Desktop Chat")
+        self.assertFalse(result.metadata["deep_parse"])
+        self.assertIn("cache detected (deep parsing not enabled)", rendered)
+        self.assertIn("account-wide, not specific to this project", rendered)
+        self.assertIn("stays entirely on your machine", rendered)
 
     def test_detects_google_docs_fixture(self):
         with tempfile.TemporaryDirectory() as directory:
