@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import asdict, dataclass
+from datetime import timedelta
 from typing import Any
 
 from workprint.models import Investigation, Observation
@@ -22,10 +23,17 @@ DISCLAIMER = (
     "yours, not Workprint's."
 )
 
+# Keyed on the exact Observation.source string each adapter writes (its
+# source_name, e.g. adapters/claude_code.py's `source_name = "Claude Code"`),
+# not the hyphenated adapter id ("claude-code") used elsewhere for CLI
+# --include selection -- these are two different strings for the same
+# adapter, and dogfooding against this repo's own real Claude Code
+# evidence caught this module using the wrong one, silently matching
+# nothing.
 AI_SOURCE_LABELS = {
-    "claude-code": "Claude Code",
-    "claude-cowork": "Claude Cowork",
-    "claude-desktop-chat": "Claude Desktop Chat",
+    "Claude Code": "Claude Code",
+    "Claude Cowork": "Claude Cowork",
+    "Claude Desktop Chat": "Claude Desktop Chat",
 }
 
 # Deliberately narrow to unambiguous test-file conventions. A bare "spec/"
@@ -42,6 +50,12 @@ _AI_MENTION_PATTERN = re.compile(
 )
 
 _MAX_EVIDENCE_IDS = 8
+
+# How long after an AI session's last recorded turn a Git commit still
+# counts as plausibly-related revision activity for Discernment evidence.
+# Chosen generously (a few days, not hours) since local commit cadence
+# varies; this is a heuristic window, not a claim about actual review.
+_DISCERNMENT_WINDOW = timedelta(hours=72)
 
 
 @dataclass(frozen=True)
@@ -109,12 +123,13 @@ def build_ai_fluency_reflection(investigation: Investigation) -> AIFluencyReflec
                 "Communicating goals, constraints, and context clearly "
                 "enough for AI to produce something useful."
             ),
-            evidence=(),
+            evidence=_description_evidence(observations),
             note=(
-                "Workprint does not yet extract structural evidence for "
-                "this competency. Raw prompt content is only read when a "
-                "source is explicitly opted into content excerpts, and "
-                "Workprint does not evaluate prompt clarity even then."
+                "Workprint counts human-authored turns per session as a "
+                "structural signal only. It does not read prompt content "
+                "and does not evaluate whether goals were described "
+                "clearly -- only whether a session had more than one "
+                "human turn."
             ),
         ),
         AIFluencyCompetency(
@@ -124,11 +139,13 @@ def build_ai_fluency_reflection(investigation: Investigation) -> AIFluencyReflec
                 "Critically evaluating AI output for quality, relevance, "
                 "and fit before accepting it."
             ),
-            evidence=(),
+            evidence=_discernment_evidence(observations),
             note=(
-                "Workprint does not yet correlate AI session activity with "
-                "later revision commits to surface review evidence for "
-                "this competency."
+                "Workprint checks whether a Git commit's timestamp falls "
+                "within 72 hours after an AI session's last recorded "
+                "turn. This is a timing correlation only -- it does not "
+                "read commit content or confirm that AI output was "
+                "actually reviewed."
             ),
         ),
         AIFluencyCompetency(
@@ -152,6 +169,14 @@ def _bounded_ids(ids: list[str]) -> tuple[str, ...]:
     return tuple(ids[:_MAX_EVIDENCE_IDS])
 
 
+def _slug(source: str) -> str:
+    # Matches adapters/base.py's EvidenceAdapter.adapter_id transform, so
+    # evidence IDs stay stable and readable regardless of whether a
+    # source string is a slug already ("git") or a display name
+    # ("Claude Code").
+    return source.strip().lower().replace(" ", "-")
+
+
 def _delegation_evidence(
     observations: tuple[Observation, ...],
 ) -> tuple[AIFluencyEvidenceItem, ...]:
@@ -169,7 +194,7 @@ def _delegation_evidence(
         matched = by_source[source]
         items.append(
             AIFluencyEvidenceItem(
-                id=f"fluency-delegation-{source}",
+                id=f"fluency-delegation-{_slug(source)}",
                 statement=(
                     f"{label} evidence: {len(matched)} recorded "
                     f"observation(s) for this project."
@@ -235,6 +260,190 @@ def _delegation_evidence(
         )
 
     return tuple(items)
+
+
+def _description_evidence(
+    observations: tuple[Observation, ...],
+) -> tuple[AIFluencyEvidenceItem, ...]:
+    sessions: dict[tuple[str, str], list[Observation]] = {}
+    for item in observations:
+        if item.source not in AI_SOURCE_LABELS:
+            continue
+        conversation_id = (item.metadata or {}).get("conversation_id")
+        if not conversation_id:
+            continue
+        sessions.setdefault((item.source, conversation_id), []).append(item)
+
+    if not sessions:
+        return (
+            AIFluencyEvidenceItem(
+                id="fluency-description-no-sessions",
+                statement=(
+                    "Workprint found no Claude Code or Claude Cowork "
+                    "session evidence with an identifiable conversation "
+                    "for this project."
+                ),
+                supports=(
+                    "This supports that no session-structured AI evidence "
+                    "was available to check for multi-turn dialogue."
+                ),
+                does_not_prove=(
+                    "It does not prove single-turn or no interaction "
+                    "occurred; this signal only exists for sources "
+                    "Workprint can group into sessions."
+                ),
+                evidence_ids=(),
+            ),
+        )
+
+    multi_turn_ids: list[str] = []
+    single_turn_count = 0
+    for turns in sessions.values():
+        human_turns = [turn for turn in turns if turn.actor == "Human"]
+        if len(human_turns) > 1:
+            multi_turn_ids.extend(turn.id for turn in human_turns)
+        elif human_turns:
+            single_turn_count += 1
+
+    items: list[AIFluencyEvidenceItem] = []
+    multi_turn_session_count = sum(
+        1
+        for turns in sessions.values()
+        if len([turn for turn in turns if turn.actor == "Human"]) > 1
+    )
+    if multi_turn_session_count:
+        items.append(
+            AIFluencyEvidenceItem(
+                id="fluency-description-multi-turn-sessions",
+                statement=(
+                    f"{multi_turn_session_count} of {len(sessions)} "
+                    "recorded session(s) included more than one "
+                    "human-authored turn."
+                ),
+                supports=(
+                    "This supports that some sessions involved more than "
+                    "a single opening prompt, which may reflect iterative "
+                    "dialogue rather than one-shot delegation."
+                ),
+                does_not_prove=(
+                    "It does not measure how clearly goals were "
+                    "described, or whether follow-up turns were "
+                    "clarification, correction, or an unrelated new ask."
+                ),
+                evidence_ids=_bounded_ids(multi_turn_ids),
+            )
+        )
+    if single_turn_count:
+        items.append(
+            AIFluencyEvidenceItem(
+                id="fluency-description-single-turn-sessions",
+                statement=(
+                    f"{single_turn_count} of {len(sessions)} recorded "
+                    "session(s) included exactly one human-authored turn."
+                ),
+                supports=(
+                    "This supports that some sessions were a single "
+                    "prompt with no recorded human follow-up."
+                ),
+                does_not_prove=(
+                    "It does not prove the single prompt was unclear or "
+                    "insufficient -- a single well-described prompt can "
+                    "be exactly enough."
+                ),
+                evidence_ids=(),
+            )
+        )
+
+    return tuple(items)
+
+
+def _discernment_evidence(
+    observations: tuple[Observation, ...],
+) -> tuple[AIFluencyEvidenceItem, ...]:
+    session_end_times = [
+        item.timestamp
+        for item in observations
+        if item.source in AI_SOURCE_LABELS and item.timestamp is not None
+    ]
+    commit_observations = [
+        item
+        for item in observations
+        if item.source_type == "repository"
+        and item.activity == "implementation"
+        and item.timestamp is not None
+    ]
+
+    if not session_end_times or not commit_observations:
+        return (
+            AIFluencyEvidenceItem(
+                id="fluency-discernment-no-correlation-possible",
+                statement=(
+                    "Workprint did not have both timestamped AI session "
+                    "evidence and timestamped Git commits available to "
+                    "check for timing correlation."
+                ),
+                supports=(
+                    "This supports that at least one of the two signals "
+                    "this check needs was missing from the evidence read."
+                ),
+                does_not_prove=(
+                    "It does not prove review did or did not happen."
+                ),
+                evidence_ids=(),
+            ),
+        )
+
+    following_commits = [
+        commit
+        for commit in commit_observations
+        if any(
+            timedelta(0) <= (commit.timestamp - session_time) <= _DISCERNMENT_WINDOW
+            for session_time in session_end_times
+        )
+    ]
+
+    if following_commits:
+        return (
+            AIFluencyEvidenceItem(
+                id="fluency-discernment-commits-follow-sessions",
+                statement=(
+                    f"{len(following_commits)} Git commit(s) were recorded "
+                    "within 72 hours after an AI session's last recorded "
+                    "turn."
+                ),
+                supports=(
+                    "This supports that repository activity followed AI "
+                    "session activity in time, which may reflect review "
+                    "or revision following AI collaboration."
+                ),
+                does_not_prove=(
+                    "It does not prove the commit content relates to the "
+                    "AI session, or that any review happened -- only that "
+                    "the two events are close in time."
+                ),
+                evidence_ids=_bounded_ids([obs.id for obs in following_commits]),
+            ),
+        )
+
+    return (
+        AIFluencyEvidenceItem(
+            id="fluency-discernment-no-commits-follow-sessions",
+            statement=(
+                "Workprint found no Git commits within 72 hours after an "
+                "AI session's last recorded turn."
+            ),
+            supports=(
+                "This supports that this specific, narrow timing signal "
+                "was not present in the evidence Workprint read."
+            ),
+            does_not_prove=(
+                "It does not prove review did not happen; review can "
+                "leave no trace in Git history, or commits may follow "
+                "outside this window."
+            ),
+            evidence_ids=(),
+        ),
+    )
 
 
 def _diligence_evidence(

@@ -9,7 +9,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from workprint.adapters import GitAdapter
+from workprint.adapters.claude_code import ClaudeCodeAdapter
+from workprint.adapters.claude_cowork import ClaudeCoworkAdapter
+from workprint.adapters.claude_desktop_chat import ClaudeDesktopChatAdapter
 from workprint.ai_fluency import (
+    AI_SOURCE_LABELS,
     build_ai_fluency_reflection,
     build_playbook_worksheet_markdown,
 )
@@ -31,6 +35,22 @@ class AIFluencyReflectionTests(unittest.TestCase):
         self.assertIn("CC BY-NC-SA", reflection.attribution)
         self.assertIn("does not score", reflection.disclaimer.lower())
 
+    def test_ai_source_labels_match_real_adapter_source_names(self):
+        # Regression: dogfooding against this repo's own real Claude Code
+        # evidence showed AI_SOURCE_LABELS keyed on the hyphenated adapter
+        # id ("claude-code"), but Observation.source is actually each
+        # adapter's source_name directly ("Claude Code"), a different
+        # string. That mismatch silently broke every check in this module
+        # against real data despite unit tests passing, because the test
+        # fixtures made the same wrong assumption. Importing the real
+        # adapter classes here means a future rename is caught immediately.
+        real_source_names = {
+            ClaudeCodeAdapter.source_name,
+            ClaudeCoworkAdapter.source_name,
+            ClaudeDesktopChatAdapter.source_name,
+        }
+        self.assertEqual(set(AI_SOURCE_LABELS), real_source_names)
+
     def test_all_four_competencies_are_always_present(self):
         reflection = build_ai_fluency_reflection(self._investigation([]))
 
@@ -39,19 +59,121 @@ class AIFluencyReflectionTests(unittest.TestCase):
             keys, ["delegation", "description", "discernment", "diligence"]
         )
 
-    def test_description_and_discernment_have_notes_not_evidence(self):
+    def test_description_and_discernment_have_scope_notes(self):
         reflection = build_ai_fluency_reflection(self._investigation([]))
 
         by_key = {item.key: item for item in reflection.competencies}
-        self.assertEqual(by_key["description"].evidence, ())
         self.assertNotEqual(by_key["description"].note, "")
-        self.assertEqual(by_key["discernment"].evidence, ())
         self.assertNotEqual(by_key["discernment"].note, "")
+
+    def test_description_notes_when_no_sessions_found(self):
+        reflection = build_ai_fluency_reflection(self._investigation([]))
+
+        description = next(
+            item for item in reflection.competencies if item.key == "description"
+        )
+        evidence_ids = {item.id for item in description.evidence}
+        self.assertIn("fluency-description-no-sessions", evidence_ids)
+
+    def test_description_detects_multi_turn_and_single_turn_sessions(self):
+        observations = [
+            self._obs(
+                "OBS-1",
+                source="Claude Code",
+                actor="Human",
+                metadata={"conversation_id": "multi"},
+            ),
+            self._obs(
+                "OBS-2",
+                source="Claude Code",
+                actor="Human",
+                metadata={"conversation_id": "multi"},
+            ),
+            self._obs(
+                "OBS-3",
+                source="Claude Code",
+                actor="claude-code",
+                metadata={"conversation_id": "multi"},
+            ),
+            self._obs(
+                "OBS-4",
+                source="Claude Code",
+                actor="Human",
+                metadata={"conversation_id": "single"},
+            ),
+        ]
+        reflection = build_ai_fluency_reflection(self._investigation(observations))
+
+        description = next(
+            item for item in reflection.competencies if item.key == "description"
+        )
+        evidence_ids = {item.id for item in description.evidence}
+        self.assertIn("fluency-description-multi-turn-sessions", evidence_ids)
+        self.assertIn("fluency-description-single-turn-sessions", evidence_ids)
+
+    def test_discernment_notes_when_correlation_not_possible(self):
+        reflection = build_ai_fluency_reflection(self._investigation([]))
+
+        discernment = next(
+            item for item in reflection.competencies if item.key == "discernment"
+        )
+        evidence_ids = {item.id for item in discernment.evidence}
+        self.assertIn("fluency-discernment-no-correlation-possible", evidence_ids)
+
+    def test_discernment_detects_commit_following_session(self):
+        observations = [
+            self._obs(
+                "OBS-1",
+                source="Claude Code",
+                actor="Human",
+                timestamp=datetime(2026, 1, 1, 12, 0, tzinfo=timezone.utc),
+                metadata={"conversation_id": "c1"},
+            ),
+            self._obs(
+                "OBS-2",
+                source="git",
+                source_type="repository",
+                activity="implementation",
+                timestamp=datetime(2026, 1, 2, 12, 0, tzinfo=timezone.utc),
+            ),
+        ]
+        reflection = build_ai_fluency_reflection(self._investigation(observations))
+
+        discernment = next(
+            item for item in reflection.competencies if item.key == "discernment"
+        )
+        evidence_ids = {item.id for item in discernment.evidence}
+        self.assertIn("fluency-discernment-commits-follow-sessions", evidence_ids)
+
+    def test_discernment_ignores_commit_outside_window(self):
+        observations = [
+            self._obs(
+                "OBS-1",
+                source="Claude Code",
+                actor="Human",
+                timestamp=datetime(2026, 1, 1, 12, 0, tzinfo=timezone.utc),
+                metadata={"conversation_id": "c1"},
+            ),
+            self._obs(
+                "OBS-2",
+                source="git",
+                source_type="repository",
+                activity="implementation",
+                timestamp=datetime(2026, 1, 10, 12, 0, tzinfo=timezone.utc),
+            ),
+        ]
+        reflection = build_ai_fluency_reflection(self._investigation(observations))
+
+        discernment = next(
+            item for item in reflection.competencies if item.key == "discernment"
+        )
+        evidence_ids = {item.id for item in discernment.evidence}
+        self.assertIn("fluency-discernment-no-commits-follow-sessions", evidence_ids)
 
     def test_delegation_lists_each_present_source(self):
         observations = [
             self._obs("OBS-1", source="git"),
-            self._obs("OBS-2", source="claude-code"),
+            self._obs("OBS-2", source="Claude Code"),
         ]
         reflection = build_ai_fluency_reflection(self._investigation(observations))
 
@@ -157,7 +279,7 @@ class AIFluencyReflectionTests(unittest.TestCase):
         self.assertIn("### Diligence", rendered)
 
     def test_playbook_worksheet_has_fill_in_columns_and_real_evidence(self):
-        observations = [self._obs("OBS-1", source="claude-code")]
+        observations = [self._obs("OBS-1", source="Claude Code")]
         worksheet = build_playbook_worksheet_markdown(
             self._investigation(observations)
         )
@@ -188,10 +310,12 @@ class AIFluencyReflectionTests(unittest.TestCase):
         actor="Human",
         artifact=None,
         statement=None,
+        timestamp=None,
+        metadata=None,
     ):
         return Observation(
             id=obs_id,
-            timestamp=datetime(2026, 1, 1, tzinfo=timezone.utc),
+            timestamp=timestamp or datetime(2026, 1, 1, tzinfo=timezone.utc),
             source=source,
             source_type=source_type,
             actor=actor,
@@ -199,7 +323,7 @@ class AIFluencyReflectionTests(unittest.TestCase):
             statement=statement or f"{actor} stated something in {source}.",
             evidence_refs=(f"{obs_id}.json#1",),
             artifact=artifact,
-            metadata={},
+            metadata=metadata or {},
         )
 
 
