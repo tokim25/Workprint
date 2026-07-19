@@ -649,11 +649,83 @@ Limitations:
 
 ## Active Milestone: Low-Code/No-Code User Experience
 
-Status: Ready for definition
+Status: In progress
 
-Goal: Make Workprint usable without requiring terminal knowledge.
+Goal: Make Workprint usable end to end by someone with no coding
+experience -- choosing a project, seeing evidence, and getting a report
+out, without touching a terminal or typing a filesystem path.
 
-Detailed requirements: To be defined.
+Implemented scope:
+
+- **Native folder picker.** The web app's "Local project path" free-text
+  field (required typing an absolute path -- inaccessible to a non-coder,
+  and the browser's File System Access API cannot supply one even from
+  drag-and-drop, a hard platform limit) is replaced by a native OS
+  "Choose Project Folder" dialog when running inside the new Electron
+  shell (`electron/main.js`, `electron/preload.js`,
+  `lib/electron-bridge.ts`), detected client-side via
+  `useSyncExternalStore` for hydration safety. The manual text field
+  remains as the fallback in a plain browser or `npm run dev` without
+  Electron, where no native dialog is available.
+- **Real report generation.** The discoveries screen's "Continue to
+  report," four report-section previews, and "Export report" were all
+  inert placeholders that did nothing. `src/workprint/web_investigate.py`
+  (a new bounded Python entry point, mirroring `git_summary.py`'s
+  pattern) plus `app/api/investigate/route.ts` now run a full
+  investigation across every discovered source and return both Markdown
+  and JSON reports, downloadable directly from the browser (client-side
+  Blob download, no server-side file write) with a collapsible preview.
+  Verified end-to-end against this repository's own real evidence: a
+  1.3MB real report generated and downloaded correctly.
+- **Electron desktop shell (development mode).** `npm run electron:dev`
+  wraps the existing Next.js app in a native window instead of a browser
+  tab, spawning `next dev` and waiting for it to become ready before
+  opening the window. This is the vehicle for the native folder dialog
+  above; see Limitations for what it does not yet do.
+- **Verified, not yet wired: PyInstaller bundling.** Confirmed that
+  `pyinstaller --onefile` packages the `workprint` console script into a
+  fully standalone ~9MB binary that runs `workprint discover` correctly
+  with no Python installed and no `PYTHONPATH` set. This validates the
+  technical approach for removing the Python dependency from end-user
+  distribution, but bundling the specific modules the web app's API
+  routes actually invoke (`git_summary`, `claude_local_summary`,
+  `web_investigate`) and wiring them into a packaged build was not done
+  in this pass.
+- A small plain-language copy pass (removed a leaked internal term,
+  "adapter," from user-facing Git timeline copy).
+- `docs/desktop-app.md`: what the Electron shell does today, and the
+  explicit, itemized gap to a real one-click installer.
+- `docs/foundation/PROJECT_CONTEXT.md` refreshed: it had described the
+  web app as an upcoming near-term priority, when it had already been
+  built and shipped across the preceding milestones.
+
+Limitations:
+
+- **Distribution is not solved.** Starting Workprint at all -- web app or
+  Electron shell -- still requires `npm install` and a terminal command.
+  There is no packaged installer, no code signing or notarization (both
+  require credentials only the project owner can obtain), and no
+  production build path (`electron:dev` always spawns a development
+  server, not a pre-built standalone bundle). See `docs/desktop-app.md`
+  for the itemized remaining work.
+- The Electron native-dialog UX could not be fully self-verified: native
+  desktop windows are outside the tooling available for automated
+  browser-based verification in this environment. The process launch,
+  IPC wiring, and `dialog.showOpenDialog` call were verified by code
+  review and a healthy process tree; a human click-test was requested but
+  its outcome is not independently confirmed here.
+- No custom in-app folder-browser fallback for plain-browser/dev-mode use
+  (the deliberately deferred second half of the "native dialog first"
+  phased plan) -- that context still uses the manual text field.
+- Report generation requires a local project path (the same one used for
+  Git and Claude session evidence); a project selected only via the
+  browser drag-and-drop file picker, with no path ever entered, cannot
+  currently generate a full report, since the Python backend needs a
+  real filesystem path it can read from.
+- No automated JS/TS tests exist for the new folder-picker or
+  report-generation UI, matching the pre-existing state of this
+  codebase's frontend test coverage; verification was manual and
+  end-to-end against real data in a running dev server.
 
 ## Upcoming Milestones
 

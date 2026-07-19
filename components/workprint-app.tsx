@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { ChangeEvent, DragEvent, RefObject } from "react";
 import { ClaudeSessionEvidence } from "@/components/claude-session-evidence";
 import { ConfidenceIndicator } from "@/components/confidence-indicator";
@@ -8,6 +8,10 @@ import { EvidenceDrawer } from "@/components/evidence-drawer";
 import { GitTimeline } from "@/components/git-timeline";
 import { ProjectFileEvidence } from "@/components/project-file-evidence";
 import { SourceStatusList } from "@/components/source-status-list";
+import {
+  chooseProjectFolderNative,
+  isElectronBridgeAvailable,
+} from "@/lib/electron-bridge";
 import {
   claudeCodeDiscoveryClaim,
   claudeCoworkDiscoveryClaim,
@@ -32,6 +36,17 @@ import { evidenceItems, insight, projectSources } from "@/lib/sample-data";
 
 type Screen = "start" | "sources" | "investigating" | "discoveries";
 type SelectionMode = "sample" | "local";
+
+type InvestigateResult = {
+  project: string;
+  sources: string[];
+  markdown: string;
+  json: unknown;
+};
+
+type InvestigateResponse =
+  | (InvestigateResult & { ok: true })
+  | { ok: false; error: { code: string; message: string } };
 
 type BrowserFileSystemEntry = {
   isDirectory: boolean;
@@ -80,6 +95,23 @@ export function WorkprintApp() {
   const [claudeSummaryLoading, setClaudeSummaryLoading] = useState(false);
   const [desktopChatDeepParseRequested, setDesktopChatDeepParseRequested] =
     useState(false);
+  const [choosingProjectFolder, setChoosingProjectFolder] = useState(false);
+  const [investigateResult, setInvestigateResult] = useState<InvestigateResult | null>(
+    null,
+  );
+  const [investigateError, setInvestigateError] = useState("");
+  const [investigateLoading, setInvestigateLoading] = useState(false);
+  // window.workprintElectron is set once by the Electron preload script
+  // before any page script runs and never changes afterward, so this only
+  // needs a snapshot read, not a subscription -- useSyncExternalStore
+  // gives a hydration-safe way to read it (server snapshot always false,
+  // since window does not exist there) without the extra render pass an
+  // effect-based useState would cause.
+  const nativeFolderPickerAvailable = useSyncExternalStore(
+    () => () => {},
+    isElectronBridgeAvailable,
+    () => false,
+  );
   const [projectFileFacts, setProjectFileFacts] = useState<ProjectFileEvidenceFact[]>([]);
   const [projectFileSession, setProjectFileSession] = useState(0);
   const startHeadingRef = useRef<HTMLHeadingElement>(null);
@@ -182,6 +214,8 @@ export function WorkprintApp() {
     setClaudeSummary(null);
     setClaudeSummaryError("");
     setDesktopChatDeepParseRequested(false);
+    setInvestigateResult(null);
+    setInvestigateError("");
     setProjectStatusMessage("Showing sample project places.");
     window.requestAnimationFrame(() => {
       chooseProjectButtonRef.current?.focus();
@@ -199,6 +233,8 @@ export function WorkprintApp() {
     setClaudeSummary(null);
     setClaudeSummaryError("");
     setDesktopChatDeepParseRequested(false);
+    setInvestigateResult(null);
+    setInvestigateError("");
     setProjectStatusMessage("Removed the selected project. Sample project places are shown.");
     if (projectInputRef.current) {
       projectInputRef.current.value = "";
@@ -224,6 +260,8 @@ export function WorkprintApp() {
     setClaudeSummary(null);
     setClaudeSummaryError("");
     setDesktopChatDeepParseRequested(false);
+    setInvestigateResult(null);
+    setInvestigateError("");
     setProjectStatusMessage(
       `Found ${summary.fileCount} ${summary.fileCount === 1 ? "file" : "files"} in ${summary.folderName}.`,
     );
@@ -345,6 +383,71 @@ export function WorkprintApp() {
       );
     } finally {
       setClaudeSummaryLoading(false);
+    }
+  }
+
+  async function chooseProjectFolderNativeDialog() {
+    setChoosingProjectFolder(true);
+    try {
+      const path = await chooseProjectFolderNative();
+      if (path) {
+        setRepositoryPath(path);
+      }
+    } finally {
+      setChoosingProjectFolder(false);
+    }
+  }
+
+  async function runInvestigation() {
+    setInvestigateLoading(true);
+    setInvestigateError("");
+    setInvestigateResult(null);
+
+    const projectName =
+      projectAnswer.trim() || localProject?.folderName || repositoryPath || "Workprint Project";
+
+    try {
+      const response = await fetch("/api/investigate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectPath: repositoryPath,
+          projectName,
+          includeDesktopChatDeepParse: desktopChatDeepParseRequested,
+        }),
+      });
+      const payload = (await response.json()) as InvestigateResponse;
+
+      if (!response.ok || !payload.ok) {
+        setInvestigateError(
+          payload.ok
+            ? "Workprint could not generate a report for this project."
+            : payload.error.message,
+        );
+        return;
+      }
+
+      setInvestigateResult(payload);
+    } catch {
+      setInvestigateError("Workprint could not reach the local investigation route.");
+    } finally {
+      setInvestigateLoading(false);
+    }
+  }
+
+  function downloadReport(format: "markdown" | "json") {
+    if (!investigateResult) {
+      return;
+    }
+    const safeName = investigateResult.project.replace(/[^a-z0-9-]+/gi, "-").toLowerCase() || "report";
+    if (format === "markdown") {
+      downloadTextFile(`${safeName}.md`, investigateResult.markdown, "text/markdown");
+    } else {
+      downloadTextFile(
+        `${safeName}.json`,
+        JSON.stringify(investigateResult.json, null, 2),
+        "application/json",
+      );
     }
   }
 
@@ -590,28 +693,53 @@ export function WorkprintApp() {
               className="text-xl font-semibold tracking-[-0.02em]"
               id="local-history-heading"
             >
-              Local project path
+              Local project history
             </h2>
             <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
               Choosing a browser folder above does not grant this access.
               Reading Git history or local Claude sessions works only while
-              Workprint is running on your computer, using the path you type
-              below.
+              Workprint is running on your computer.
             </p>
-            <label
-              className="mt-5 block text-sm font-semibold"
-              htmlFor="repository-path"
-            >
-              Local project path
-            </label>
-            <input
-              className="mt-2 w-full rounded-full border border-[var(--line)] bg-[var(--surface)] px-5 py-3 text-sm"
-              id="repository-path"
-              onChange={(event) => setRepositoryPath(event.target.value)}
-              placeholder="/Users/you/path/to/project"
-              type="text"
-              value={repositoryPath}
-            />
+            {nativeFolderPickerAvailable ? (
+              <div className="mt-5">
+                <button
+                  className="rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)]"
+                  disabled={choosingProjectFolder}
+                  onClick={chooseProjectFolderNativeDialog}
+                  type="button"
+                >
+                  {choosingProjectFolder
+                    ? "Waiting for folder…"
+                    : "Choose Project Folder"}
+                </button>
+                {repositoryPath ? (
+                  <p className="mt-3 rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--foreground)]">
+                    Selected: <span className="break-words">{repositoryPath}</span>
+                  </p>
+                ) : (
+                  <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
+                    No folder chosen yet.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <>
+                <label
+                  className="mt-5 block text-sm font-semibold"
+                  htmlFor="repository-path"
+                >
+                  Local project path
+                </label>
+                <input
+                  className="mt-2 w-full rounded-full border border-[var(--line)] bg-[var(--surface)] px-5 py-3 text-sm"
+                  id="repository-path"
+                  onChange={(event) => setRepositoryPath(event.target.value)}
+                  placeholder="/Users/you/path/to/project"
+                  type="text"
+                  value={repositoryPath}
+                />
+              </>
+            )}
             <div className="mt-4 flex flex-wrap gap-3">
               <button
                 className="rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)]"
@@ -885,50 +1013,66 @@ export function WorkprintApp() {
             </div>
           </div>
 
-          <div className="my-16 border-t border-[var(--line)] pt-10">
+          <div className="my-16 max-w-4xl border-t border-[var(--line)] pt-10">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
-              Continue to report
+              Full report
+            </p>
+            <p className="mt-4 text-sm leading-6 text-[var(--muted)]">
+              {repositoryPath
+                ? "Workprint will read every evidence source found for this project and build a full report, including findings, a timeline, confidence, and what the evidence cannot determine."
+                : "Choose a local project above first — the full report is generated from the same local project path used for Git and Claude session evidence."}
             </p>
             <button
-              className="mt-5 rounded-full bg-[var(--accent)] px-6 py-4 font-semibold text-white transition hover:bg-[var(--accent-strong)]"
+              className="mt-5 rounded-full bg-[var(--accent)] px-6 py-4 font-semibold text-white transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={investigateLoading || !repositoryPath.trim()}
+              onClick={runInvestigation}
               type="button"
             >
-              View full report
+              {investigateLoading ? "Building report…" : "Build full report"}
             </button>
+            {investigateError ? (
+              <p className="mt-4 max-w-2xl rounded-2xl bg-[var(--danger-soft)] p-4 text-sm leading-6 text-[var(--danger)]">
+                {investigateError}
+              </p>
+            ) : null}
           </div>
 
-          <section className="grid gap-4 lg:grid-cols-4">
-            {[
-              "What happened",
-              "Human, AI, and joint activity",
-              "Decisions and timeline",
-              "Confidence and gaps",
-            ].map((section) => (
-              <div className="border-t border-[var(--line)] pt-4" key={section}>
-                <h3 className="font-semibold">{section}</h3>
-                <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                  Report section preview. The full report keeps evidence
-                  references and unknowns visible.
-                </p>
+          {investigateResult ? (
+            <section className="max-w-4xl border-t border-[var(--line)] pt-10">
+              <h2 className="text-2xl font-semibold tracking-[-0.03em]">
+                Report for {investigateResult.project}
+              </h2>
+              <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
+                Built from {investigateResult.sources.length}{" "}
+                {investigateResult.sources.length === 1 ? "source" : "sources"}:{" "}
+                {investigateResult.sources.join(", ")}.
+              </p>
+              <div className="mt-5 flex flex-wrap gap-3">
+                <button
+                  className="rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)]"
+                  onClick={() => downloadReport("markdown")}
+                  type="button"
+                >
+                  Download as Markdown
+                </button>
+                <button
+                  className="rounded-full border border-[var(--line)] px-5 py-3 text-sm font-semibold"
+                  onClick={() => downloadReport("json")}
+                  type="button"
+                >
+                  Download as JSON
+                </button>
               </div>
-            ))}
-          </section>
-
-          <details className="mt-12 max-w-3xl rounded-[24px] bg-[var(--surface-soft)] p-6">
-            <summary className="cursor-pointer font-semibold">
-              Export report
-            </summary>
-            <div className="mt-5 space-y-4 text-sm leading-6 text-[var(--muted)]">
-              <p>
-                Export is represented for the prototype only. No file is
-                generated in this milestone.
-              </p>
-              <p>
-                Exports should include evidence references, source limitations,
-                confidence, and unknowns by default.
-              </p>
-            </div>
-          </details>
+              <details className="mt-6 rounded-[24px] bg-[var(--surface-soft)] p-6">
+                <summary className="cursor-pointer font-semibold text-[var(--foreground)]">
+                  Preview the report
+                </summary>
+                <pre className="mt-4 max-h-[32rem] overflow-auto whitespace-pre-wrap break-words rounded-2xl bg-[var(--surface)] p-4 text-xs leading-6 text-[var(--foreground)]">
+                  {investigateResult.markdown}
+                </pre>
+              </details>
+            </section>
+          ) : null}
         </section>
       ) : null}
       </main>
@@ -940,6 +1084,18 @@ export function WorkprintApp() {
       />
     </>
   );
+}
+
+function downloadTextFile(filename: string, content: string, mimeType: string) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 function gitEvidenceItems(summary: GitSummary) {
