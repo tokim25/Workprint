@@ -108,9 +108,18 @@ and limitations.
 
 ## Active Capability — Low-Code/No-Code User Experience
 
-Status: Ready for definition
+Status: In progress
 
-Goal: Make Workprint usable without requiring command-line knowledge.
+Goal: Make Workprint usable end to end by someone with no coding
+experience. A native OS folder picker (inside a new Electron desktop
+shell) replaces the free-text path field, and the discoveries screen's
+previously-inert "view report"/"export" buttons now generate and
+download real Markdown/JSON reports. Distribution is not solved yet:
+starting Workprint at all still requires terminal commands, though
+PyInstaller has been verified (not yet wired in) to bundle the Python
+backend into a fully standalone binary. See
+[docs/desktop-app.md](docs/desktop-app.md) and
+[PROJECT_PLAN.md](PROJECT_PLAN.md) for the itemized scope and gaps.
 
 ## Active Capability — Claude Session Evidence (Tier 1a)
 

@@ -2,12 +2,14 @@
   "name": "workprint",
   "version": "0.1.0",
   "private": true,
+  "main": "electron/main.js",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "electron:dev": "electron ."
   },
   "dependencies": {
     "next": "^16.2.10",
@@ -19,6 +21,8 @@
     "@types/node": "24.10.1",
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",
+    "electron": "^43.1.1",
+    "electron-builder": "^26.15.3",
     "eslint": "9.39.1",
     "eslint-config-next": "^16.2.10",
     "tailwindcss": "4.1.17",

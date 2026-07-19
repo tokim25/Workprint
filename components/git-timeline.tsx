@@ -140,7 +140,7 @@ function CommitTimelineItem({ commit }: { commit: GitRecentCommit }) {
           <p className="mt-4 text-[var(--muted)]">
             Git records {commit.file_change_count} changed files for this
             commit. This view shows the first {commit.file_changes.length} file
-            changes returned by the bounded adapter.
+            changes to keep the report a reasonable size.
           </p>
         ) : null}
         <p className="mt-4 border-t border-[var(--line)] pt-3 text-[var(--muted)]">
