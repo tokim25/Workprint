@@ -482,18 +482,29 @@ API the code was written against (see
 `docs/foundation/DECISION_LOG.md`, "Claude Desktop Chat's Optional
 Dependency Is Pinned, Not Name-Matched"), and the adapter's own database
 enumeration assumed the wrong shape for the real API's return value. Both
-are fixed; see `docs/claude-desktop-chat-adapter.md`, "How This Was
-Verified," for what is and is not confirmed as a result. The general lesson
-is recorded in `docs/foundation/ENGINEERING_PRINCIPLES.md`, "External
-Dependencies Are Verified, Not Assumed."
+are fixed. The general lesson is recorded in
+`docs/foundation/ENGINEERING_PRINCIPLES.md`, "External Dependencies Are
+Verified, Not Assumed."
+
+A second pass confirmed the heuristic turn-scanning logic itself: the one
+live record found in the real local cache during the first pass could not
+be read (its externally serialized value was missing from disk), so the
+turn-classification heuristic had not actually been exercised against a
+readable value. It has since been verified against a database written by
+a real Chrome browser through the real `indexedDB` API — genuine Chromium
+encoding, not hand-crafted bytes — committed as a regression fixture at
+`fixtures/claude-desktop-chat/synthetic-keyval-store.indexeddb.leveldb`.
+See `docs/claude-desktop-chat-adapter.md`, "How This Was Verified," for the
+precise line between what the code is now confirmed to do correctly and
+what remains an open question about claude.ai's actual cache contents.
 
 Limitations:
 
-- Whether the scanned database reliably holds *recoverable* conversation
-  content is still unconfirmed: on the machine this was verified against,
-  its one live record could not be read because its externally serialized
-  value was missing from disk. The heuristic turn-scanning logic has
-  therefore not yet been exercised against a real, readable value.
+- The heuristic logic is confirmed correct against a readable value of the
+  hypothesized shape. Whether claude.ai's own real cache reliably produces
+  a *readable* value at all, on a given machine at a given time, is still
+  unconfirmed — dogfood runs against the live real cache found a candidate
+  turn in one run out of several.
 - Evidence is account-wide only; it cannot currently be attributed to the
   project under investigation.
 - The IndexedDB/LevelDB format is undocumented by Anthropic and may change
@@ -527,14 +538,14 @@ Detailed requirements: To be defined.
 
    Detailed requirements: To be defined.
 
-2. Claude Session Evidence (Tier 1c) recoverable-content verification
+2. Claude Session Evidence (Tier 1c) real-cache readability
 
-   Goal: Confirm the heuristic turn-scanning logic against a real,
-   readable `keyval-store` value. The dependency and database enumeration
-   are now verified (see Tier 1c above), but the one live record found
-   during that pass could not be read because its externally serialized
-   value was missing from disk, so the actual conversation-shape heuristic
-   remains unexercised against real content.
+   Goal: Determine whether claude.ai's actual local cache reliably
+   produces a readable `keyval-store` value in ordinary use, as opposed to
+   the synthetic-but-genuinely-Chromium-encoded fixture used to verify the
+   extraction logic itself (see Tier 1c above). This is now a question
+   about claude.ai's real behavior over time, not about whether
+   Workprint's code works correctly.
 
    Detailed requirements: To be defined.
 

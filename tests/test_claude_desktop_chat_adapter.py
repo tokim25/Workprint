@@ -19,6 +19,17 @@ from workprint.adapters.claude_desktop_chat import (
 )
 from workprint.extractor import extract_observations
 
+try:
+    import ccl_chromium_reader  # noqa: F401
+
+    HAS_CCL_CHROMIUM_READER = True
+except ImportError:
+    HAS_CCL_CHROMIUM_READER = False
+
+FIXTURE_PATH = (
+    Path("fixtures/claude-desktop-chat/synthetic-keyval-store.indexeddb.leveldb")
+)
+
 
 class ClaudeDesktopChatAdapterTests(unittest.TestCase):
     def test_registry_returns_adapter(self):
@@ -285,6 +296,39 @@ class ClaudeDesktopChatAdapterTests(unittest.TestCase):
 
         self.assertEqual(len(messages), 1)
         self.assertEqual(messages[0].role, "human")
+
+    @unittest.skipUnless(
+        HAS_CCL_CHROMIUM_READER,
+        "requires the optional claude-desktop-chat extra "
+        "(pip install 'workprint[claude-desktop-chat]')",
+    )
+    def test_deep_parse_against_genuine_chromium_encoded_fixture(self):
+        # fixtures/claude-desktop-chat/synthetic-keyval-store.indexeddb.leveldb
+        # was produced by a real Chrome browser writing to a real
+        # "keyval-store"/"keyval" IndexedDB store via indexedDB.open(),
+        # not hand-crafted bytes -- it is genuine Chromium encoding,
+        # containing only synthetic text written for this test. This is
+        # the regression test for the heuristic scan logic that could not
+        # be exercised against the real local cache during verification
+        # (its one live record's value was unreadable); see "How This Was
+        # Verified" in docs/claude-desktop-chat-adapter.md.
+        with tempfile.TemporaryDirectory() as project_dir:
+            adapter = ClaudeDesktopChatAdapter(
+                indexeddb_home=FIXTURE_PATH, deep_parse=True
+            )
+            messages = adapter.read(project_dir)
+
+        self.assertEqual(len(messages), 2)
+        human, assistant = messages
+        self.assertEqual(human.id, "fixture-turn-human-1")
+        self.assertEqual(human.role, "human")
+        self.assertFalse(human.metadata.get("presence_only", False))
+        self.assertEqual(assistant.id, "fixture-turn-assistant-1")
+        self.assertEqual(assistant.role, "assistant")
+        # Structural by default: the synthetic fixture text must not leak
+        # into content even though it is genuinely present in the fixture.
+        self.assertNotIn("synthetic", human.content)
+        self.assertNotIn("synthetic", assistant.content)
 
 
 if __name__ == "__main__":
