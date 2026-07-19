@@ -458,6 +458,296 @@ export function WorkprintApp() {
     });
   }
 
+  // In Electron, the native folder connection below is strictly more
+  // capable than the browser file picker (it unlocks Git and Claude
+  // history), so it renders first there; in a plain browser it stays
+  // second since it is only a manual path field. See localHistorySection.
+  const fileEvidenceSection = (
+    <>
+      <div className="mt-10 rounded-[32px] border border-dashed border-[var(--line)] bg-[var(--surface-soft)] p-8">
+        <p className="text-xl font-semibold">
+          {localProject ? "Selected project" : "Add files for evidence"}
+        </p>
+        <p className="mt-3 max-w-2xl leading-7 text-[var(--muted)]">
+          Files remain on your device. Workprint only looks at filenames,
+          folder paths, extensions, and counts for this prototype.
+        </p>
+        <div
+          className={`mt-6 rounded-[24px] border border-dashed p-6 transition ${
+            dragActive
+              ? "border-[var(--accent)] bg-[var(--accent-soft)]"
+              : "border-[var(--line)]"
+          }`}
+          data-local-project-dropzone
+          onDragLeave={handleDragLeave}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+        >
+          <p className="font-semibold">
+            Drop project files here, or add them with the button.
+          </p>
+          <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+            Drag-and-drop is optional. The folder picker is the keyboard
+            path and asks for access only after you choose it.
+          </p>
+          <input
+            aria-describedby="folder-picker-help"
+            className="sr-only"
+            id="project-folder-input"
+            multiple
+            onChange={handleProjectInputChange}
+            ref={projectInputRef}
+            tabIndex={-1}
+            type="file"
+            {...{ webkitdirectory: "", directory: "" }}
+          />
+          <div className="mt-5 flex flex-wrap gap-3">
+            <button
+              className="rounded-full bg-[var(--accent)] px-6 py-4 font-semibold text-white transition hover:bg-[var(--accent-strong)]"
+              onClick={openProjectPicker}
+              ref={chooseProjectButtonRef}
+              type="button"
+            >
+              Add files for evidence
+            </button>
+            <button
+              className="rounded-full border border-[var(--line)] px-6 py-4 font-semibold"
+              onClick={selectSampleMode}
+              type="button"
+            >
+              Use sample project
+            </button>
+          </div>
+          <p
+            className="mt-4 text-sm leading-6 text-[var(--muted)]"
+            id="folder-picker-help"
+          >
+            Workprint does not upload, persist, or display file contents.
+          </p>
+        </div>
+        <p aria-live="polite" className="sr-only" role="status">
+          {projectStatusMessage}
+        </p>
+      </div>
+      <section className="mt-10 rounded-[28px] bg-[var(--surface-soft)] p-6 sm:p-8">
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div ref={projectSummaryRef} tabIndex={-1}>
+            <h2 className="text-2xl font-semibold tracking-[-0.03em]">
+              {localProject ? localProject.folderName : "Sample project places"}
+            </h2>
+            <p className="mt-2 text-sm text-[var(--muted)]">
+              {localProject
+                ? `${localProject.fileCount} ${localProject.fileCount === 1 ? "file" : "files"} visible to the browser. ${readyCount} source categories found.`
+                : `${readyCount} sample places are readable. One item shows a recovery state.`}
+            </p>
+          </div>
+          <p className="max-w-sm text-sm leading-6 text-[var(--muted)]">
+            {selectionMode === "local"
+              ? "Found means recognized by local metadata, not analyzed."
+              : "Found means readable sample evidence, not a complete project history."}
+          </p>
+        </div>
+        <SourceStatusList sources={visibleSources} />
+        {localProject ? (
+          <div className="mt-6 flex flex-wrap gap-3">
+            <button
+              className="rounded-full border border-[var(--line)] px-5 py-3 text-sm font-semibold"
+              onClick={openProjectPicker}
+              type="button"
+            >
+              Replace project
+            </button>
+            <button
+              className="rounded-full border border-[var(--line)] px-5 py-3 text-sm font-semibold text-[var(--muted)]"
+              onClick={removeLocalProject}
+              type="button"
+            >
+              Remove project
+            </button>
+          </div>
+        ) : null}
+      </section>
+      {localProject ? (
+        <ProjectFileEvidence
+          files={localProject.files}
+          key={projectFileSession}
+          onFactsChange={setProjectFileFacts}
+        />
+      ) : null}
+      <details className="mt-6 max-w-3xl text-sm leading-6 text-[var(--muted)]">
+        <summary className="cursor-pointer font-semibold text-[var(--foreground)]">
+          What these sources may miss
+        </summary>
+        <p className="mt-3">
+          Static files may omit revision history. Repository metadata does
+          not prove who wrote every line. Conversation exports show only
+          the captured conversation.
+        </p>
+      </details>
+    </>
+  );
+
+  const localHistorySection = (
+    <section
+      aria-labelledby="local-history-heading"
+      className="mt-10 max-w-3xl rounded-[24px] bg-[var(--surface-soft)] p-6"
+    >
+      <h2
+        className="text-xl font-semibold tracking-[-0.02em]"
+        id="local-history-heading"
+      >
+        Local project history
+      </h2>
+      <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
+        {nativeFolderPickerAvailable
+          ? "Connect your project folder to read Git commit history and local Claude session evidence directly from your computer. This works only while Workprint is running as a desktop app. You can also add specific files below for evidence Workprint can show inline."
+          : "Choosing a browser folder above does not grant this access. Reading Git history or local Claude sessions works only while Workprint is running on your computer."}
+      </p>
+      {nativeFolderPickerAvailable ? (
+        <div className="mt-5">
+          <button
+            className="rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)]"
+            disabled={choosingProjectFolder}
+            onClick={chooseProjectFolderNativeDialog}
+            type="button"
+          >
+            {choosingProjectFolder
+              ? "Waiting for folder…"
+              : "Connect Project Folder"}
+          </button>
+          {repositoryPath ? (
+            <p className="mt-3 rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--foreground)]">
+              Selected: <span className="break-words">{repositoryPath}</span>
+            </p>
+          ) : (
+            <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
+              No folder chosen yet.
+            </p>
+          )}
+        </div>
+      ) : (
+        <>
+          <label
+            className="mt-5 block text-sm font-semibold"
+            htmlFor="repository-path"
+          >
+            Local project path
+          </label>
+          <input
+            className="mt-2 w-full rounded-full border border-[var(--line)] bg-[var(--surface)] px-5 py-3 text-sm"
+            id="repository-path"
+            onChange={(event) => setRepositoryPath(event.target.value)}
+            placeholder="/Users/you/path/to/project"
+            type="text"
+            value={repositoryPath}
+          />
+        </>
+      )}
+      <div className="mt-4 flex flex-wrap gap-3">
+        <button
+          className="rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)]"
+          disabled={gitSummaryLoading || !repositoryPath.trim()}
+          onClick={readGitSummary}
+          type="button"
+        >
+          {gitSummaryLoading ? "Reading Git metadata" : "Read Git metadata"}
+        </button>
+        <button
+          className="rounded-full border border-[var(--line)] px-5 py-3 text-sm font-semibold"
+          disabled={claudeSummaryLoading || !repositoryPath.trim()}
+          onClick={readClaudeSummary}
+          type="button"
+        >
+          {claudeSummaryLoading
+            ? "Reading Claude sessions"
+            : "Read Claude sessions"}
+        </button>
+      </div>
+      {gitSummaryError ? (
+        <p className="mt-4 rounded-2xl bg-[var(--danger-soft)] p-4 text-sm leading-6 text-[var(--danger)]">
+          {gitSummaryError}
+        </p>
+      ) : null}
+      {gitSummary ? (
+        <div className="mt-4 rounded-2xl border border-[var(--line)] p-4 text-sm leading-6 text-[var(--muted)]">
+          <p className="font-semibold text-[var(--foreground)]">
+            Found Git metadata for {gitSummary.repository.name}.
+          </p>
+          <p className="mt-2">
+            Git records {gitSummary.summary.total_commit_count}{" "}
+            {gitSummary.summary.total_commit_count === 1 ? "commit" : "commits"}.
+            {gitSummary.repository.current_branch
+              ? ` Current branch: ${gitSummary.repository.current_branch}.`
+              : " Current branch not available."}
+          </p>
+        </div>
+      ) : null}
+      <details className="mt-5 rounded-2xl border border-[var(--line)] p-4 text-sm leading-6 text-[var(--muted)]">
+        <summary className="cursor-pointer font-semibold text-[var(--foreground)]">
+          Claude Desktop chat: read in more detail? (experimental)
+        </summary>
+        <div className="mt-3 space-y-2">
+          <p>
+            Workprint can optionally read your local Claude Desktop
+            chat cache in more detail using an experimental, opt-in
+            parser. Before turning it on, it helps to know the
+            trade-off:
+          </p>
+          <p>
+            <strong className="text-[var(--foreground)]">
+              Without it:
+            </strong>{" "}
+            Workprint only notes that the cache exists and when it last
+            changed. No conversation content is read.
+          </p>
+          <p>
+            <strong className="text-[var(--foreground)]">
+              With it:
+            </strong>{" "}
+            Workprint attempts to extract real chat turns, but this
+            evidence is account-wide, not specific to this project,
+            because claude.ai chat has no concept of a project folder.
+          </p>
+          <p>
+            <strong className="text-[var(--foreground)]">
+              Either way:
+            </strong>{" "}
+            this stays entirely on your machine. Nothing is uploaded.
+          </p>
+        </div>
+        <label className="mt-4 flex items-center gap-2 text-sm font-semibold text-[var(--foreground)]">
+          <input
+            checked={desktopChatDeepParseRequested}
+            onChange={(event) =>
+              setDesktopChatDeepParseRequested(event.target.checked)
+            }
+            type="checkbox"
+          />
+          Enable detailed reading for the next &ldquo;Read Claude
+          sessions&rdquo;
+        </label>
+      </details>
+      {claudeSummaryError ? (
+        <p className="mt-4 rounded-2xl bg-[var(--danger-soft)] p-4 text-sm leading-6 text-[var(--danger)]">
+          {claudeSummaryError}
+        </p>
+      ) : null}
+      {claudeSummary ? (
+        <div className="mt-4 space-y-2 rounded-2xl border border-[var(--line)] p-4 text-sm leading-6 text-[var(--muted)]">
+          <p className="font-semibold text-[var(--foreground)]">
+            {claudeCodeDiscoveryClaim(claudeSummary.claude_code)}
+          </p>
+          <p className="font-semibold text-[var(--foreground)]">
+            {claudeCoworkDiscoveryClaim(claudeSummary.claude_cowork)}
+          </p>
+          <p className="font-semibold text-[var(--foreground)]">
+            {claudeDesktopChatDiscoveryClaim(claudeSummary.claude_desktop_chat)}
+          </p>
+        </div>
+      ) : null}
+    </section>
+  );
+
   return (
     <>
       <main
@@ -565,284 +855,17 @@ export function WorkprintApp() {
           >
             Give Workprint the places where the work happened.
           </h1>
-          <div className="mt-10 rounded-[32px] border border-dashed border-[var(--line)] bg-[var(--surface-soft)] p-8">
-            <p className="text-xl font-semibold">
-              {localProject ? "Selected project" : "Choose a project folder"}
-            </p>
-            <p className="mt-3 max-w-2xl leading-7 text-[var(--muted)]">
-              Files remain on your device. Workprint only looks at filenames,
-              folder paths, extensions, and counts for this prototype.
-            </p>
-            <div
-              className={`mt-6 rounded-[24px] border border-dashed p-6 transition ${
-                dragActive
-                  ? "border-[var(--accent)] bg-[var(--accent-soft)]"
-                  : "border-[var(--line)]"
-              }`}
-              data-local-project-dropzone
-              onDragLeave={handleDragLeave}
-              onDragOver={handleDragOver}
-              onDrop={handleDrop}
-            >
-              <p className="font-semibold">
-                Drop a local project folder here, or choose one with the button.
-              </p>
-              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                Drag-and-drop is optional. The folder picker is the keyboard
-                path and asks for access only after you choose it.
-              </p>
-              <input
-                aria-describedby="folder-picker-help"
-                className="sr-only"
-                id="project-folder-input"
-                multiple
-                onChange={handleProjectInputChange}
-                ref={projectInputRef}
-                tabIndex={-1}
-                type="file"
-                {...{ webkitdirectory: "", directory: "" }}
-              />
-              <div className="mt-5 flex flex-wrap gap-3">
-                <button
-                  className="rounded-full bg-[var(--accent)] px-6 py-4 font-semibold text-white transition hover:bg-[var(--accent-strong)]"
-                  onClick={openProjectPicker}
-                  ref={chooseProjectButtonRef}
-                  type="button"
-                >
-                  Choose project folder
-                </button>
-                <button
-                  className="rounded-full border border-[var(--line)] px-6 py-4 font-semibold"
-                  onClick={selectSampleMode}
-                  type="button"
-                >
-                  Use sample project
-                </button>
-              </div>
-              <p
-                className="mt-4 text-sm leading-6 text-[var(--muted)]"
-                id="folder-picker-help"
-              >
-                Workprint does not upload, persist, or display file contents.
-              </p>
-            </div>
-            <p aria-live="polite" className="sr-only" role="status">
-              {projectStatusMessage}
-            </p>
-          </div>
-          <section className="mt-10 rounded-[28px] bg-[var(--surface-soft)] p-6 sm:p-8">
-            <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-              <div ref={projectSummaryRef} tabIndex={-1}>
-                <h2 className="text-2xl font-semibold tracking-[-0.03em]">
-                  {localProject ? localProject.folderName : "Sample project places"}
-                </h2>
-                <p className="mt-2 text-sm text-[var(--muted)]">
-                  {localProject
-                    ? `${localProject.fileCount} ${localProject.fileCount === 1 ? "file" : "files"} visible to the browser. ${readyCount} source categories found.`
-                    : `${readyCount} sample places are readable. One item shows a recovery state.`}
-                </p>
-              </div>
-              <p className="max-w-sm text-sm leading-6 text-[var(--muted)]">
-                {selectionMode === "local"
-                  ? "Found means recognized by local metadata, not analyzed."
-                  : "Found means readable sample evidence, not a complete project history."}
-              </p>
-            </div>
-            <SourceStatusList sources={visibleSources} />
-            {localProject ? (
-              <div className="mt-6 flex flex-wrap gap-3">
-                <button
-                  className="rounded-full border border-[var(--line)] px-5 py-3 text-sm font-semibold"
-                  onClick={openProjectPicker}
-                  type="button"
-                >
-                  Replace project
-                </button>
-                <button
-                  className="rounded-full border border-[var(--line)] px-5 py-3 text-sm font-semibold text-[var(--muted)]"
-                  onClick={removeLocalProject}
-                  type="button"
-                >
-                  Remove project
-                </button>
-              </div>
-            ) : null}
-          </section>
-          {localProject ? (
-            <ProjectFileEvidence
-              files={localProject.files}
-              key={projectFileSession}
-              onFactsChange={setProjectFileFacts}
-            />
-          ) : null}
-          <details className="mt-6 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-            <summary className="cursor-pointer font-semibold text-[var(--foreground)]">
-              What these sources may miss
-            </summary>
-            <p className="mt-3">
-              Static files may omit revision history. Repository metadata does
-              not prove who wrote every line. Conversation exports show only
-              the captured conversation.
-            </p>
-          </details>
-          <section
-            aria-labelledby="local-history-heading"
-            className="mt-8 max-w-3xl rounded-[24px] bg-[var(--surface-soft)] p-6"
-          >
-            <h2
-              className="text-xl font-semibold tracking-[-0.02em]"
-              id="local-history-heading"
-            >
-              Local project history
-            </h2>
-            <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
-              Choosing a browser folder above does not grant this access.
-              Reading Git history or local Claude sessions works only while
-              Workprint is running on your computer.
-            </p>
-            {nativeFolderPickerAvailable ? (
-              <div className="mt-5">
-                <button
-                  className="rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)]"
-                  disabled={choosingProjectFolder}
-                  onClick={chooseProjectFolderNativeDialog}
-                  type="button"
-                >
-                  {choosingProjectFolder
-                    ? "Waiting for folder…"
-                    : "Choose Project Folder"}
-                </button>
-                {repositoryPath ? (
-                  <p className="mt-3 rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--foreground)]">
-                    Selected: <span className="break-words">{repositoryPath}</span>
-                  </p>
-                ) : (
-                  <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
-                    No folder chosen yet.
-                  </p>
-                )}
-              </div>
-            ) : (
-              <>
-                <label
-                  className="mt-5 block text-sm font-semibold"
-                  htmlFor="repository-path"
-                >
-                  Local project path
-                </label>
-                <input
-                  className="mt-2 w-full rounded-full border border-[var(--line)] bg-[var(--surface)] px-5 py-3 text-sm"
-                  id="repository-path"
-                  onChange={(event) => setRepositoryPath(event.target.value)}
-                  placeholder="/Users/you/path/to/project"
-                  type="text"
-                  value={repositoryPath}
-                />
-              </>
-            )}
-            <div className="mt-4 flex flex-wrap gap-3">
-              <button
-                className="rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)]"
-                disabled={gitSummaryLoading || !repositoryPath.trim()}
-                onClick={readGitSummary}
-                type="button"
-              >
-                {gitSummaryLoading ? "Reading Git metadata" : "Read Git metadata"}
-              </button>
-              <button
-                className="rounded-full border border-[var(--line)] px-5 py-3 text-sm font-semibold"
-                disabled={claudeSummaryLoading || !repositoryPath.trim()}
-                onClick={readClaudeSummary}
-                type="button"
-              >
-                {claudeSummaryLoading
-                  ? "Reading Claude sessions"
-                  : "Read Claude sessions"}
-              </button>
-            </div>
-            {gitSummaryError ? (
-              <p className="mt-4 rounded-2xl bg-[var(--danger-soft)] p-4 text-sm leading-6 text-[var(--danger)]">
-                {gitSummaryError}
-              </p>
-            ) : null}
-            {gitSummary ? (
-              <div className="mt-4 rounded-2xl border border-[var(--line)] p-4 text-sm leading-6 text-[var(--muted)]">
-                <p className="font-semibold text-[var(--foreground)]">
-                  Found Git metadata for {gitSummary.repository.name}.
-                </p>
-                <p className="mt-2">
-                  Git records {gitSummary.summary.total_commit_count}{" "}
-                  {gitSummary.summary.total_commit_count === 1 ? "commit" : "commits"}.
-                  {gitSummary.repository.current_branch
-                    ? ` Current branch: ${gitSummary.repository.current_branch}.`
-                    : " Current branch not available."}
-                </p>
-              </div>
-            ) : null}
-            <details className="mt-5 rounded-2xl border border-[var(--line)] p-4 text-sm leading-6 text-[var(--muted)]">
-              <summary className="cursor-pointer font-semibold text-[var(--foreground)]">
-                Claude Desktop chat: read in more detail? (experimental)
-              </summary>
-              <div className="mt-3 space-y-2">
-                <p>
-                  Workprint can optionally read your local Claude Desktop
-                  chat cache in more detail using an experimental, opt-in
-                  parser. Before turning it on, it helps to know the
-                  trade-off:
-                </p>
-                <p>
-                  <strong className="text-[var(--foreground)]">
-                    Without it:
-                  </strong>{" "}
-                  Workprint only notes that the cache exists and when it last
-                  changed. No conversation content is read.
-                </p>
-                <p>
-                  <strong className="text-[var(--foreground)]">
-                    With it:
-                  </strong>{" "}
-                  Workprint attempts to extract real chat turns, but this
-                  evidence is account-wide, not specific to this project,
-                  because claude.ai chat has no concept of a project folder.
-                </p>
-                <p>
-                  <strong className="text-[var(--foreground)]">
-                    Either way:
-                  </strong>{" "}
-                  this stays entirely on your machine. Nothing is uploaded.
-                </p>
-              </div>
-              <label className="mt-4 flex items-center gap-2 text-sm font-semibold text-[var(--foreground)]">
-                <input
-                  checked={desktopChatDeepParseRequested}
-                  onChange={(event) =>
-                    setDesktopChatDeepParseRequested(event.target.checked)
-                  }
-                  type="checkbox"
-                />
-                Enable detailed reading for the next &ldquo;Read Claude
-                sessions&rdquo;
-              </label>
-            </details>
-            {claudeSummaryError ? (
-              <p className="mt-4 rounded-2xl bg-[var(--danger-soft)] p-4 text-sm leading-6 text-[var(--danger)]">
-                {claudeSummaryError}
-              </p>
-            ) : null}
-            {claudeSummary ? (
-              <div className="mt-4 space-y-2 rounded-2xl border border-[var(--line)] p-4 text-sm leading-6 text-[var(--muted)]">
-                <p className="font-semibold text-[var(--foreground)]">
-                  {claudeCodeDiscoveryClaim(claudeSummary.claude_code)}
-                </p>
-                <p className="font-semibold text-[var(--foreground)]">
-                  {claudeCoworkDiscoveryClaim(claudeSummary.claude_cowork)}
-                </p>
-                <p className="font-semibold text-[var(--foreground)]">
-                  {claudeDesktopChatDiscoveryClaim(claudeSummary.claude_desktop_chat)}
-                </p>
-              </div>
-            ) : null}
-          </section>
+          {nativeFolderPickerAvailable ? (
+            <>
+              {localHistorySection}
+              {fileEvidenceSection}
+            </>
+          ) : (
+            <>
+              {fileEvidenceSection}
+              {localHistorySection}
+            </>
+          )}
           <div className="mt-10 flex flex-wrap gap-3">
             <button
               className="rounded-full bg-[var(--accent)] px-6 py-4 font-semibold text-white transition hover:bg-[var(--accent-strong)]"
