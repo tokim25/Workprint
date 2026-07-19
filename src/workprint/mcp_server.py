@@ -144,6 +144,7 @@ def _bounded_investigation(
         "unknowns": report.get("unknowns"),
         "limitations": report.get("limitations"),
         "executive_brief": executive_report.get("executive_brief"),
+        "ai_fluency": report.get("ai_fluency"),
     }
 
     if include_full_report:

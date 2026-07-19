@@ -86,6 +86,9 @@ class WebInvestigateTests(unittest.TestCase):
         self.assertGreater(len(result["json"]["observations"]), 0)
         for finding in result["json"]["findings"]:
             self.assertNotIn("evidence_id_count", finding)
+        self.assertIn("ai_fluency", result["json"])
+        self.assertIn("AI Collaboration Playbook Worksheet", result["playbookMarkdown"])
+        self.assertIn("_(fill in)_", result["playbookMarkdown"])
 
     @unittest.skipUnless(GIT, "git executable is required")
     def test_cli_writes_json_payload(self):

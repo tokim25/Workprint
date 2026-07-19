@@ -10,6 +10,8 @@ const READY_CHECK_TIMEOUT_MS = 30_000;
 let nextServerProcess = null;
 let mainWindow = null;
 
+app.setName("Workprint");
+
 function waitForServerReady(url, timeoutMs) {
   const deadline = Date.now() + timeoutMs;
 
@@ -54,6 +56,7 @@ async function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 860,
+    icon: path.join(__dirname, "icon.png"),
     title: "Workprint",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -80,6 +83,13 @@ ipcMain.handle("workprint:choose-project-folder", async () => {
 });
 
 app.whenReady().then(() => {
+  // BrowserWindow's `icon` option only sets the title-bar icon on
+  // Windows/Linux -- on macOS the Dock icon is a separate API and, when
+  // running unpackaged (`electron .`), defaults to the generic Electron
+  // icon unless set explicitly here.
+  if (process.platform === "darwin" && app.dock) {
+    app.dock.setIcon(path.join(__dirname, "icon.png"));
+  }
   startNextServer();
   createWindow().catch((error) => {
     console.error("Failed to start Workprint desktop app:", error);

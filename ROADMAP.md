@@ -114,12 +114,36 @@ Goal: Make Workprint usable end to end by someone with no coding
 experience. A native OS folder picker (inside a new Electron desktop
 shell) replaces the free-text path field, and the discoveries screen's
 previously-inert "view report"/"export" buttons now generate and
-download real Markdown/JSON reports. Distribution is not solved yet:
-starting Workprint at all still requires terminal commands, though
-PyInstaller has been verified (not yet wired in) to bundle the Python
-backend into a fully standalone binary. See
-[docs/desktop-app.md](docs/desktop-app.md) and
+download real Markdown/JSON reports. The native dialog has since been
+manually confirmed working in a real Electron window, including a fix
+for the Dock showing the generic Electron icon instead of Workprint's
+own. Distribution is not solved yet: starting Workprint at all still
+requires terminal commands, though PyInstaller has been verified (not
+yet wired in) to bundle the Python backend into a fully standalone
+binary. See [docs/desktop-app.md](docs/desktop-app.md) and
 [PROJECT_PLAN.md](PROJECT_PLAN.md) for the itemized scope and gaps.
+
+## Active Capability — Brand Identity
+
+Status: Complete
+
+Goal: Replace the plain-text wordmark with Workprint's real visual
+identity. The provided SVG mark and app icon are now wired into the web
+header, browser favicon/Apple touch icon, and the Electron dock/window
+icon. See [PROJECT_PLAN.md](PROJECT_PLAN.md) for the full scope.
+
+## Active Capability — AI Fluency Evidence & Playbook Worksheet
+
+Status: Complete
+
+Goal: Help users reflect on their own AI use with evidence Workprint
+already gathers, organized under Anthropic's AI Fluency Framework
+(Delegation, Description, Discernment, Diligence) -- without scoring or
+rating anyone. Every report now includes an "AI Fluency Evidence"
+section, and a downloadable Playbook Worksheet lays the same evidence
+out as a fill-in table for the user (or a Claude chat/Cowork session) to
+complete. See [PROJECT_PLAN.md](PROJECT_PLAN.md) for the full scope,
+the licensing decision, and current limitations.
 
 ## Active Capability — Claude Session Evidence (Tier 1a)
 

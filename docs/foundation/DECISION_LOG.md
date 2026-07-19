@@ -226,3 +226,36 @@ Claude Desktop Chat adapter's own documentation for that separate, still-open
 finding.
 
 Status: Accepted.
+
+## AI Fluency Reporting Uses Anthropic's Named Framework, With Attribution
+
+Context: Workprint added a report section organizing existing evidence under
+Anthropic's AI Fluency Framework (Delegation, Description, Discernment,
+Diligence, developed with Prof. Rick Dakan and Prof. Joseph Feller). The
+framework and its terminology are released under CC BY-NC-SA 4.0:
+non-commercial use only, with required attribution to the authors, and any
+derivative use of the framework's own materials must share alike.
+
+Alternatives: Workprint could build its own, differently named categories
+inspired by the same four-competency idea and avoid citing the framework at
+all, or pause the feature until the framework's authors were contacted for
+explicit permission.
+
+Decision: Workprint uses the framework's official terminology directly, with
+a visible attribution line (naming Dakan and Feller, and the CC BY-NC-SA
+license) everywhere the section appears in a report. This is conditioned on
+Workprint remaining non-commercial; if that changes, this decision must be
+revisited before the feature ships in a commercial build. Workprint does not
+reproduce the framework's own infographics or long-form materials, only its
+short competency definitions restated in Workprint's own words, and it never
+scores or rates fluency -- consistent with "Decision Leadership Over
+Contribution Scoring" in `PRODUCT_PRINCIPLES.md`, this section only
+reorganizes evidence Workprint already gathered for the user's own
+reflection.
+
+Consequences: Reports can use recognizable, well-documented terminology
+instead of inventing parallel language, at the cost of a standing obligation
+to keep attribution visible and to revisit licensing if Workprint's
+commercial status ever changes.
+
+Status: Accepted.
