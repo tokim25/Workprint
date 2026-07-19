@@ -92,6 +92,20 @@ philosophy. Verified end-to-end against this repository's own real local
 evidence in a running dev server. See [PROJECT_PLAN.md](PROJECT_PLAN.md)
 for implemented scope and limitations.
 
+## Active Capability — Local MCP Server
+
+Status: Complete
+
+Goal: Make Workprint's discovery and investigation capabilities callable
+directly from inside Claude Desktop or Claude Code over the Model Context
+Protocol, rather than only via the CLI or web app. Three read-only tools
+(`list_supported_sources`, `discover_project`, `investigate_project`)
+wrap the existing discovery/investigation pipeline unchanged. Verified
+end-to-end with a real spawned server and MCP client session against this
+repository's own evidence. See [docs/mcp-server.md](docs/mcp-server.md)
+and [PROJECT_PLAN.md](PROJECT_PLAN.md) for configuration, tool details,
+and limitations.
+
 ## Active Capability — Low-Code/No-Code User Experience
 
 Status: Ready for definition
