@@ -5,12 +5,20 @@ const eslintConfig = [
   ...nextVitals,
   ...nextTypescript,
   {
-    ignores: [".next/**", "node_modules/**", "out/**"],
+    ignores: [
+      ".next/**",
+      "node_modules/**",
+      "out/**",
+      "release/**",
+      "dist-backend/**",
+      "build-backend/**",
+    ],
   },
   {
-    // Electron main/preload processes conventionally use CommonJS require()
-    // rather than ESM import, independent of the rest of this app.
-    files: ["electron/**/*.js"],
+    // Electron main/preload processes and Node build scripts conventionally
+    // use CommonJS require() rather than ESM import, independent of the
+    // rest of this app.
+    files: ["electron/**/*.js", "scripts/**/*.js"],
     rules: {
       "@typescript-eslint/no-require-imports": "off",
     },

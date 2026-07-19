@@ -1,11 +1,16 @@
 const { app, BrowserWindow, dialog, ipcMain } = require("electron");
 const { spawn } = require("node:child_process");
+const fs = require("node:fs");
 const path = require("node:path");
 const http = require("node:http");
 
 const DEV_SERVER_URL = "http://localhost:3000";
+const PROD_SERVER_PORT = 3820;
+const PROD_SERVER_URL = `http://localhost:${PROD_SERVER_PORT}`;
 const READY_CHECK_INTERVAL_MS = 300;
 const READY_CHECK_TIMEOUT_MS = 30_000;
+const BACKEND_BINARY_NAME =
+  process.platform === "win32" ? "workprint-backend.exe" : "workprint-backend";
 
 let nextServerProcess = null;
 let mainWindow = null;
@@ -33,13 +38,10 @@ function waitForServerReady(url, timeoutMs) {
   });
 }
 
-function startNextServer() {
-  // Development mode only: spawns `next dev` via npm, which must already
-  // be on PATH (true for a developer running `npm run electron:dev`, not
-  // for an end user). Production packaging bundles a pre-built `next
-  // start` / standalone server directly with the app instead, so end
-  // users never need Node.js or npm installed themselves -- see the
-  // "Build Electron wrapper with bundled Python backend" milestone item.
+function startDevServer() {
+  // Spawns `next dev` via npm, which must already be on PATH -- true for
+  // a developer running `npm run electron:dev`, not for a packaged end
+  // user (see startProductionServer for that path).
   const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
   const child = spawn(npmCommand, ["run", "dev"], {
     cwd: path.join(__dirname, ".."),
@@ -50,8 +52,46 @@ function startNextServer() {
   return child;
 }
 
+function startProductionServer() {
+  // electron-builder's extraResources config (see package.json's "build"
+  // field) copies the Next.js standalone build and the PyInstaller-built
+  // Python backend into process.resourcesPath at these two paths.
+  const serverEntry = path.join(process.resourcesPath, "standalone", "server.js");
+  const backendBinary = path.join(
+    process.resourcesPath,
+    "backend",
+    BACKEND_BINARY_NAME,
+  );
+  // stdio: "inherit" would pass along Electron's own stdout/stderr, which
+  // is not a real, working pipe when the app is launched from Finder/
+  // `open` (no attached terminal) rather than a shell. That mismatch was
+  // measured to stall this child's own ability to service its grandchild
+  // Python subprocess's output under load: a real API call worked in ~12s
+  // launched from a terminal, but hung past a 60s timeout launched via
+  // `open`. Real pipes avoid depending on Electron's stdio validity;
+  // logging to a file rather than forwarding to process.stdout avoids the
+  // same risk in the main process's own (possibly equally invalid) stdio.
+  const child = spawn(process.execPath, [serverEntry], {
+    cwd: path.dirname(serverEntry),
+    env: {
+      ...process.env,
+      ELECTRON_RUN_AS_NODE: "1",
+      PORT: String(PROD_SERVER_PORT),
+      WORKPRINT_BACKEND_BIN: backendBinary,
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  const logPath = path.join(app.getPath("userData"), "server.log");
+  const logStream = fs.createWriteStream(logPath, { flags: "a" });
+  child.stdout.pipe(logStream);
+  child.stderr.pipe(logStream);
+  nextServerProcess = child;
+  return child;
+}
+
 async function createWindow() {
-  await waitForServerReady(DEV_SERVER_URL, READY_CHECK_TIMEOUT_MS);
+  const serverUrl = app.isPackaged ? PROD_SERVER_URL : DEV_SERVER_URL;
+  await waitForServerReady(serverUrl, READY_CHECK_TIMEOUT_MS);
 
   mainWindow = new BrowserWindow({
     width: 1280,
@@ -65,7 +105,7 @@ async function createWindow() {
     },
   });
 
-  mainWindow.loadURL(DEV_SERVER_URL);
+  mainWindow.loadURL(serverUrl);
 }
 
 ipcMain.handle("workprint:choose-project-folder", async () => {
@@ -90,7 +130,11 @@ app.whenReady().then(() => {
   if (process.platform === "darwin" && app.dock) {
     app.dock.setIcon(path.join(__dirname, "icon.png"));
   }
-  startNextServer();
+  if (app.isPackaged) {
+    startProductionServer();
+  } else {
+    startDevServer();
+  }
   createWindow().catch((error) => {
     console.error("Failed to start Workprint desktop app:", error);
     app.quit();

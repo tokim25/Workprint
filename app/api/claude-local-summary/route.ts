@@ -1,9 +1,12 @@
 import { realpath, stat } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { NextResponse } from "next/server";
+import { workprintPythonCommand } from "@/lib/workprint-python-command";
 
 const MAX_PATH_LENGTH = 4096;
-const PROCESS_TIMEOUT_MS = 8000;
+// See app/api/git-summary/route.ts for why this is higher than a plain
+// `python3 -m` invocation would need.
+const PROCESS_TIMEOUT_MS = 15000;
 
 type ClaudeLocalSummaryRequest = {
   projectPath?: unknown;
@@ -113,12 +116,16 @@ function runClaudeLocalSummary(projectPath: string, includeDesktopChatDeepParse:
     | { ok: true; payload: unknown }
     | { ok: false; code: SafeErrorCode; message: string; status: number }
   >((resolve) => {
-    const args = ["-m", "workprint.claude_local_summary", "--project", projectPath];
+    const summaryArgs = ["--project", projectPath];
     if (includeDesktopChatDeepParse) {
-      args.push("--include-desktop-chat-deep-parse");
+      summaryArgs.push("--include-desktop-chat-deep-parse");
     }
+    const { command, args } = workprintPythonCommand(
+      "claude-local-summary",
+      summaryArgs,
+    );
 
-    const child = spawn(process.env.WORKPRINT_PYTHON ?? "python3", args, {
+    const child = spawn(command, args, {
       env: {
         ...process.env,
         PYTHONPATH: "src",

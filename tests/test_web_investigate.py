@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import io
+import json
 import os
 import shutil
 import subprocess
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
@@ -97,6 +100,34 @@ class WebInvestigateTests(unittest.TestCase):
             self._commit_file(repo, "a.txt", "first\n", "Add first")
             exit_code = main(["--project", str(repo), "--include", "git"])
         self.assertEqual(exit_code, 0)
+
+    @unittest.skipUnless(GIT, "git executable is required")
+    def test_cli_output_file_writes_payload_and_prints_confirmation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self._init_repo(Path(directory))
+            self._commit_file(repo, "a.txt", "first\n", "Add first")
+            output_file = Path(directory) / "report.json"
+
+            captured = io.StringIO()
+            with redirect_stdout(captured):
+                exit_code = main(
+                    [
+                        "--project",
+                        str(repo),
+                        "--include",
+                        "git",
+                        "--output-file",
+                        str(output_file),
+                    ]
+                )
+
+            self.assertEqual(exit_code, 0)
+            confirmation = json.loads(captured.getvalue())
+            self.assertTrue(confirmation["ok"])
+            self.assertEqual(confirmation["output_file"], str(output_file))
+            self.assertTrue(output_file.exists())
+            written_payload = json.loads(output_file.read_text(encoding="utf-8"))
+            self.assertIn("ai_fluency", written_payload["json"])
 
     def test_cli_returns_error_exit_code_for_bad_path(self):
         exit_code = main(["--project", "/definitely/not/a/real/path"])

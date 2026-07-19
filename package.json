@@ -9,7 +9,11 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "electron:dev": "electron ."
+    "electron:dev": "electron .",
+    "build:standalone": "next build && node scripts/copy-standalone-assets.js",
+    "build:backend": "scripts/build-backend.sh",
+    "electron:pack": "npm run build:standalone && electron-builder --mac --dir",
+    "electron:dist": "npm run build:standalone && electron-builder --mac"
   },
   "dependencies": {
     "next": "^16.2.10",
@@ -27,5 +31,24 @@
     "eslint-config-next": "^16.2.10",
     "tailwindcss": "4.1.17",
     "typescript": "5.9.3"
+  },
+  "build": {
+    "appId": "com.workprint.desktop",
+    "productName": "Workprint",
+    "files": [
+      "electron/**/*"
+    ],
+    "extraResources": [
+      { "from": "dist-backend", "to": "backend", "filter": ["**/*"] }
+    ],
+    "afterPack": "scripts/after-pack.js",
+    "mac": {
+      "icon": "electron/icon.icns",
+      "category": "public.app-category.developer-tools",
+      "identity": null
+    },
+    "directories": {
+      "output": "release"
+    }
   }
 }

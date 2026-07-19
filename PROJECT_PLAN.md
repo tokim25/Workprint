@@ -648,9 +648,9 @@ Limitations:
   Desktop or Claude Code session; verification used the official MCP
   Python client SDK directly.
 
-## Active Milestone: Low-Code/No-Code User Experience
+## Completed Milestone: Low-Code/No-Code User Experience
 
-Status: In progress
+Status: Complete
 
 Goal: Make Workprint usable end to end by someone with no coding
 experience -- choosing a project, seeing evidence, and getting a report
@@ -683,15 +683,26 @@ Implemented scope:
   tab, spawning `next dev` and waiting for it to become ready before
   opening the window. This is the vehicle for the native folder dialog
   above; see Limitations for what it does not yet do.
-- **Verified, not yet wired: PyInstaller bundling.** Confirmed that
-  `pyinstaller --onefile` packages the `workprint` console script into a
-  fully standalone ~9MB binary that runs `workprint discover` correctly
-  with no Python installed and no `PYTHONPATH` set. This validates the
-  technical approach for removing the Python dependency from end-user
-  distribution, but bundling the specific modules the web app's API
-  routes actually invoke (`git_summary`, `claude_local_summary`,
-  `web_investigate`) and wiring them into a packaged build was not done
-  in this pass.
+- **Production packaging with a bundled Python backend.** A real,
+  unsigned `.dmg`/`.zip` installer now builds via `npm run electron:dist`
+  (or `electron:pack` for a faster unpacked `.app`): `next build` with
+  `output: "standalone"`, a single PyInstaller-bundled backend binary
+  (`src/workprint/bundled_cli.py` dispatches to the unchanged
+  `git_summary`/`claude_local_summary`/`web_investigate` bridge modules'
+  own `main(argv)`), and `electron-builder` packaging config. End users
+  need neither Node.js nor Python installed. Verified end-to-end against
+  a real, freshly built `.dmg`, not just the unpacked build: mounted it,
+  copied out the installed app, and confirmed a full report generation
+  (real Git evidence, AI Fluency section, downloadable Playbook
+  Worksheet) worked correctly through the actual packaged app. This
+  process surfaced and fixed four real bugs invisible to code review
+  alone (a missing dock icon crashing startup, electron-builder silently
+  dropping a nested `node_modules` needed at runtime, a GUI-launched
+  subprocess I/O hang specific to `open`/double-click launches with no
+  attached terminal, and a broken code signature causing Gatekeeper to
+  reject the app as "damaged" rather than showing the expected
+  unsigned-app warning) -- see `docs/desktop-app.md`'s "What Was Actually
+  Verified" section for the full account of each.
 - A small plain-language copy pass (removed a leaked internal term,
   "adapter," from user-facing Git timeline copy).
 - `docs/desktop-app.md`: what the Electron shell does today, and the
@@ -702,13 +713,15 @@ Implemented scope:
 
 Limitations:
 
-- **Distribution is not solved.** Starting Workprint at all -- web app or
-  Electron shell -- still requires `npm install` and a terminal command.
-  There is no packaged installer, no code signing or notarization (both
-  require credentials only the project owner can obtain), and no
-  production build path (`electron:dev` always spawns a development
-  server, not a pre-built standalone bundle). See `docs/desktop-app.md`
-  for the itemized remaining work.
+- **A real installer exists, but it is unsigned and macOS-only.** No
+  code signing or notarization -- both require a paid Apple Developer
+  Program membership and the project owner's own signing credentials,
+  which cannot be set up on their behalf. In practice this means macOS's
+  standard "Apple could not verify this app" Gatekeeper warning shows on
+  first launch (a one-time right-click "Open," not a blocker, since the
+  app's signature is otherwise valid -- see `docs/desktop-app.md`).
+  Windows and Linux packaging is unconfigured and untested. There is no
+  auto-update mechanism.
 - The Electron native-dialog UX has since been manually confirmed working
   by the project owner in a real running Electron window (the native
   macOS "Open" folder dialog, not the browser's file-input picker),
@@ -760,9 +773,11 @@ Implemented scope:
 
 Limitations:
 
-- No production app-bundle icon (`.icns`) exists yet; that is part of the
-  still-open production-packaging gap (see the Low-Code/No-Code
-  milestone's Distribution limitation).
+- None remaining from this pass. A production app-bundle icon
+  (`electron/icon.icns`, generated from the same source SVG via `sharp`
+  and macOS's `iconutil`) was added and verified in the packaged `.dmg`
+  build during the Low-Code/No-Code milestone's production-packaging
+  work.
 
 ## Completed Milestone: AI Fluency Evidence & Playbook Worksheet
 
