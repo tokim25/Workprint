@@ -105,6 +105,22 @@ future contributors where not to infer.
 Outdated documentation can create bad implementation. When behavior changes,
 the relevant documentation should change with it.
 
+## External Dependencies Are Verified, Not Assumed
+
+When an adapter's correctness depends on an external library, especially one
+reading an undocumented or reverse-engineered format, the actual package must
+be installed and run against representative real data before its behavior is
+trusted in code or claimed in documentation. A GitHub repository's README and
+a PyPI package's name are not the same fact; matching them requires checking
+the PyPI package's own project metadata against the repository actually
+researched, not assuming a similarly named package is the same project.
+
+If that verification cannot happen before a milestone ships, the milestone's
+documentation must say so plainly, and the feature's default behavior must
+degrade safely rather than presenting unverified output as evidence.
+Verification debt should be paid down before further work builds on top of
+the unverified path, not deferred indefinitely.
+
 ## Avoid Unnecessary Abstraction
 
 Workprint should add abstractions only when they remove real complexity,

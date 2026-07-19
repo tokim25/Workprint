@@ -1,6 +1,9 @@
 import os
+import sys
 import tempfile
+import types
 import unittest
+from collections import namedtuple
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -10,6 +13,8 @@ from workprint.adapters import claude_desktop_chat as module
 from workprint.adapters.claude_desktop_chat import (
     DeepParseUnavailableError,
     _as_candidate_turn,
+    _iter_store_records,
+    _SCANNED_DATABASE_NAMES,
     _walk_candidate_turns,
 )
 from workprint.extractor import extract_observations
@@ -140,7 +145,7 @@ class ClaudeDesktopChatAdapterTests(unittest.TestCase):
         for message in messages:
             self.assertFalse(message.metadata["project_specific"])
             self.assertTrue(message.metadata["experimental_deep_parse"])
-            self.assertTrue(message.metadata["may_include_deleted_records"])
+            self.assertFalse(message.metadata["may_include_deleted_records"])
         self.assertNotIn("Plan the release", messages[0].content)
         self.assertNotIn("Here is a plan", messages[1].content)
 
@@ -189,6 +194,97 @@ class ClaudeDesktopChatAdapterTests(unittest.TestCase):
 
         self.assertEqual(len(observations), 1)
         self.assertEqual(observations[0].actor, "Claude Desktop Chat")
+
+    def test_only_keyval_store_is_scanned(self):
+        # Regression guard: verified against real data that this origin
+        # also has claude-notifications, claude-device-binding, and
+        # omelette-fs-access databases. claude-device-binding in particular
+        # plausibly holds authentication material and must never be
+        # scanned. See docs/claude-desktop-chat-adapter.md.
+        self.assertEqual(_SCANNED_DATABASE_NAMES, ("keyval-store",))
+
+    def test_iter_store_records_skips_a_record_that_raises_mid_iteration(self):
+        # Verified against real data: a record whose externally serialized
+        # blob file is missing raises when the record is materialized, not
+        # when the store or database is opened. A plain `for record in
+        # store.iterate_records()` loop would let that abort every record
+        # after the broken one; _iter_store_records must not.
+        good_record_1 = SimpleNamespace(value={"marker": "first"})
+        good_record_2 = SimpleNamespace(value={"marker": "second"})
+
+        class FlakyStore:
+            def iterate_records(self, live_only=True):
+                yield good_record_1
+                raise FileNotFoundError("missing blob file")
+
+        results = list(_iter_store_records("keyval", FlakyStore()))
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0][1].value, {"marker": "first"})
+
+    def test_deep_parse_uses_real_dependency_api_shape(self):
+        # Regression guard for the original bug: database_ids yields
+        # DatabaseId(dbid_no, origin, name) objects that must be used as
+        # the index key directly, not unpacked into a (name, version) pair.
+        DatabaseId = namedtuple("DatabaseId", ["dbid_no", "origin", "name"])
+        keyval_id = DatabaseId(1, "https_claude.ai_0@1", "keyval-store")
+        binding_id = DatabaseId(2, "https_claude.ai_0@1", "claude-device-binding")
+
+        seen_record = SimpleNamespace(
+            value={"role": "human", "content": "hi", "uuid": "u1"}
+        )
+
+        class FakeObjectStore:
+            def iterate_records(self, live_only=True):
+                assert live_only is True
+                yield seen_record
+
+        class FakeDatabase:
+            object_store_names = ["keyval"]
+
+            def get_object_store_by_name(self, name):
+                assert name == "keyval"
+                return FakeObjectStore()
+
+        class FakeWrappedIndexDB:
+            def __init__(self, leveldb_dir, blob_dir):
+                pass
+
+            database_ids = [keyval_id, binding_id]
+
+            def __getitem__(self, database_id):
+                # A DatabaseId object must be usable as the index key
+                # directly; unpacking it (e.g. `name, version = database_id`)
+                # is the bug this test guards against.
+                assert database_id in (keyval_id, binding_id)
+                if database_id.name == "claude-device-binding":
+                    raise AssertionError(
+                        "claude-device-binding must never be opened"
+                    )
+                return FakeDatabase()
+
+        fake_indexeddb_module = types.SimpleNamespace(
+            WrappedIndexDB=FakeWrappedIndexDB
+        )
+        fake_package = types.SimpleNamespace(
+            ccl_chromium_indexeddb=fake_indexeddb_module
+        )
+
+        with tempfile.TemporaryDirectory() as cache_dir, \
+                tempfile.TemporaryDirectory() as project_dir:
+            with patch.dict(
+                sys.modules,
+                {
+                    "ccl_chromium_reader": fake_package,
+                    "ccl_chromium_reader.ccl_chromium_indexeddb": fake_indexeddb_module,
+                },
+            ):
+                adapter = ClaudeDesktopChatAdapter(
+                    indexeddb_home=cache_dir, deep_parse=True
+                )
+                messages = adapter.read(project_dir)
+
+        self.assertEqual(len(messages), 1)
+        self.assertEqual(messages[0].role, "human")
 
 
 if __name__ == "__main__":
