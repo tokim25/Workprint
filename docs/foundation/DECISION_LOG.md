@@ -311,3 +311,36 @@ protecting the project owner. `LICENSE`, `NOTICE`, `RIGHTS.md`,
 so no file contradicts another about Workprint's licensing status.
 
 Status: Accepted.
+
+## The Packaged App's Production Server Binds To Loopback Only
+
+Context: A structured architecture review of the packaged Electron app
+(failure domains, scalability, data, security, operations, cost,
+complexity) found that `electron/main.js`'s `startProductionServer()`
+never set `HOSTNAME`, so Next's standalone `server.js` fell back to its
+own default of `0.0.0.0` -- binding `/api/investigate`,
+`/api/git-summary`, and `/api/claude-local-summary` to every network
+interface on the machine, not just loopback.
+
+Decision: Set `HOSTNAME: "127.0.0.1"` explicitly alongside `PORT` in the
+production server's spawn environment. Verified with `lsof -iTCP:3820
+-sTCP:LISTEN` against a real packaged build, confirming the bind changed
+from a wildcard to `127.0.0.1:3820`.
+
+Consequences: Any other device on the same network could previously have
+issued a direct HTTP request naming an arbitrary local path and had
+Workprint read that path's git history, Claude session data, or project
+files and return the result -- no CORS bypass needed, since these are
+plain server endpoints, not browser-mediated requests. That surface is
+now closed by default. The same review pass also fixed adjacent gaps
+found alongside it: temp investigation files are now written 0600
+instead of inheriting the default (often world-readable) umask; a
+missing `app.requestSingleInstanceLock()` meant a second launch silently
+hung for 30 seconds before quitting with no explanation; there was no
+handler for the production server child exiting mid-session; `server.log`
+had no size cap; and the `BrowserWindow` had no `will-navigate` guard
+against evidence content ever containing a link. See
+`docs/desktop-app.md`'s "Hardening Pass" section for verification detail
+on each.
+
+Status: Accepted.

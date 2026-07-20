@@ -14,8 +14,22 @@ const BACKEND_BINARY_NAME =
 
 let nextServerProcess = null;
 let mainWindow = null;
+let productionServerReady = false;
+let isQuittingApp = false;
+const MAX_SERVER_LOG_BYTES = 5 * 1024 * 1024;
 
 app.setName("Workprint");
+
+// Without this, launching a second instance (e.g. a stray extra Dock
+// click before the first has finished quitting) starts a second
+// production server that races the first for PROD_SERVER_PORT, loses,
+// and hangs silently until READY_CHECK_TIMEOUT_MS before quitting with
+// no message to the user. Bail out of the second instance immediately
+// instead, and focus the first instance's window.
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+  app.quit();
+}
 
 function waitForServerReady(url, timeoutMs) {
   const deadline = Date.now() + timeoutMs;
@@ -76,15 +90,44 @@ function startProductionServer() {
     env: {
       ...process.env,
       ELECTRON_RUN_AS_NODE: "1",
+      // Next's standalone server.js falls back to HOSTNAME || "0.0.0.0"
+      // when unset, which binds the investigate/git-summary/claude-local-
+      // summary endpoints to every network interface -- reachable by any
+      // other device on the same LAN, not just this machine. Force
+      // loopback-only.
+      HOSTNAME: "127.0.0.1",
       PORT: String(PROD_SERVER_PORT),
       WORKPRINT_BACKEND_BIN: backendBinary,
     },
     stdio: ["ignore", "pipe", "pipe"],
   });
   const logPath = path.join(app.getPath("userData"), "server.log");
+  // Each request's Python subprocess stdout/stderr appends here for the
+  // app's entire install lifetime with no rotation otherwise -- cap it
+  // instead of letting it grow unbounded across months of use.
+  try {
+    if (fs.statSync(logPath).size > MAX_SERVER_LOG_BYTES) {
+      fs.truncateSync(logPath, 0);
+    }
+  } catch {
+    // No existing log file yet -- nothing to truncate.
+  }
   const logStream = fs.createWriteStream(logPath, { flags: "a" });
   child.stdout.pipe(logStream);
   child.stderr.pipe(logStream);
+
+  child.on("exit", () => {
+    // Suppress the dialog for our own intentional kill on quit, and for
+    // exits during startup -- createWindow()'s waitForServerReady/.catch
+    // already surfaces a startup failure without this handler's help.
+    if (productionServerReady && !isQuittingApp) {
+      dialog.showErrorBox(
+        "Workprint's local server stopped",
+        "Workprint's local server process exited unexpectedly. Please relaunch the app to continue.",
+      );
+    }
+  });
+
   nextServerProcess = child;
   return child;
 }
@@ -92,6 +135,9 @@ function startProductionServer() {
 async function createWindow() {
   const serverUrl = app.isPackaged ? PROD_SERVER_URL : DEV_SERVER_URL;
   await waitForServerReady(serverUrl, READY_CHECK_TIMEOUT_MS);
+  if (app.isPackaged) {
+    productionServerReady = true;
+  }
 
   mainWindow = new BrowserWindow({
     width: 1280,
@@ -103,6 +149,17 @@ async function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
     },
+  });
+
+  const allowedOrigin = new URL(serverUrl).origin;
+  mainWindow.webContents.on("will-navigate", (event, targetUrl) => {
+    // Nothing in the app currently renders attacker-influenced links, but
+    // evidence content (commit messages, chat excerpts) is arbitrary text
+    // Workprint didn't author -- block navigating this window anywhere
+    // outside its own local server as defense-in-depth.
+    if (new URL(targetUrl).origin !== allowedOrigin) {
+      event.preventDefault();
+    }
   });
 
   mainWindow.loadURL(serverUrl);
@@ -120,6 +177,15 @@ ipcMain.handle("workprint:choose-project-folder", async () => {
     return { canceled: true, path: null };
   }
   return { canceled: false, path: result.filePaths[0] };
+});
+
+app.on("second-instance", () => {
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) {
+      mainWindow.restore();
+    }
+    mainWindow.focus();
+  }
 });
 
 app.whenReady().then(() => {
@@ -154,6 +220,7 @@ app.on("window-all-closed", () => {
 });
 
 app.on("before-quit", () => {
+  isQuittingApp = true;
   if (nextServerProcess) {
     nextServerProcess.kill();
   }

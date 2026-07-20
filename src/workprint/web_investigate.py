@@ -157,7 +157,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 1
 
     if args.output_file:
-        with open(args.output_file, "w", encoding="utf-8") as handle:
+        # The investigation payload can include real project file paths,
+        # commit content, and Claude session excerpts. Restrict to
+        # owner-only (0600) instead of the default umask-derived
+        # permissions (typically 0644, world-readable) since this lands
+        # in a shared OS temp directory other local accounts can list.
+        fd = os.open(args.output_file, os.O_CREAT | os.O_WRONLY | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
             json.dump(payload, handle, ensure_ascii=False)
         print(json.dumps({"ok": True, "output_file": args.output_file}, ensure_ascii=False))
     else:
