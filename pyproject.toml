@@ -9,7 +9,8 @@ description = "Evidence-based reconstruction of how work gets made."
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [{name = "Tony Kim"}]
-license = {text = "All rights reserved"}
+license = {text = "Apache-2.0"}
+classifiers = ["License :: OSI Approved :: Apache Software License"]
 dependencies = []
 
 [project.optional-dependencies]

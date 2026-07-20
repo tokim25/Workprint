@@ -1,0 +1,46 @@
+Workprint
+Copyright 2026 Tony Kim
+
+This product is licensed under the Apache License, Version 2.0. See the
+LICENSE file for the full text.
+
+This NOTICE file is provided for informational purposes only, per Section 4
+of the Apache License, Version 2.0, and does not modify the License.
+
+================================================================================
+AI Fluency Framework attribution
+================================================================================
+
+Workprint's AI Fluency Evidence report section (src/workprint/ai_fluency.py)
+and Playbook Worksheet export organize evidence under the competency names
+and structure of Anthropic's AI Fluency Framework (Delegation, Description,
+Discernment, Diligence), developed by Prof. Rick Dakan (Ringling College of
+Art and Design) and Prof. Joseph Feller (University College Cork).
+
+The framework and its own materials (course content, infographics, and
+detailed definitions) are licensed separately under CC BY-NC-SA 4.0
+(https://aifluencyframework.org/) and are not distributed as part of this
+repository. Workprint restates the competencies' definitions in its own
+words rather than reproducing the framework's materials verbatim, and
+displays this same attribution at runtime wherever the AI Fluency Evidence
+section appears. The Apache License above governs Workprint's own source
+code; it does not grant any rights to the AI Fluency Framework's own
+materials, which remain governed by their own CC BY-NC-SA 4.0 terms
+regardless of how Workprint's code is licensed or reused. See
+docs/foundation/DECISION_LOG.md, "AI Fluency Reporting Uses Anthropic's
+Named Framework, With Attribution," for the full decision record.
+
+================================================================================
+Other third-party components
+================================================================================
+
+Workprint vendors a reviewed copy of the `unslop-text` scanner from the
+`vibecoded-design-tells` project (MIT License, copyright JCarterJohnson).
+See third_party/vibecoded-design-tells/NOTICE.md and
+third_party/vibecoded-design-tells/LICENSE for full attribution and license
+terms.
+
+Workprint's optional `claude-desktop-chat` extra depends on
+`ccl_chromium_reader` (cclgroupltd/ccl_chromium_reader), installed directly
+from its own repository at a pinned commit rather than vendored into this
+repository. See that project's own repository for its license terms.

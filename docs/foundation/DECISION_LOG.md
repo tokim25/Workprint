@@ -243,9 +243,7 @@ explicit permission.
 
 Decision: Workprint uses the framework's official terminology directly, with
 a visible attribution line (naming Dakan and Feller, and the CC BY-NC-SA
-license) everywhere the section appears in a report. This is conditioned on
-Workprint remaining non-commercial; if that changes, this decision must be
-revisited before the feature ships in a commercial build. Workprint does not
+license) everywhere the section appears in a report. Workprint does not
 reproduce the framework's own infographics or long-form materials, only its
 short competency definitions restated in Workprint's own words, and it never
 scores or rates fluency -- consistent with "Decision Leadership Over
@@ -255,7 +253,61 @@ reflection.
 
 Consequences: Reports can use recognizable, well-documented terminology
 instead of inventing parallel language, at the cost of a standing obligation
-to keep attribution visible and to revisit licensing if Workprint's
-commercial status ever changes.
+to keep attribution visible.
+
+Update (2026-07-19): Workprint's own code is now open source under the
+Apache License, Version 2.0 (see "Workprint Is Open Source Under the Apache
+License, Version 2.0" below), which permits commercial use of Workprint's
+code by anyone. This does not conflict with the condition originally noted
+above: because Workprint restates the framework's competency definitions in
+its own words rather than reproducing the framework's own materials
+verbatim, CC BY-NC-SA's non-commercial and share-alike terms bind use of the
+*framework's own materials* independently of whatever license Workprint's
+code carries -- not Workprint's own commercial status. Anyone who forks
+Workprint and reproduces the framework's own materials more substantially
+than this attribution-only usage would need to independently comply with
+CC BY-NC-SA's terms for that specific content, regardless of Workprint's
+Apache license. See `NOTICE` for the attribution text.
+
+Status: Accepted.
+
+## Workprint Is Open Source Under the Apache License, Version 2.0
+
+Context: Workprint was previously licensed "All Rights Reserved" (see the
+prior `LICENSE` and `RIGHTS.md`), reflecting its earlier state as a private,
+unreleased project. The project owner decided to make Workprint open source,
+with two explicit requirements: standard liability protection if the
+software doesn't produce the results a user expects, and a license that
+would not conflict with the AI Fluency Framework's own CC BY-NC-SA 4.0
+terms (see the decision above).
+
+Alternatives: MIT License (simplest, most permissive; no patent grant or
+retaliation clause, and no formal NOTICE-file convention) and GNU AGPL-3.0
+(copyleft; requires anyone who modifies Workprint and runs it as a network
+service to release their modified source, preventing a competitor from
+building a closed-source product on top without reciprocity, at the cost of
+being more restrictive and less commonly adopted).
+
+Decision: Workprint is licensed under the Apache License, Version 2.0. All
+three candidate licenses provide materially identical "AS IS, NO WARRANTY"
+liability protection -- that requirement does not differentiate them. Apache
+2.0 was chosen for three project-specific reasons: (1) its NOTICE-file
+mechanism (Section 4(d)) is the established, expected place to carry the AI
+Fluency Framework attribution, and matches the convention this project
+already uses for its other vendored third-party code (see
+`third_party/vibecoded-design-tells/NOTICE.md`); (2) its explicit patent
+grant and patent-retaliation clause offer real protection that MIT lacks,
+relevant for a project building AI tooling; (3) it is the more commonly
+required default for company-scale adoption or contribution. The top-level
+`NOTICE` file carries the AI Fluency Framework attribution and points to
+`third_party/vibecoded-design-tells/NOTICE.md` for the vendored MIT-licensed
+scanner.
+
+Consequences: Workprint's source is now genuinely open (anyone may use,
+modify, or commercialize it, consistent with the Open Source Definition),
+with the standard Apache warranty disclaimer and liability limitation
+protecting the project owner. `LICENSE`, `NOTICE`, `RIGHTS.md`,
+`README.md`, `package.json`, and `pyproject.toml` were all updated together
+so no file contradicts another about Workprint's licensing status.
 
 Status: Accepted.
