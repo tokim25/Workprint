@@ -180,6 +180,20 @@ The existing "Build full report" / git-summary / Claude-summary buttons
 already disabled themselves while a request was in flight, so no
 concurrency guard was needed there.
 
+**A second real bug turned up while verifying the rebuilt DMG for this
+pass**, not from code review: `/api/git-summary` intermittently hung for
+the full 15s timeout under a normal `open`/double-click launch, despite
+succeeding in ~5s every time when the same binary was launched from a
+terminal. This is the same GUI-launched-context pipe unreliability
+`/api/investigate` was already fixed for -- it turns out that bug isn't
+limited to large payloads; it can hit small ones too, just less
+predictably. Fixed by applying the identical `--output-file` pattern to
+`git_summary.py` and `claude_local_summary.py` (owner-only permissions
+included) and their routes. Verified by launching the rebuilt app via
+`open` and firing 8 consecutive `git-summary` calls and 4 consecutive
+`claude-local-summary` calls with no hangs, after reproducing the hang
+on the pre-fix build first.
+
 ## What Remains
 
 This is the honest gap between "a real installer exists and works" and

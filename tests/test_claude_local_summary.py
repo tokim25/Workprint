@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import io
 import json
 import os
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
@@ -222,6 +224,27 @@ class ClaudeLocalSummaryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory, patch.dict(os.environ, env):
             exit_code = main(["--project", directory])
         self.assertEqual(exit_code, 0)
+
+    def test_cli_output_file_writes_payload_with_owner_only_permissions(self):
+        env = {
+            "WORKPRINT_CLAUDE_HOME": "/nonexistent/workprint-test-path",
+            "WORKPRINT_COWORK_HOME": "/nonexistent/workprint-test-path",
+            "WORKPRINT_CLAUDE_DESKTOP_HOME": "/nonexistent/workprint-test-path",
+        }
+        with tempfile.TemporaryDirectory() as directory, patch.dict(os.environ, env):
+            output_file = Path(directory) / "summary.json"
+            captured = io.StringIO()
+            with redirect_stdout(captured):
+                exit_code = main(["--project", directory, "--output-file", str(output_file)])
+
+            self.assertEqual(exit_code, 0)
+            confirmation = json.loads(captured.getvalue())
+            self.assertTrue(confirmation["ok"])
+            self.assertEqual(confirmation["output_file"], str(output_file))
+            self.assertTrue(output_file.exists())
+            written_payload = json.loads(output_file.read_text(encoding="utf-8"))
+            self.assertTrue(written_payload["ok"])
+            self.assertEqual(oct(output_file.stat().st_mode & 0o777), "0o600")
 
 
 if __name__ == "__main__":

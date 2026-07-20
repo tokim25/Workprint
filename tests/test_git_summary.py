@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import io
+import json
 import os
 import shutil
 import subprocess
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
 
 from workprint.adapters import GitAdapter
@@ -124,6 +127,27 @@ class GitSummaryTests(unittest.TestCase):
             exit_code = main(["--repository", directory])
 
         self.assertEqual(exit_code, 1)
+
+    def test_cli_output_file_writes_payload_with_owner_only_permissions(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repo = self._init_repo(Path(directory))
+            self._commit_file(repo, "a.txt", "first\n", "Add first")
+            output_file = Path(directory) / "summary.json"
+
+            captured = io.StringIO()
+            with redirect_stdout(captured):
+                exit_code = main(
+                    ["--repository", str(repo), "--output-file", str(output_file)]
+                )
+
+            self.assertEqual(exit_code, 0)
+            confirmation = json.loads(captured.getvalue())
+            self.assertTrue(confirmation["ok"])
+            self.assertEqual(confirmation["output_file"], str(output_file))
+            self.assertTrue(output_file.exists())
+            written_payload = json.loads(output_file.read_text(encoding="utf-8"))
+            self.assertTrue(written_payload["ok"])
+            self.assertEqual(oct(output_file.stat().st_mode & 0o777), "0o600")
 
     @staticmethod
     def _init_repo(path: Path) -> Path:
