@@ -100,3 +100,65 @@ export function pickActiveDiscovery({
 
   return sample;
 }
+
+// Reads the real, already-synthesized claim + confidence the full
+// investigation computes from ALL evidence sources (not just Git) --
+// see src/workprint/executive.py's build_executive_report and
+// src/workprint/models/executive.py's ExecutiveBrief/ConfidenceAssessment.
+// Returns null when the payload doesn't have the expected shape, or when
+// the engine found no explicit goal statement (status "unknown" rather
+// than "explicitly_supported") -- in that case the mechanical claim from
+// pickActiveDiscovery above is a better thing to show than "no explicit
+// goal statement appears in the evidence."
+export function pickExecutiveDiscovery(json: unknown): ActiveDiscovery | null {
+  if (!json || typeof json !== "object") {
+    return null;
+  }
+
+  const executiveReport = (json as Record<string, unknown>).executive_report;
+  if (!executiveReport || typeof executiveReport !== "object") {
+    return null;
+  }
+
+  const brief = (executiveReport as Record<string, unknown>).executive_brief;
+  const confidenceAssessment = (executiveReport as Record<string, unknown>)
+    .confidence_assessment;
+  if (
+    !brief ||
+    typeof brief !== "object" ||
+    !confidenceAssessment ||
+    typeof confidenceAssessment !== "object"
+  ) {
+    return null;
+  }
+
+  const briefRecord = brief as Record<string, unknown>;
+  const goal = briefRecord.project_goal;
+  const unknownsSummary = briefRecord.unknowns_summary;
+  if (!goal || typeof goal !== "object" || typeof unknownsSummary !== "string") {
+    return null;
+  }
+
+  const goalRecord = goal as Record<string, unknown>;
+  if (
+    goalRecord.status !== "explicitly_supported" ||
+    typeof goalRecord.summary !== "string"
+  ) {
+    return null;
+  }
+
+  const confidenceRecord = confidenceAssessment as Record<string, unknown>;
+  if (typeof confidenceRecord.band !== "string") {
+    return null;
+  }
+
+  return {
+    claim: goalRecord.summary,
+    support:
+      typeof goalRecord.rationale === "string" && goalRecord.rationale
+        ? goalRecord.rationale
+        : "Workprint synthesized this from all connected evidence sources.",
+    unknown: unknownsSummary,
+    confidence: confidenceRecord.band,
+  };
+}

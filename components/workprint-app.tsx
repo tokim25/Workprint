@@ -9,7 +9,11 @@ import { EvidenceDrawer } from "@/components/evidence-drawer";
 import { GitTimeline } from "@/components/git-timeline";
 import { ProjectFileEvidence } from "@/components/project-file-evidence";
 import { SourceStatusList } from "@/components/source-status-list";
-import { pickActiveDiscovery } from "@/lib/active-discovery";
+import {
+  pickActiveDiscovery,
+  pickExecutiveDiscovery,
+  type ActiveDiscovery,
+} from "@/lib/active-discovery";
 import {
   chooseProjectFolderNative,
   isElectronBridgeAvailable,
@@ -99,6 +103,9 @@ export function WorkprintApp() {
   );
   const [investigateError, setInvestigateError] = useState("");
   const [investigateLoading, setInvestigateLoading] = useState(false);
+  const [executiveDiscovery, setExecutiveDiscovery] = useState<ActiveDiscovery | null>(
+    null,
+  );
   // window.workprintElectron is set once by the Electron preload script
   // before any page script runs and never changes afterward, so this only
   // needs a snapshot read, not a subscription -- useSyncExternalStore
@@ -123,12 +130,14 @@ export function WorkprintApp() {
   const progressTimersRef = useRef<number[]>([]);
 
   const visibleSources = localProject?.sources ?? projectSources;
-  const activeDiscovery = pickActiveDiscovery({
-    gitSummary,
-    claudeSummary,
-    projectFileFacts,
-    sample: insight,
-  });
+  const activeDiscovery =
+    executiveDiscovery ??
+    pickActiveDiscovery({
+      gitSummary,
+      claudeSummary,
+      projectFileFacts,
+      sample: insight,
+    });
   const activeClaim = activeDiscovery.claim;
   const activeSupport = activeDiscovery.support;
   const activeUnknown = activeDiscovery.unknown;
@@ -192,6 +201,16 @@ export function WorkprintApp() {
       setStageIndex(stages.length);
       goTo("discoveries");
     }, 3200));
+
+    // Kick off the real investigation in parallel with the stage
+    // animation above, so the Discoveries screen can upgrade from the
+    // mechanical Git/Claude-count claim to a real synthesized one (see
+    // pickExecutiveDiscovery) once it resolves, instead of only ever
+    // showing the sample/mechanical claim. Skipped in sample mode, where
+    // there is no real project path to investigate.
+    if (repositoryPath.trim()) {
+      void runInvestigation();
+    }
   }
 
   function openSampleReport() {
@@ -219,6 +238,7 @@ export function WorkprintApp() {
     setDesktopChatDeepParseRequested(false);
     setInvestigateResult(null);
     setInvestigateError("");
+    setExecutiveDiscovery(null);
     setProjectStatusMessage("Showing sample project places.");
     window.requestAnimationFrame(() => {
       chooseProjectButtonRef.current?.focus();
@@ -238,6 +258,7 @@ export function WorkprintApp() {
     setDesktopChatDeepParseRequested(false);
     setInvestigateResult(null);
     setInvestigateError("");
+    setExecutiveDiscovery(null);
     setProjectStatusMessage("Removed the selected project. Sample project places are shown.");
     if (projectInputRef.current) {
       projectInputRef.current.value = "";
@@ -265,6 +286,7 @@ export function WorkprintApp() {
     setDesktopChatDeepParseRequested(false);
     setInvestigateResult(null);
     setInvestigateError("");
+    setExecutiveDiscovery(null);
     setProjectStatusMessage(
       `Found ${summary.fileCount} ${summary.fileCount === 1 ? "file" : "files"} in ${summary.folderName}.`,
     );
@@ -405,6 +427,7 @@ export function WorkprintApp() {
     setInvestigateLoading(true);
     setInvestigateError("");
     setInvestigateResult(null);
+    setExecutiveDiscovery(null);
 
     const projectName =
       projectAnswer.trim() || localProject?.folderName || repositoryPath || "Workprint Project";
@@ -431,6 +454,10 @@ export function WorkprintApp() {
       }
 
       setInvestigateResult(payload);
+      const upgraded = pickExecutiveDiscovery(payload.json);
+      if (upgraded) {
+        setExecutiveDiscovery(upgraded);
+      }
     } catch {
       setInvestigateError("Workprint could not reach the local investigation route.");
     } finally {
@@ -978,8 +1005,13 @@ export function WorkprintApp() {
             >
               {activeClaim}
             </h1>
-            <div className="mt-8">
+            <div className="mt-8 flex flex-wrap items-center gap-3">
               <ConfidenceIndicator label={activeConfidence} />
+              {investigateLoading && !executiveDiscovery ? (
+                <span className="text-sm text-[var(--muted)]">
+                  Investigating further&hellip;
+                </span>
+              ) : null}
             </div>
             <section className="mt-10 max-w-3xl border-l-2 border-[var(--accent)] pl-6">
               <h2 className="text-2xl font-semibold tracking-[-0.03em]">
