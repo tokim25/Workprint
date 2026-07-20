@@ -142,11 +142,14 @@ export function WorkprintApp() {
   const activeSupport = activeDiscovery.support;
   const activeUnknown = activeDiscovery.unknown;
   const activeConfidence = activeDiscovery.confidence;
-  const activeEvidence = [
-    ...(gitSummary ? gitEvidenceItems(gitSummary) : evidenceItems),
-    ...projectFileEvidenceItems(projectFileFacts),
-    ...(claudeSummary ? claudeSessionEvidenceItems(claudeSummary) : []),
-  ];
+  const hasRealEvidence = Boolean(gitSummary) || Boolean(claudeSummary) || projectFileFacts.length > 0;
+  const activeEvidence = hasRealEvidence
+    ? [
+        ...(gitSummary ? gitEvidenceItems(gitSummary) : []),
+        ...projectFileEvidenceItems(projectFileFacts),
+        ...(claudeSummary ? claudeSessionEvidenceItems(claudeSummary) : []),
+      ]
+    : evidenceItems;
   const readyCount = useMemo(
     () => visibleSources.filter((source) => source.status !== "unsupported").length,
     [visibleSources],
@@ -1243,7 +1246,7 @@ export function WorkprintApp() {
       </main>
           <EvidenceDrawer
         evidence={activeEvidence}
-        isSample={!gitSummary && !claudeSummary && projectFileFacts.length === 0}
+        isSample={!hasRealEvidence}
         onClose={closeDrawer}
         open={drawerOpen}
       />
