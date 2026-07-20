@@ -9,6 +9,7 @@ import { EvidenceDrawer } from "@/components/evidence-drawer";
 import { GitTimeline } from "@/components/git-timeline";
 import { ProjectFileEvidence } from "@/components/project-file-evidence";
 import { SourceStatusList } from "@/components/source-status-list";
+import { pickActiveDiscovery } from "@/lib/active-discovery";
 import {
   chooseProjectFolderNative,
   isElectronBridgeAvailable,
@@ -21,12 +22,7 @@ import {
   type ClaudeLocalSummary,
   type ClaudeLocalSummaryResponse,
 } from "@/lib/claude-local-summary";
-import {
-  gitDiscoveryClaim,
-  gitDiscoverySupport,
-  type GitSummary,
-  type GitSummaryResponse,
-} from "@/lib/git-summary";
+import type { GitSummary, GitSummaryResponse } from "@/lib/git-summary";
 import {
   summarizeLocalProject,
   type LocalProjectFile,
@@ -127,11 +123,16 @@ export function WorkprintApp() {
   const progressTimersRef = useRef<number[]>([]);
 
   const visibleSources = localProject?.sources ?? projectSources;
-  const activeClaim = gitSummary ? gitDiscoveryClaim(gitSummary) : insight.claim;
-  const activeSupport = gitSummary ? gitDiscoverySupport(gitSummary) : insight.support;
-  const activeUnknown = gitSummary
-    ? gitSummary.limitations.join(" ")
-    : insight.unknown;
+  const activeDiscovery = pickActiveDiscovery({
+    gitSummary,
+    claudeSummary,
+    projectFileFacts,
+    sample: insight,
+  });
+  const activeClaim = activeDiscovery.claim;
+  const activeSupport = activeDiscovery.support;
+  const activeUnknown = activeDiscovery.unknown;
+  const activeConfidence = activeDiscovery.confidence;
   const activeEvidence = [
     ...(gitSummary ? gitEvidenceItems(gitSummary) : evidenceItems),
     ...projectFileEvidenceItems(projectFileFacts),
@@ -978,7 +979,7 @@ export function WorkprintApp() {
               {activeClaim}
             </h1>
             <div className="mt-8">
-              <ConfidenceIndicator label={insight.confidence} />
+              <ConfidenceIndicator label={activeConfidence} />
             </div>
             <section className="mt-10 max-w-3xl border-l-2 border-[var(--accent)] pl-6">
               <h2 className="text-2xl font-semibold tracking-[-0.03em]">
