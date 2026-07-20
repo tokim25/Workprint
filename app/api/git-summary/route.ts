@@ -1,4 +1,7 @@
-import { realpath, stat } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { readFile, realpath, rm, stat } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { spawn } from "node:child_process";
 import { NextResponse } from "next/server";
 import { workprintPythonCommand } from "@/lib/workprint-python-command";
@@ -146,8 +149,22 @@ function boundedCommitLimit(
   return { ok: true, limit: Math.min(limit, MAX_COMMIT_LIMIT) };
 }
 
-function runGitSummary(repositoryPath: string, commitLimit: number) {
-  return new Promise<
+async function runGitSummary(
+  repositoryPath: string,
+  commitLimit: number,
+): Promise<
+  | { ok: true; payload: unknown }
+  | { ok: false; code: SafeErrorCode; message: string; status: number }
+> {
+  // Writing to a temp file instead of piping stdout sidesteps a pipe
+  // backpressure/deadlock that was observed intermittently -- even for
+  // this route's small payloads -- when the parent Node process is
+  // itself a child of a GUI-launched Electron app with no real terminal
+  // attached. See app/api/investigate/route.ts, which hit the same
+  // issue first with larger payloads.
+  const outputFile = join(tmpdir(), `workprint-git-summary-${randomUUID()}.json`);
+
+  const result = await new Promise<
     | { ok: true; payload: unknown }
     | { ok: false; code: SafeErrorCode; message: string; status: number }
   >((resolve) => {
@@ -156,6 +173,8 @@ function runGitSummary(repositoryPath: string, commitLimit: number) {
       repositoryPath,
       "--limit",
       String(commitLimit),
+      "--output-file",
+      outputFile,
     ]);
     const child = spawn(command, args, {
       env: {
@@ -224,6 +243,25 @@ function runGitSummary(repositoryPath: string, commitLimit: number) {
       resolve({ ok: true, payload: parsed.payload });
     });
   });
+
+  if (!result.ok) {
+    await rm(outputFile, { force: true });
+    return result;
+  }
+
+  try {
+    const fileContents = await readFile(outputFile, "utf8");
+    return { ok: true, payload: JSON.parse(fileContents) };
+  } catch {
+    return {
+      ok: false,
+      code: "adapter_failed",
+      message: "Workprint could not read Git metadata for this repository.",
+      status: 500,
+    };
+  } finally {
+    await rm(outputFile, { force: true });
+  }
 }
 
 function parsePythonPayload(stdout: string):

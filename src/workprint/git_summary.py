@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Sequence
@@ -153,6 +154,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Return a bounded Git summary as JSON.")
     parser.add_argument("--repository", required=True)
     parser.add_argument("--limit", type=int, default=DEFAULT_COMMIT_LIMIT)
+    parser.add_argument(
+        "--output-file",
+        help=(
+            "Write the JSON payload to this file instead of stdout, and "
+            "print only a small confirmation. Piping output through a "
+            "subprocess's stdout pipe has been observed to hang "
+            "intermittently when the parent process is itself a "
+            "GUI-launched Electron app with no real terminal attached "
+            "(see electron/main.js and app/api/investigate/route.ts, "
+            "which hit the same issue with larger payloads first)."
+        ),
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -161,7 +174,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(json.dumps(_json_error(exc), ensure_ascii=False))
         return 1
 
-    print(json.dumps(payload, ensure_ascii=False))
+    if args.output_file:
+        fd = os.open(args.output_file, os.O_CREAT | os.O_WRONLY | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            json.dump(payload, handle, ensure_ascii=False)
+        print(json.dumps({"ok": True, "output_file": args.output_file}, ensure_ascii=False))
+    else:
+        print(json.dumps(payload, ensure_ascii=False))
     return 0
 
 

@@ -1,4 +1,7 @@
-import { realpath, stat } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { readFile, realpath, rm, stat } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { spawn } from "node:child_process";
 import { NextResponse } from "next/server";
 import { workprintPythonCommand } from "@/lib/workprint-python-command";
@@ -111,12 +114,22 @@ async function canonicalProjectPath(
   }
 }
 
-function runClaudeLocalSummary(projectPath: string, includeDesktopChatDeepParse: boolean) {
-  return new Promise<
+async function runClaudeLocalSummary(
+  projectPath: string,
+  includeDesktopChatDeepParse: boolean,
+): Promise<
+  | { ok: true; payload: unknown }
+  | { ok: false; code: SafeErrorCode; message: string; status: number }
+> {
+  // See app/api/git-summary/route.ts for why output goes to a temp file
+  // instead of stdout.
+  const outputFile = join(tmpdir(), `workprint-claude-local-summary-${randomUUID()}.json`);
+
+  const result = await new Promise<
     | { ok: true; payload: unknown }
     | { ok: false; code: SafeErrorCode; message: string; status: number }
   >((resolve) => {
-    const summaryArgs = ["--project", projectPath];
+    const summaryArgs = ["--project", projectPath, "--output-file", outputFile];
     if (includeDesktopChatDeepParse) {
       summaryArgs.push("--include-desktop-chat-deep-parse");
     }
@@ -192,6 +205,25 @@ function runClaudeLocalSummary(projectPath: string, includeDesktopChatDeepParse:
       resolve({ ok: true, payload: parsed.payload });
     });
   });
+
+  if (!result.ok) {
+    await rm(outputFile, { force: true });
+    return result;
+  }
+
+  try {
+    const fileContents = await readFile(outputFile, "utf8");
+    return { ok: true, payload: JSON.parse(fileContents) };
+  } catch {
+    return {
+      ok: false,
+      code: "adapter_failed",
+      message: "Workprint could not read local Claude session evidence.",
+      status: 500,
+    };
+  } finally {
+    await rm(outputFile, { force: true });
+  }
 }
 
 function parsePythonPayload(stdout: string):
