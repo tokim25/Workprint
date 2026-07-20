@@ -10,6 +10,11 @@ import { GitTimeline } from "@/components/git-timeline";
 import { ProjectFileEvidence } from "@/components/project-file-evidence";
 import { SourceStatusList } from "@/components/source-status-list";
 import {
+  pickActiveDiscovery,
+  pickExecutiveDiscovery,
+  type ActiveDiscovery,
+} from "@/lib/active-discovery";
+import {
   chooseProjectFolderNative,
   isElectronBridgeAvailable,
 } from "@/lib/electron-bridge";
@@ -21,12 +26,7 @@ import {
   type ClaudeLocalSummary,
   type ClaudeLocalSummaryResponse,
 } from "@/lib/claude-local-summary";
-import {
-  gitDiscoveryClaim,
-  gitDiscoverySupport,
-  type GitSummary,
-  type GitSummaryResponse,
-} from "@/lib/git-summary";
+import type { GitSummary, GitSummaryResponse } from "@/lib/git-summary";
 import {
   summarizeLocalProject,
   type LocalProjectFile,
@@ -103,6 +103,9 @@ export function WorkprintApp() {
   );
   const [investigateError, setInvestigateError] = useState("");
   const [investigateLoading, setInvestigateLoading] = useState(false);
+  const [executiveDiscovery, setExecutiveDiscovery] = useState<ActiveDiscovery | null>(
+    null,
+  );
   // window.workprintElectron is set once by the Electron preload script
   // before any page script runs and never changes afterward, so this only
   // needs a snapshot read, not a subscription -- useSyncExternalStore
@@ -127,11 +130,18 @@ export function WorkprintApp() {
   const progressTimersRef = useRef<number[]>([]);
 
   const visibleSources = localProject?.sources ?? projectSources;
-  const activeClaim = gitSummary ? gitDiscoveryClaim(gitSummary) : insight.claim;
-  const activeSupport = gitSummary ? gitDiscoverySupport(gitSummary) : insight.support;
-  const activeUnknown = gitSummary
-    ? gitSummary.limitations.join(" ")
-    : insight.unknown;
+  const activeDiscovery =
+    executiveDiscovery ??
+    pickActiveDiscovery({
+      gitSummary,
+      claudeSummary,
+      projectFileFacts,
+      sample: insight,
+    });
+  const activeClaim = activeDiscovery.claim;
+  const activeSupport = activeDiscovery.support;
+  const activeUnknown = activeDiscovery.unknown;
+  const activeConfidence = activeDiscovery.confidence;
   const activeEvidence = [
     ...(gitSummary ? gitEvidenceItems(gitSummary) : evidenceItems),
     ...projectFileEvidenceItems(projectFileFacts),
@@ -191,6 +201,16 @@ export function WorkprintApp() {
       setStageIndex(stages.length);
       goTo("discoveries");
     }, 3200));
+
+    // Kick off the real investigation in parallel with the stage
+    // animation above, so the Discoveries screen can upgrade from the
+    // mechanical Git/Claude-count claim to a real synthesized one (see
+    // pickExecutiveDiscovery) once it resolves, instead of only ever
+    // showing the sample/mechanical claim. Skipped in sample mode, where
+    // there is no real project path to investigate.
+    if (repositoryPath.trim()) {
+      void runInvestigation();
+    }
   }
 
   function openSampleReport() {
@@ -218,6 +238,7 @@ export function WorkprintApp() {
     setDesktopChatDeepParseRequested(false);
     setInvestigateResult(null);
     setInvestigateError("");
+    setExecutiveDiscovery(null);
     setProjectStatusMessage("Showing sample project places.");
     window.requestAnimationFrame(() => {
       chooseProjectButtonRef.current?.focus();
@@ -237,6 +258,7 @@ export function WorkprintApp() {
     setDesktopChatDeepParseRequested(false);
     setInvestigateResult(null);
     setInvestigateError("");
+    setExecutiveDiscovery(null);
     setProjectStatusMessage("Removed the selected project. Sample project places are shown.");
     if (projectInputRef.current) {
       projectInputRef.current.value = "";
@@ -264,6 +286,7 @@ export function WorkprintApp() {
     setDesktopChatDeepParseRequested(false);
     setInvestigateResult(null);
     setInvestigateError("");
+    setExecutiveDiscovery(null);
     setProjectStatusMessage(
       `Found ${summary.fileCount} ${summary.fileCount === 1 ? "file" : "files"} in ${summary.folderName}.`,
     );
@@ -404,6 +427,7 @@ export function WorkprintApp() {
     setInvestigateLoading(true);
     setInvestigateError("");
     setInvestigateResult(null);
+    setExecutiveDiscovery(null);
 
     const projectName =
       projectAnswer.trim() || localProject?.folderName || repositoryPath || "Workprint Project";
@@ -430,6 +454,10 @@ export function WorkprintApp() {
       }
 
       setInvestigateResult(payload);
+      const upgraded = pickExecutiveDiscovery(payload.json);
+      if (upgraded) {
+        setExecutiveDiscovery(upgraded);
+      }
     } catch {
       setInvestigateError("Workprint could not reach the local investigation route.");
     } finally {
@@ -477,9 +505,69 @@ export function WorkprintApp() {
           {localProject ? "Selected project" : "Add files for evidence"}
         </p>
         <p className="mt-3 max-w-2xl leading-7 text-[var(--muted)]">
-          Files remain on your device. Workprint only looks at filenames,
-          folder paths, extensions, and counts for this prototype.
+          Files remain on your device. For most files, Workprint only
+          looks at filenames, folder paths, extensions, and counts --
+          but a ChatGPT export, a Google Docs export, or a Figma file
+          export are read as real evidence. See what&rsquo;s recognized below.
         </p>
+        <details className="mt-4 max-w-2xl rounded-2xl border border-[var(--line)] p-4 text-sm leading-6 text-[var(--muted)]">
+          <summary className="cursor-pointer font-semibold text-[var(--foreground)]">
+            What files does this recognize?
+          </summary>
+          <div className="mt-3 space-y-2">
+            <p>
+              <strong className="text-[var(--foreground)]">ChatGPT:</strong>{" "}
+              the official{" "}
+              <code className="rounded bg-[var(--surface-soft)] px-1 py-0.5">
+                conversations.json
+              </code>{" "}
+              export from ChatGPT&rsquo;s data export feature.
+            </p>
+            <p>
+              <strong className="text-[var(--foreground)]">
+                Google Docs:
+              </strong>{" "}
+              an exported{" "}
+              <code className="rounded bg-[var(--surface-soft)] px-1 py-0.5">
+                .md
+              </code>
+              ,{" "}
+              <code className="rounded bg-[var(--surface-soft)] px-1 py-0.5">
+                .txt
+              </code>
+              , or{" "}
+              <code className="rounded bg-[var(--surface-soft)] px-1 py-0.5">
+                .json
+              </code>{" "}
+              file. A{" "}
+              <code className="rounded bg-[var(--surface-soft)] px-1 py-0.5">
+                .md
+              </code>{" "}
+              or{" "}
+              <code className="rounded bg-[var(--surface-soft)] px-1 py-0.5">
+                .txt
+              </code>{" "}
+              export needs a first line of{" "}
+              <code className="rounded bg-[var(--surface-soft)] px-1 py-0.5">
+                workprint-source: google-docs
+              </code>{" "}
+              to be recognized -- without it, Workprint treats the file
+              as a plain project file instead.
+            </p>
+            <p>
+              <strong className="text-[var(--foreground)]">Figma:</strong>{" "}
+              the raw Figma REST API file response (the JSON you get
+              back from{" "}
+              <code className="rounded bg-[var(--surface-soft)] px-1 py-0.5">
+                GET /v1/files/:key
+              </code>{" "}
+              with a personal access token) -- not a file you can
+              produce from Figma&rsquo;s own export menu. A real
+              &ldquo;Connect Figma&rdquo; flow that does this for you
+              isn&rsquo;t built yet.
+            </p>
+          </div>
+        </details>
         <div
           className={`mt-6 rounded-[24px] border border-dashed p-6 transition ${
             dragActive
@@ -977,8 +1065,13 @@ export function WorkprintApp() {
             >
               {activeClaim}
             </h1>
-            <div className="mt-8">
-              <ConfidenceIndicator label={insight.confidence} />
+            <div className="mt-8 flex flex-wrap items-center gap-3">
+              <ConfidenceIndicator label={activeConfidence} />
+              {investigateLoading && !executiveDiscovery ? (
+                <span className="text-sm text-[var(--muted)]">
+                  Investigating further&hellip;
+                </span>
+              ) : null}
             </div>
             <section className="mt-10 max-w-3xl border-l-2 border-[var(--accent)] pl-6">
               <h2 className="text-2xl font-semibold tracking-[-0.03em]">
