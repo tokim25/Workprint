@@ -137,6 +137,49 @@ process in dev mode does not pay this cost) plus a possible one-time
 macOS Gatekeeper scan on an unsigned binary's very first execution on a
 machine.
 
+## Hardening Pass (2026-07-20)
+
+An architecture review of the packaged app surfaced several real gaps,
+fixed and verified against a freshly built, freshly packaged `.app`
+(`npm run electron:pack`):
+
+- **The production server bound to every network interface, not just
+  this machine.** Next's standalone `server.js` falls back to
+  `HOSTNAME || "0.0.0.0"` when unset, and `startProductionServer()`
+  never set it -- so `/api/investigate`, `/api/git-summary`, and
+  `/api/claude-local-summary` were reachable by any other device on the
+  same network by default. Fixed by setting `HOSTNAME: "127.0.0.1"`
+  alongside `PORT` in `electron/main.js`. Verified with `lsof
+  -iTCP:3820 -sTCP:LISTEN`, which now shows `127.0.0.1:3820` instead of
+  a wildcard bind.
+- **Investigation output was written to a shared temp directory with
+  default, world-readable permissions.** `web_investigate.py`'s
+  `--output-file` used a plain `open(path, "w")`. Fixed with `os.open(...,
+  0o600)` so the file (which can contain real project evidence, commit
+  content, and Claude session excerpts) is owner-only. Verified with
+  `stat -f "%Sp"` showing `-rw-------` on a real investigation run.
+- **A second launch (e.g. an extra Dock click before the first fully
+  quits) silently hung for 30 seconds then quit with no explanation** --
+  it was racing the first instance for port 3820 and losing. Fixed with
+  `app.requestSingleInstanceLock()`; the second launch now exits
+  immediately and focuses the existing window instead.
+- **No supervision if the production server child died mid-session** --
+  every subsequent request would just fail with no explanation. Fixed
+  with an `exit` handler that shows a clear dialog telling the user to
+  relaunch, instead of a silently broken UI.
+- **`server.log` had no rotation**, appending every request's Python
+  subprocess output for the app's entire install lifetime. Fixed with a
+  5MB size cap, truncated on launch when exceeded.
+- Added a `will-navigate` guard on the `BrowserWindow` as
+  defense-in-depth: nothing currently renders attacker-influenced links,
+  but evidence content (commit messages, chat excerpts) is arbitrary
+  text Workprint didn't author, so the window can no longer be navigated
+  outside its own local server.
+
+The existing "Build full report" / git-summary / Claude-summary buttons
+already disabled themselves while a request was in flight, so no
+concurrency guard was needed there.
+
 ## What Remains
 
 This is the honest gap between "a real installer exists and works" and
