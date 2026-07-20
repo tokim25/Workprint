@@ -505,9 +505,69 @@ export function WorkprintApp() {
           {localProject ? "Selected project" : "Add files for evidence"}
         </p>
         <p className="mt-3 max-w-2xl leading-7 text-[var(--muted)]">
-          Files remain on your device. Workprint only looks at filenames,
-          folder paths, extensions, and counts for this prototype.
+          Files remain on your device. For most files, Workprint only
+          looks at filenames, folder paths, extensions, and counts --
+          but a ChatGPT export, a Google Docs export, or a Figma file
+          export are read as real evidence. See what&rsquo;s recognized below.
         </p>
+        <details className="mt-4 max-w-2xl rounded-2xl border border-[var(--line)] p-4 text-sm leading-6 text-[var(--muted)]">
+          <summary className="cursor-pointer font-semibold text-[var(--foreground)]">
+            What files does this recognize?
+          </summary>
+          <div className="mt-3 space-y-2">
+            <p>
+              <strong className="text-[var(--foreground)]">ChatGPT:</strong>{" "}
+              the official{" "}
+              <code className="rounded bg-[var(--surface-soft)] px-1 py-0.5">
+                conversations.json
+              </code>{" "}
+              export from ChatGPT&rsquo;s data export feature.
+            </p>
+            <p>
+              <strong className="text-[var(--foreground)]">
+                Google Docs:
+              </strong>{" "}
+              an exported{" "}
+              <code className="rounded bg-[var(--surface-soft)] px-1 py-0.5">
+                .md
+              </code>
+              ,{" "}
+              <code className="rounded bg-[var(--surface-soft)] px-1 py-0.5">
+                .txt
+              </code>
+              , or{" "}
+              <code className="rounded bg-[var(--surface-soft)] px-1 py-0.5">
+                .json
+              </code>{" "}
+              file. A{" "}
+              <code className="rounded bg-[var(--surface-soft)] px-1 py-0.5">
+                .md
+              </code>{" "}
+              or{" "}
+              <code className="rounded bg-[var(--surface-soft)] px-1 py-0.5">
+                .txt
+              </code>{" "}
+              export needs a first line of{" "}
+              <code className="rounded bg-[var(--surface-soft)] px-1 py-0.5">
+                workprint-source: google-docs
+              </code>{" "}
+              to be recognized -- without it, Workprint treats the file
+              as a plain project file instead.
+            </p>
+            <p>
+              <strong className="text-[var(--foreground)]">Figma:</strong>{" "}
+              the raw Figma REST API file response (the JSON you get
+              back from{" "}
+              <code className="rounded bg-[var(--surface-soft)] px-1 py-0.5">
+                GET /v1/files/:key
+              </code>{" "}
+              with a personal access token) -- not a file you can
+              produce from Figma&rsquo;s own export menu. A real
+              &ldquo;Connect Figma&rdquo; flow that does this for you
+              isn&rsquo;t built yet.
+            </p>
+          </div>
+        </details>
         <div
           className={`mt-6 rounded-[24px] border border-dashed p-6 transition ${
             dragActive
