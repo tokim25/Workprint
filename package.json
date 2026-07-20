@@ -2,6 +2,7 @@
   "name": "workprint",
   "version": "0.1.0",
   "private": true,
+  "license": "Apache-2.0",
   "main": "electron/main.js",
   "scripts": {
     "dev": "next dev",

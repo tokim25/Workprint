@@ -217,5 +217,9 @@ out, Workprint says so explicitly rather than guessing.
 
 ## Rights
 
-Copyright © 2026 Tony Kim. All rights reserved. See [LICENSE](LICENSE).
-This repository is not currently open source.
+Copyright © 2026 Tony Kim. Licensed under the Apache License, Version 2.0
+— see [LICENSE](LICENSE) and [NOTICE](NOTICE). Workprint's AI Fluency
+Evidence section credits Anthropic's AI Fluency Framework (developed by
+Prof. Rick Dakan and Prof. Joseph Feller); the framework's own materials
+remain separately licensed under CC BY-NC-SA 4.0 regardless of Workprint's
+own license — see [NOTICE](NOTICE) for the full attribution.

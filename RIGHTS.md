@@ -1,7 +1,10 @@
 # Rights and Licensing
 
-Copyright © 2026 Tony Kim. All rights reserved.
+Copyright © 2026 Tony Kim.
 
-No permission is granted to copy, modify, distribute, sublicense, sell, or create derivative works without written permission from the copyright holder.
-
-This is not an open-source license.
+Workprint is open source, licensed under the Apache License, Version 2.0.
+See [LICENSE](LICENSE) for the full license text and [NOTICE](NOTICE) for
+required third-party attributions, including Anthropic's AI Fluency
+Framework (credited in Workprint's AI Fluency Evidence report section,
+separately licensed under CC BY-NC-SA 4.0 for the framework's own
+materials, independent of Workprint's own license).
