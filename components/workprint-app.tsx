@@ -208,8 +208,24 @@ export function WorkprintApp() {
     // pickExecutiveDiscovery) once it resolves, instead of only ever
     // showing the sample/mechanical claim. Skipped in sample mode, where
     // there is no real project path to investigate.
+    //
+    // Also read Git/Claude evidence directly here rather than relying on
+    // the user having separately clicked "Read Git metadata"/"Read Claude
+    // sessions" first -- those are easy-to-miss buttons elsewhere on the
+    // sources screen, and this "Investigate" button has no guard
+    // requiring them. Without this, gitSummary/claudeSummary stay null
+    // for anyone who just connects a project and clicks the one obvious
+    // CTA, so pickActiveDiscovery (Phase 1) falls through to the sample
+    // claim even though real evidence exists -- confirmed as the actual
+    // cause of a real-world report that the Discoveries screen still
+    // showed sample content after the pickActiveDiscovery/
+    // pickExecutiveDiscovery fix: the picker itself was verified correct
+    // against real API data, but gitSummary/claudeSummary were simply
+    // never populated because those two buttons were never clicked.
     if (repositoryPath.trim()) {
       void runInvestigation();
+      void readGitSummary();
+      void readClaudeSummary();
     }
   }
 
