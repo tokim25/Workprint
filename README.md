@@ -13,12 +13,13 @@ No coding experience is required to use it.
 
 ## Get Started (No Terminal Required)
 
-Workprint runs as a real desktop app. If someone has already built and
-shared the app with you (a `Workprint.app` or a `.dmg` file), here's how
-to use it:
+**[Download Workprint for macOS (Apple Silicon)](https://github.com/tokim25/Workprint/releases/latest)**
+— no Node.js, no Python, nothing else to install. Apple Silicon Macs
+(M1/M2/M3/M4) only for now; no Intel Mac, Windows, or Linux build yet.
 
 1. **Open it.** The first time, macOS will say it can't verify the
-   developer — this is normal for a small, independently built app.
+   developer — this is normal for a small, independently built app that
+   isn't (yet) signed by Apple, not a sign anything is wrong.
    Right-click the app and choose **Open** once, then confirm. You won't
    see this warning again.
 2. **Tell Workprint what you're working on.** One sentence is enough.
@@ -46,12 +47,11 @@ surfaces the evidence. The **Playbook Worksheet** lays that same evidence
 out as a fill-in table, ready to bring into a conversation with Claude
 and reflect on together.
 
-### Don't have the app yet?
+### Want the latest, unreleased build?
 
-Ask whoever is building Workprint (see "Run It Yourself" below) to run
-`npm run electron:dist` and send you the resulting `.dmg` file. Building
-the app itself currently still requires a terminal — only *using* it
-doesn't.
+Released versions lag behind `main`. To build the current development
+version yourself, see "Run It Yourself" below. Building the app requires
+a terminal — only *using* the downloaded release doesn't.
 
 ## What Workprint Can Read
 
