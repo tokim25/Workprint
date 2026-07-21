@@ -90,6 +90,8 @@ export const PROVIDER_INSIGHT_RESPONSE_SCHEMA = {
   ],
 } as const;
 
+const PROVIDER_CONFIDENCE_BANDS = new Set(["High", "Moderate", "Limited", "Low"]);
+
 export type ReasoningSuccess = {
   ok: true;
   provider: ReasoningProviderId;
@@ -237,6 +239,32 @@ export function validateCandidateInsight(
       ok: false,
       code: "malformed_provider_response",
       message: "The provider did not return the required insight structure.",
+    };
+  }
+
+  const emptyFields = [
+    ["claim", insight.claim],
+    ["explanation", insight.explanation],
+    ["confidence", insight.confidence],
+    ["unknowns", insight.unknowns],
+    ["provider_uncertainty", insight.provider_uncertainty],
+  ].filter(([, value]) => typeof value !== "string" || !value.trim());
+  if (emptyFields.length > 0) {
+    return {
+      ok: false,
+      code: "malformed_provider_response",
+      message: `The provider returned an incomplete insight: ${emptyFields
+        .map(([field]) => field)
+        .join(", ")}.`,
+    };
+  }
+
+  if (!PROVIDER_CONFIDENCE_BANDS.has(insight.confidence)) {
+    return {
+      ok: false,
+      code: "malformed_provider_response",
+      message:
+        "The provider returned a confidence value Workprint could not display.",
     };
   }
 

@@ -75,6 +75,34 @@ class ProviderReasoningWebTests(unittest.TestCase):
         self.assertIn("The provider cited evidence Workprint did not send", source)
         self.assertIn("The provider response did not cite any evidence IDs", source)
 
+    def test_provider_validation_rejects_blank_display_fields(self):
+        source = (ROOT / "lib" / "provider-reasoning.ts").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("PROVIDER_CONFIDENCE_BANDS", source)
+        self.assertIn('["confidence", insight.confidence]', source)
+        self.assertIn('["explanation", insight.explanation]', source)
+        self.assertIn('["unknowns", insight.unknowns]', source)
+        self.assertIn("The provider returned an incomplete insight", source)
+        self.assertIn(
+            "The provider returned a confidence value Workprint could not display",
+            source,
+        )
+
+    def test_confidence_indicator_explains_confidence_bands(self):
+        source = (ROOT / "components" / "confidence-indicator.tsx").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("title={description}", source)
+        self.assertIn("aria-label", source)
+        self.assertIn("Strong direct evidence supports this claim", source)
+        self.assertIn("limited corroboration", source)
+        self.assertIn("coverage or corroboration is thin", source)
+        self.assertIn("Evidence is weak, indirect, or incomplete", source)
+        self.assertIn("Workprint has not assessed confidence yet", source)
+
     def test_provider_parser_handles_common_json_wrappers(self):
         source = (ROOT / "lib" / "provider-reasoning.ts").read_text(
             encoding="utf-8"
