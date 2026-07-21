@@ -14,6 +14,7 @@ from workprint.adapters.claude_cowork import ClaudeCoworkAdapter
 from workprint.adapters.claude_desktop_chat import ClaudeDesktopChatAdapter
 from workprint.ai_fluency import (
     AI_SOURCE_LABELS,
+    FRAMEWORK_SUMMARY,
     build_ai_fluency_reflection,
     build_playbook_worksheet_markdown,
 )
@@ -32,8 +33,26 @@ class AIFluencyReflectionTests(unittest.TestCase):
 
         self.assertIn("Dakan", reflection.attribution)
         self.assertIn("Feller", reflection.attribution)
+        self.assertIn("Anthropic Academy", reflection.attribution)
         self.assertIn("CC BY-NC-SA", reflection.attribution)
         self.assertIn("does not score", reflection.disclaimer.lower())
+        self.assertIn("Delegation", FRAMEWORK_SUMMARY)
+        self.assertIn("effectively", FRAMEWORK_SUMMARY)
+        self.assertIn("ethically", FRAMEWORK_SUMMARY)
+
+    def test_competency_definitions_follow_ai_fluency_framework(self):
+        reflection = build_ai_fluency_reflection(self._investigation([]))
+        by_key = {item.key: item.definition for item in reflection.competencies}
+
+        self.assertIn("what work is appropriate for you to do", by_key["delegation"])
+        self.assertIn("what work is appropriate for AI to do", by_key["delegation"])
+        self.assertIn("desired outputs", by_key["description"])
+        self.assertIn("process expectations", by_key["description"])
+        self.assertIn("what AI produces, how it produces it", by_key["discernment"])
+        self.assertIn("quality, accuracy, relevance", by_key["discernment"])
+        self.assertIn("transparency about AI's role", by_key["diligence"])
+        self.assertIn("verification", by_key["diligence"])
+        self.assertIn("accountability", by_key["diligence"])
 
     def test_ai_source_labels_match_real_adapter_source_names(self):
         # Regression: dogfooding against this repo's own real Claude Code
@@ -273,6 +292,8 @@ class AIFluencyReflectionTests(unittest.TestCase):
         rendered = render_markdown(self._investigation([self._obs("OBS-1")]))
 
         self.assertIn("## AI Fluency Evidence", rendered)
+        self.assertIn(FRAMEWORK_SUMMARY, rendered)
+        self.assertIn("Anthropic Academy", rendered)
         self.assertIn("### Delegation", rendered)
         self.assertIn("### Description", rendered)
         self.assertIn("### Discernment", rendered)
