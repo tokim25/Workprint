@@ -40,8 +40,10 @@ class WebProviderNeededStateTests(unittest.TestCase):
         self.assertIn("OpenAI", source)
         self.assertIn("Claude", source)
         self.assertIn("Gemini", source)
-        self.assertIn("no default selection", source)
-        self.assertIn("before any selected evidence leaves", source)
+        self.assertIn("does not", source)
+        self.assertIn("choose a", source)
+        self.assertIn("default provider", source)
+        self.assertIn("Selected evidence will leave your device", source)
 
 
 if __name__ == "__main__":
