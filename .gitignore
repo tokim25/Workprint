@@ -8,6 +8,7 @@ build/
 *.egg-info/
 .DS_Store
 workprint-output/
+workprint-debug/
 report.md
 observations.json
 node_modules/

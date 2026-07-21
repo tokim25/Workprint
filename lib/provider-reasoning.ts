@@ -126,8 +126,9 @@ export type ReasoningFailure = {
 };
 
 export const MAX_EVIDENCE_PACKET_TOKENS = 30_000;
+export const GEMINI_FALLBACK_MODELS = ["gemini-2.5-flash"] as const;
 const APPROX_CHARS_PER_TOKEN = 4;
-const MAX_PROVIDER_OUTPUT_TOKENS = 800;
+const MAX_PROVIDER_OUTPUT_TOKENS = 2_000;
 
 const forbiddenClaimPatterns = [
   /\b\d+(?:\.\d+)?\s*%/,
@@ -157,6 +158,25 @@ export function isReasoningProviderId(value: unknown): value is ReasoningProvide
   return (
     typeof value === "string" &&
     REASONING_PROVIDERS.some((provider) => provider.id === value)
+  );
+}
+
+export function isProviderCapacityError(error: unknown) {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const message =
+    error instanceof Error
+      ? error.message
+      : "message" in error && typeof (error as { message?: unknown }).message === "string"
+        ? (error as { message: string }).message
+        : "";
+
+  return (
+    /\b(high demand|overload|overloaded|temporarily unavailable|try again later|resource exhausted|rate limit|quota)\b/i.test(
+      message,
+    )
   );
 }
 
@@ -533,7 +553,7 @@ function normalizeCandidateShape(value: unknown): Partial<CandidateInsight> {
   const record = unwrapCandidateRecord(value);
 
   return {
-    claim: readCandidateString(record, ["claim", "first_insight", "firstInsight"]),
+    claim: readCandidateString(record, ["claim", "first_insight", "firstInsight", "summary"]),
     evidence_ids: readEvidenceIds(record),
     explanation: readCandidateString(record, [
       "explanation",
@@ -542,7 +562,13 @@ function normalizeCandidateShape(value: unknown): Partial<CandidateInsight> {
       "why_supported",
       "whySupported",
     ]),
-    confidence: readCandidateString(record, ["confidence", "confidence_language", "confidenceLanguage"]),
+    confidence: readCandidateString(record, [
+      "confidence",
+      "confidence_level",
+      "confidenceLevel",
+      "confidence_language",
+      "confidenceLanguage",
+    ]),
     unknowns: readCandidateString(record, ["unknowns", "limitations", "what_evidence_cannot_determine"]),
     provider_uncertainty: readCandidateString(record, [
       "provider_uncertainty",
@@ -575,8 +601,9 @@ function unwrapCandidateRecord(value: unknown): Record<string, unknown> {
 function readCandidateString(record: Record<string, unknown>, keys: string[]) {
   for (const key of keys) {
     const value = record[key];
-    if (typeof value === "string" && value.trim()) {
-      return value;
+    const text = stringifyCandidateValue(value);
+    if (text) {
+      return text;
     }
   }
 
@@ -590,12 +617,51 @@ function readEvidenceIds(record: Record<string, unknown>) {
     record.supporting_evidence_ids ??
     record.supportingEvidenceIds;
 
-  if (Array.isArray(value)) {
-    return value.filter(
-      (id): id is string => typeof id === "string" && Boolean(id.trim()),
-    );
+  return extractEvidenceIds(value);
+}
+
+function stringifyCandidateValue(value: unknown): string {
+  if (typeof value === "string") {
+    return value.trim();
   }
 
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(stringifyCandidateValue).filter(Boolean).join("; ");
+  }
+
+  if (!value || typeof value !== "object") {
+    return "";
+  }
+
+  const record = value as Record<string, unknown>;
+  const preferred =
+    record.level ??
+    record.label ??
+    record.value ??
+    record.summary ??
+    record.text ??
+    record.description ??
+    record.reasoning ??
+    record.rationale;
+  const preferredText = stringifyCandidateValue(preferred);
+  if (preferredText) {
+    return preferredText;
+  }
+
+  return Object.entries(record)
+    .map(([key, entry]) => {
+      const text = stringifyCandidateValue(entry);
+      return text ? `${key}: ${text}` : "";
+    })
+    .filter(Boolean)
+    .join("; ");
+}
+
+function extractEvidenceIds(value: unknown): string[] {
   if (typeof value === "string" && value.trim()) {
     return value
       .split(/[,;\s]+/)
@@ -603,5 +669,20 @@ function readEvidenceIds(record: Record<string, unknown>) {
       .filter(Boolean);
   }
 
-  return [];
+  if (Array.isArray(value)) {
+    return value.flatMap(extractEvidenceIds);
+  }
+
+  if (!value || typeof value !== "object") {
+    return [];
+  }
+
+  const record = value as Record<string, unknown>;
+  return extractEvidenceIds(
+    record.id ??
+      record.evidence_id ??
+      record.evidenceId ??
+      record.ref ??
+      record.reference,
+  );
 }

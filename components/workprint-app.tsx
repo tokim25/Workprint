@@ -112,6 +112,7 @@ export function WorkprintApp() {
   const [investigateLoading, setInvestigateLoading] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState<ReasoningProviderId | "">("");
   const [providerApiKey, setProviderApiKey] = useState("");
+  const [providerKeyHelpOpen, setProviderKeyHelpOpen] = useState(false);
   const [providerReasoningError, setProviderReasoningError] = useState("");
   const [providerReasoningLoading, setProviderReasoningLoading] = useState(false);
   const [providerReasoningResult, setProviderReasoningResult] =
@@ -161,6 +162,7 @@ export function WorkprintApp() {
     ...projectFileEvidenceItems(projectFileFacts),
     ...(claudeSummary ? claudeSessionEvidenceItems(claudeSummary) : []),
   ];
+  const providerKeyHelp = providerKeyHelpFor(selectedProvider);
   const activeEvidence = hasRealEvidence
     ? filterEvidenceForDiscovery(realEvidenceItems, activeDiscovery)
     : evidenceItems;
@@ -1237,25 +1239,79 @@ export function WorkprintApp() {
                     </button>
                   ))}
                 </div>
-                <label className="mt-5 block text-sm font-semibold" htmlFor="provider-key">
-                  Provider API key
-                </label>
+                <div className="mt-5 flex flex-wrap items-center gap-3">
+                  <label className="block text-sm font-semibold" htmlFor="provider-key">
+                    API key for selected provider
+                  </label>
+                  <button
+                    aria-expanded={providerKeyHelpOpen}
+                    className="rounded-full border border-[var(--line)] bg-[var(--surface)] px-3 py-1 text-xs font-semibold text-[var(--accent)] transition hover:border-[var(--accent)]"
+                    onClick={() => setProviderKeyHelpOpen((open) => !open)}
+                    type="button"
+                  >
+                    What is this?
+                  </button>
+                </div>
+                {providerKeyHelpOpen ? (
+                  <div className="mt-3 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4 text-sm leading-6 text-[var(--muted)]">
+                    <p>
+                      <strong className="text-[var(--foreground)]">
+                        Do not enter your account password.
+                      </strong>{" "}
+                      An API key is a separate access key you create in your{" "}
+                      {providerKeyHelp.name} account so Workprint can ask that
+                      provider to analyze the evidence you approve.
+                    </p>
+                    <p className="mt-3">
+                      Workprint uses the key for this request only. It is not
+                      saved by Workprint.
+                    </p>
+                    <p className="mt-3">
+                      <strong className="text-[var(--foreground)]">
+                        Bounded evidence
+                      </strong>{" "}
+                      means Workprint sends a limited packet: selected excerpts,
+                      evidence IDs, source names, and basic metadata. It does not
+                      send your whole project folder, hidden environment files,
+                      API keys, passwords, or files you did not select.
+                    </p>
+                    <p className="mt-3">
+                      Some excerpts may contain sensitive information if that
+                      information appears in evidence you selected. Review the
+                      selected evidence before sending it to a provider.
+                    </p>
+                    <p className="mt-3">
+                      Get a key from{" "}
+                      <a
+                        className="font-semibold text-[var(--accent)] underline underline-offset-4"
+                        href={providerKeyHelp.url}
+                        rel="noreferrer"
+                        target="_blank"
+                      >
+                        {providerKeyHelp.linkLabel}
+                      </a>
+                      . You can delete or rotate the key in your provider account
+                      later.
+                    </p>
+                  </div>
+                ) : null}
                 <input
                   autoComplete="off"
                   className="mt-2 w-full rounded-full border border-[var(--line)] bg-[var(--surface)] px-5 py-3 text-sm"
                   id="provider-key"
                   onChange={(event) => setProviderApiKey(event.target.value)}
-                  placeholder="Used once for this reasoning request"
+                  placeholder="Paste an API key, not your account password"
                   type="password"
                   value={providerApiKey}
                 />
                 <p className="mt-5 text-sm leading-6 text-[var(--muted)]">
                   Selected evidence will leave your device and be processed by
-                  the provider you choose. Workprint sends bounded excerpts and
-                  metadata, not your whole project folder. Provider processing is
-                  governed by that provider&apos;s terms, policies, and account
-                  settings. Make sure you have permission to process this
-                  evidence with the selected provider.
+                  the provider you choose. Workprint sends only a bounded
+                  evidence packet: selected excerpts and metadata, not your whole
+                  project folder. Provider processing is governed by that
+                  provider&apos;s terms, policies, and account settings. Make
+                  sure you have permission to process this evidence with the
+                  selected provider.
                 </p>
                 <button
                   className="mt-5 rounded-full bg-[var(--accent)] px-6 py-4 font-semibold text-white transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50"
@@ -1290,6 +1346,9 @@ export function WorkprintApp() {
                     <p className="mt-2">
                       Workprint validated cited evidence IDs and attribution
                       boundaries before showing the insight.
+                    </p>
+                    <p className="mt-2">
+                      Provider model: {providerReasoningResult.model}.
                     </p>
                     {providerReasoningResult.packet.truncated ? (
                       <p className="mt-2">
@@ -1485,6 +1544,30 @@ function downloadTextFile(filename: string, content: string, mimeType: string) {
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+}
+
+function providerKeyHelpFor(provider: ReasoningProviderId | "") {
+  if (provider === "claude") {
+    return {
+      linkLabel: "Anthropic Console API keys",
+      name: "Claude",
+      url: "https://console.anthropic.com/settings/keys",
+    };
+  }
+
+  if (provider === "gemini") {
+    return {
+      linkLabel: "Google AI Studio API keys",
+      name: "Gemini",
+      url: "https://aistudio.google.com/app/apikey",
+    };
+  }
+
+  return {
+    linkLabel: "OpenAI API keys",
+    name: "OpenAI",
+    url: "https://platform.openai.com/api-keys",
+  };
 }
 
 function gitEvidenceItems(summary: GitSummary) {
