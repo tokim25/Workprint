@@ -61,6 +61,32 @@ class ProviderReasoningWebTests(unittest.TestCase):
         self.assertIn("The provider cited evidence Workprint did not send", source)
         self.assertIn("The provider response did not cite any evidence IDs", source)
 
+    def test_provider_parser_handles_common_json_wrappers(self):
+        source = (ROOT / "lib" / "provider-reasoning.ts").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("stripMarkdownFence", source)
+        self.assertIn("normalizeCandidateShape", source)
+        self.assertIn("candidate_insight", source)
+        self.assertIn("evidenceIds", source)
+        self.assertIn("supporting_evidence_ids", source)
+
+    def test_gemini_key_uses_header_not_url_query(self):
+        source = (ROOT / "lib" / "provider-reasoning.ts").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn('"x-goog-api-key": input.apiKey', source)
+        self.assertNotIn("?key=${encodeURIComponent(input.apiKey)}", source)
+
+    def test_parse_error_explains_structured_json_requirement(self):
+        source = (ROOT / "app" / "api" / "provider-reasoning" / "route.ts").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("structured JSON Workprint requested", source)
+
 
 if __name__ == "__main__":
     unittest.main()

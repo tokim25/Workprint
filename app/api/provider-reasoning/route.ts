@@ -166,7 +166,9 @@ async function runReasoningPass(input: {
 
   if (!parsed) {
     throw Object.assign(
-      new Error("The provider returned a response Workprint could not parse."),
+      new Error(
+        "The provider returned text instead of the structured JSON Workprint requested. Try again, or choose a different provider if it keeps happening.",
+      ),
       { code: "malformed_provider_response" satisfies ReasoningFailureCode },
     );
   }

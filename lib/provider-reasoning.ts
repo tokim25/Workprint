@@ -264,13 +264,13 @@ export async function callReasoningProvider(input: {
 }
 
 export function parseCandidateInsight(text: string): CandidateInsight | null {
-  const jsonText = extractJsonObject(text);
+  const jsonText = extractJsonObject(stripMarkdownFence(text));
   if (!jsonText) {
     return null;
   }
 
   try {
-    const parsed = JSON.parse(jsonText) as Partial<CandidateInsight>;
+    const parsed = normalizeCandidateShape(JSON.parse(jsonText));
     if (
       typeof parsed.claim !== "string" ||
       !Array.isArray(parsed.evidence_ids) ||
@@ -376,11 +376,12 @@ async function callGemini(input: {
     ? input.model
     : `models/${input.model}`;
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/${model}:generateContent?key=${encodeURIComponent(input.apiKey)}`,
+    `https://generativelanguage.googleapis.com/v1beta/${model}:generateContent`,
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "x-goog-api-key": input.apiKey,
       },
       body: JSON.stringify({
         contents: [{ role: "user", parts: [{ text: input.prompt }] }],
@@ -475,4 +476,89 @@ function extractJsonObject(text: string) {
   }
 
   return trimmed.slice(start, end + 1);
+}
+
+function stripMarkdownFence(text: string) {
+  return text
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .trim();
+}
+
+function normalizeCandidateShape(value: unknown): Partial<CandidateInsight> {
+  const record = unwrapCandidateRecord(value);
+
+  return {
+    claim: readCandidateString(record, ["claim", "first_insight", "firstInsight"]),
+    evidence_ids: readEvidenceIds(record),
+    explanation: readCandidateString(record, [
+      "explanation",
+      "support",
+      "rationale",
+      "why_supported",
+      "whySupported",
+    ]),
+    confidence: readCandidateString(record, ["confidence", "confidence_language", "confidenceLanguage"]),
+    unknowns: readCandidateString(record, ["unknowns", "limitations", "what_evidence_cannot_determine"]),
+    provider_uncertainty: readCandidateString(record, [
+      "provider_uncertainty",
+      "providerUncertainty",
+      "uncertainty",
+    ]),
+  };
+}
+
+function unwrapCandidateRecord(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object") {
+    return {};
+  }
+
+  if (Array.isArray(value)) {
+    return unwrapCandidateRecord(value[0]);
+  }
+
+  const record = value as Record<string, unknown>;
+  for (const key of ["insight", "candidate", "candidate_insight", "candidateInsight", "finding", "first_insight"]) {
+    const nested = record[key];
+    if (nested && typeof nested === "object") {
+      return unwrapCandidateRecord(nested);
+    }
+  }
+
+  return record;
+}
+
+function readCandidateString(record: Record<string, unknown>, keys: string[]) {
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === "string" && value.trim()) {
+      return value;
+    }
+  }
+
+  return "";
+}
+
+function readEvidenceIds(record: Record<string, unknown>) {
+  const value =
+    record.evidence_ids ??
+    record.evidenceIds ??
+    record.supporting_evidence_ids ??
+    record.supportingEvidenceIds;
+
+  if (Array.isArray(value)) {
+    return value.filter(
+      (id): id is string => typeof id === "string" && Boolean(id.trim()),
+    );
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    return value
+      .split(/[,;\s]+/)
+      .map((id) => id.trim())
+      .filter(Boolean);
+  }
+
+  return [];
 }
