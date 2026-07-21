@@ -171,7 +171,7 @@ export function EvidenceDrawer({
           <p className="rounded-2xl border border-[var(--line)] p-4 text-sm leading-6 text-[var(--muted)]">
             {isSample
               ? "These examples are sample evidence for the prototype. They are not generated from live uploads or project parsing."
-              : "This evidence was read from your local project on this machine. It is not uploaded or shared."}
+              : "This evidence was read from your local project on this machine. Local evidence review does not upload it. If you choose an AI reasoning provider, selected evidence must be sent to that provider for processing after a separate confirmation."}
           </p>
         </div>
       </div>

@@ -28,8 +28,8 @@ UX story: The experience should feel like one calm page that grows only when
 needed. The user should never feel like they are configuring a system. They
 should feel like they are answering one simple question at a time.
 
-Marketing story: See what you did, what AI did, and how the work came
-together.
+Marketing story: Turn project evidence into AI-assisted insights you can
+inspect.
 
 Smallest useful version: Define the simplified first web journey, major
 screens, low-fidelity wireframes, states, disclosures, first-insight behavior,
@@ -83,7 +83,7 @@ This milestone should not:
 
 Interface promise:
 
-"See what you did, what AI did, and how the work came together."
+"Turn project evidence into AI-assisted insights you can inspect."
 
 Supporting trust copy:
 

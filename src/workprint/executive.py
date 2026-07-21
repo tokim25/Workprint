@@ -60,6 +60,8 @@ GOAL_PATTERNS = (
     r"\bwe are building this to\b",
     r"\bthis project (?:helps|is meant to|is intended to|exists to)\b",
     r"\b(?:the\s+)?purpose (?:of (?:this|the) project )?is\b",
+    r"\bthis file exists to support\b",
+    r"\bdesigned to (?:help|support|cover|enable)\b",
     r"\bthe problem we are trying to solve is\b",
     r"\bthis project solves\b",
 )

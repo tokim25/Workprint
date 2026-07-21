@@ -1,12 +1,13 @@
 # Workprint
 
-**See what you did, what AI did, and how the work came together.**
+**Turn your project evidence into AI-assisted insights you can inspect.**
 
 Workprint reads evidence about a project — a local Git repository, local
 project notes, local Claude Code/Cowork/Desktop Chat session history, or
-exported conversations and documents — and turns it into a report you can
-trust: what the evidence directly supports, and what it honestly cannot
-determine.
+exported conversations and documents — and prepares bounded evidence packets
+for AI reasoning providers. Its job is to turn provider-assisted reasoning
+into a report you can trust: what the evidence directly supports, and what it
+honestly cannot determine.
 Workprint never calculates authorship, effort, ownership, or
 human-vs-AI contribution percentages. It shows evidence, not verdicts.
 
@@ -28,14 +29,32 @@ No coding experience is required to use it.
    (unlocks Git history and local Claude session evidence) or add
    individual files for evidence — or just click **Use sample project**
    to try Workprint without picking anything.
-4. **Click Investigate.** Workprint reads the evidence and shows you its
-   first supported finding, with a plain-language explanation of *why*
-   it believes that and what it still cannot determine.
-5. **Build the full report,** then download it as Markdown or JSON — or
+4. **Connect a reasoning provider.** OpenAI is the first planned provider;
+   Claude, Gemini, Microsoft Copilot, and GitHub Copilot should follow through
+   the same evidence-packet contract.
+5. **Click Investigate.** Workprint sends selected, bounded evidence to the
+   provider you choose for reasoning, then shows supported findings with a
+   plain-language explanation of *why* it believes them and what it still
+   cannot determine.
+6. **Build the full report,** then download it as Markdown or JSON — or
    download the **AI Fluency Playbook Worksheet** (see below).
 
-Nothing you select gets uploaded anywhere. Everything runs on your own
-computer.
+Local collection happens on your computer. Provider-assisted reasoning requires
+selected evidence to be sent to the AI provider you choose. Workprint should
+send bounded excerpts and metadata, not your whole project folder, and should
+make that upload boundary clear before reasoning starts.
+
+Important: Workprint's license gives you rights to use the Workprint software.
+It does **not** give you permission to upload employer, client, collaborator,
+third-party, confidential, copyrighted, regulated, or proprietary project
+evidence to an AI provider. Before using provider-assisted reasoning, make sure
+you have permission to process the selected evidence with that provider and
+that the provider's terms, data-use policies, retention settings, and your
+account or enterprise agreements fit your obligations.
+
+See [docs/ai-reasoning-providers.md](docs/ai-reasoning-providers.md) and
+[docs/foundation/AI_REASONING_PRIVACY.md](docs/foundation/AI_REASONING_PRIVACY.md)
+for the reasoning, privacy, and licensing boundaries.
 
 ### The AI Fluency Playbook Worksheet
 

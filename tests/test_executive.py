@@ -92,6 +92,25 @@ class ExecutiveReportTests(unittest.TestCase):
         self.assertEqual(goal.status, "explicitly_supported")
         self.assertIn("reconstruct evidence-backed work history", goal.summary)
 
+    def test_project_goal_accepts_project_notes_support_language(self):
+        investigation = self._investigation([
+            self._obs(
+                "OBS-1",
+                (
+                    "project-notes stated: This file exists to support bot "
+                    "personalization for feedback coaching practice scenarios."
+                ),
+                source="project-notes",
+                source_type="document",
+            ),
+        ])
+
+        goal = build_executive_report(investigation).executive_brief.project_goal
+
+        self.assertEqual(goal.status, "explicitly_supported")
+        self.assertEqual(goal.evidence_ids, ("OBS-1",))
+        self.assertIn("feedback coaching practice scenarios", goal.summary)
+
     def test_output_classifications(self):
         produced = self._investigation([
             self._obs(

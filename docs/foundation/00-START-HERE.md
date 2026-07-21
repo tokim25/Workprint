@@ -24,23 +24,24 @@ Read these documents in this order:
 3. [PRODUCT_PRINCIPLES.md](PRODUCT_PRINCIPLES.md)
 4. [ENGINEERING_PRINCIPLES.md](ENGINEERING_PRINCIPLES.md)
 5. [ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md)
-6. [AI_COLLABORATION.md](AI_COLLABORATION.md)
-7. [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md)
-8. [AGENT_WORKING_CONTEXT.md](AGENT_WORKING_CONTEXT.md)
-9. [AUTONOMOUS_EXECUTION_GUARDRAILS.md](AUTONOMOUS_EXECUTION_GUARDRAILS.md)
-10. [DECISION_LOG.md](DECISION_LOG.md)
-11. [WORKPRINT_GLOSSARY.md](WORKPRINT_GLOSSARY.md)
+6. [AI_REASONING_PRIVACY.md](AI_REASONING_PRIVACY.md)
+7. [AI_COLLABORATION.md](AI_COLLABORATION.md)
+8. [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md)
+9. [AGENT_WORKING_CONTEXT.md](AGENT_WORKING_CONTEXT.md)
+10. [AUTONOMOUS_EXECUTION_GUARDRAILS.md](AUTONOMOUS_EXECUTION_GUARDRAILS.md)
+11. [DECISION_LOG.md](DECISION_LOG.md)
+12. [WORKPRINT_GLOSSARY.md](WORKPRINT_GLOSSARY.md)
 
 The order matters. The vision explains why Workprint exists. The charter sets
 the constitutional limits. Product and engineering principles translate those
 limits into operating judgment. Architecture explains the system shape. AI
-collaboration explains how the project itself is made. Context records the
-current repository state. Agent working context explains how coding tasks
-should stay centered on user capability, UX clarity, and marketing legibility.
-Autonomous execution guardrails explain when a coding agent may keep moving
-and when it must stop for human direction. The decision log preserves
-accepted choices.
-The glossary keeps language stable.
+reasoning privacy defines the user-data boundary for provider-assisted
+reasoning. AI collaboration explains how the project itself is made. Context
+records the current repository state. Agent working context explains how coding
+tasks should stay centered on user capability, UX clarity, and marketing
+legibility. Autonomous execution guardrails explain when a coding agent may keep
+moving and when it must stop for human direction. The decision log preserves
+accepted choices. The glossary keeps language stable.
 
 ## Document Ownership
 
@@ -56,9 +57,10 @@ state, active milestone, capabilities, limitations, and technical debt.
 Some documents are occasionally updated. `PRODUCT_PRINCIPLES.md`,
 `ENGINEERING_PRINCIPLES.md`, `ARCHITECTURE_OVERVIEW.md`,
 `AI_COLLABORATION.md`, `AGENT_WORKING_CONTEXT.md`,
-`AUTONOMOUS_EXECUTION_GUARDRAILS.md`, and `WORKPRINT_GLOSSARY.md` should
-change when the project's stable principles, architecture, collaboration
-model, coding-agent workflow, autonomy boundaries, or terminology change.
+`AI_REASONING_PRIVACY.md`, `AUTONOMOUS_EXECUTION_GUARDRAILS.md`, and
+`WORKPRINT_GLOSSARY.md` should change when the project's stable principles,
+architecture, reasoning privacy model, collaboration model, coding-agent
+workflow, autonomy boundaries, or terminology change.
 
 This distinction exists so contributors know when to preserve a document and
 when to maintain it. Workprint needs durable principles, but it also needs a

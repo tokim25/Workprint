@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Workprint",
-  description: "See what you did, what AI did, and how the work came together.",
+  description: "Turn project evidence into AI-assisted insights you can inspect.",
 };
 
 export default function RootLayout({
