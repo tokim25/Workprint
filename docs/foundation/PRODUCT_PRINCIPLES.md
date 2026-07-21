@@ -25,14 +25,18 @@ Marketing story:
 "Turn repository history into a clear story of what you built, when it
 changed, and how the work came together."
 
-Workprint's enduring product promise is:
+Workprint's current product promise is:
 
-"Workprint shows what you contributed, what AI contributed, how you worked
-together, and what the evidence cannot determine."
+"Turn project evidence into AI-assisted insights you can inspect."
 
-In this promise, "contribution" must be explained through evidence-backed
-roles, decisions, direction, execution, review, and collaboration rather than
-unsupported percentages.
+Provider-assisted reasoning is core to this promise. Local evidence collection
+prepares bounded source material; the chosen AI reasoning provider helps
+synthesize candidate insights; Workprint keeps those insights tied to evidence,
+unknowns, and attribution boundaries.
+
+The older contribution language remains a reporting ambition, but it must be
+explained through evidence-backed roles, decisions, direction, execution,
+review, and collaboration rather than unsupported percentages.
 
 Every milestone should answer: "What can the user understand or demonstrate
 now that they could not understand or demonstrate before?"

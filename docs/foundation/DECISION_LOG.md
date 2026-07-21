@@ -30,6 +30,35 @@ but it does not hide grouping logic or attribution inference.
 
 Status: Accepted.
 
+## AI Reasoning Providers Require Explicit Upload Disclosure
+
+Context: Workprint's local evidence handling and provider-assisted reasoning
+have different privacy boundaries. Local file, Git, and local session evidence
+can be read on the user's machine, while OpenAI, Claude, Gemini, Microsoft
+Copilot, GitHub Copilot, or another reasoning provider needs selected evidence
+to leave the device for processing. Dogfooding showed that local-only
+heuristics do not produce the level of synthesis Workprint's product promise
+requires.
+
+Decision: Workprint treats provider-assisted reasoning as core functionality
+and as a separate, explicit user action. The UI must disclose which provider
+will process the evidence, that selected evidence will be sent to that
+provider, what kinds of evidence are included, and that local collection is
+only the input step. Reasoning providers may suggest candidate insights, but
+Workprint must verify evidence IDs, preserve unknowns, and block unsupported
+attribution, ownership, effort, contribution, intent, or human-versus-AI
+claims before display.
+
+Consequences: Workprint must avoid blanket privacy copy such as "nothing is
+uploaded" once provider reasoning is available. Local collection copy may say
+local preview/review does not upload evidence, but it must also explain that
+real reasoning requires a chosen AI provider and a separate upload/process
+boundary. OpenAI is the first planned provider; additional providers should
+use the same bounded evidence-packet contract rather than custom,
+provider-specific trust rules.
+
+Status: Accepted.
+
 ## Executive Report Is Derived From Investigation
 
 Context: Workprint needs a reader-facing executive report that answers human

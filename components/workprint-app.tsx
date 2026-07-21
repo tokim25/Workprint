@@ -143,12 +143,13 @@ export function WorkprintApp() {
   const activeUnknown = activeDiscovery.unknown;
   const activeConfidence = activeDiscovery.confidence;
   const hasRealEvidence = Boolean(gitSummary) || Boolean(claudeSummary) || projectFileFacts.length > 0;
+  const realEvidenceItems = [
+    ...(gitSummary ? gitEvidenceItems(gitSummary) : []),
+    ...projectFileEvidenceItems(projectFileFacts),
+    ...(claudeSummary ? claudeSessionEvidenceItems(claudeSummary) : []),
+  ];
   const activeEvidence = hasRealEvidence
-    ? [
-        ...(gitSummary ? gitEvidenceItems(gitSummary) : []),
-        ...projectFileEvidenceItems(projectFileFacts),
-        ...(claudeSummary ? claudeSessionEvidenceItems(claudeSummary) : []),
-      ]
+    ? filterEvidenceForDiscovery(realEvidenceItems, activeDiscovery)
     : evidenceItems;
   const readyCount = useMemo(
     () => visibleSources.filter((source) => source.status !== "unsupported").length,
@@ -637,7 +638,9 @@ export function WorkprintApp() {
             className="mt-4 text-sm leading-6 text-[var(--muted)]"
             id="folder-picker-help"
           >
-            Workprint does not upload, persist, or display file contents.
+            Local collection does not upload or persist file contents. If you
+            later choose an AI reasoning provider, selected excerpts and
+            metadata must be sent to that provider for processing.
           </p>
         </div>
         <p aria-live="polite" className="sr-only" role="status">
@@ -825,9 +828,11 @@ export function WorkprintApp() {
           </p>
           <p>
             <strong className="text-[var(--foreground)]">
-              Either way:
+              Local evidence reading:
             </strong>{" "}
-            this stays entirely on your machine. Nothing is uploaded.
+            this step stays on your machine. If you later choose an AI
+            reasoning provider, selected evidence will be sent to that
+            provider only after a separate confirmation.
           </p>
         </div>
         <label className="mt-4 flex items-center gap-2 text-sm font-semibold text-[var(--foreground)]">
@@ -910,8 +915,13 @@ export function WorkprintApp() {
             ref={startHeadingRef}
             tabIndex={-1}
           >
-            See what you did, what AI did, and how the work came together.
+            Turn project evidence into AI-assisted insights you can inspect.
           </h1>
+          <p className="mt-6 max-w-2xl text-lg leading-8 text-[var(--muted)]">
+            Workprint gathers the evidence, sends selected evidence to the AI
+            reasoning provider you choose, and keeps every insight tied to what
+            the evidence can actually support.
+          </p>
           <label
             className="mt-12 block text-lg font-semibold"
             htmlFor="project-answer"
@@ -953,9 +963,11 @@ export function WorkprintApp() {
               What Workprint can show
             </summary>
             <p className="mt-3">
-              Workprint uses your project history to support every conclusion
-              and clearly marks what it cannot determine. It does not assign
-              contribution percentages or claim authorship.
+              Workprint uses your project history and a chosen AI reasoning
+              provider to produce clearer findings. It should show which
+              evidence was sent, which provider processed it, why each claim is
+              supported, and what the evidence cannot determine. It does not
+              assign contribution percentages or claim authorship.
             </p>
           </details>
         </section>
@@ -1169,6 +1181,32 @@ export function WorkprintApp() {
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
               Full report
             </p>
+            <div className="mt-5 rounded-2xl border border-[var(--line)] bg-[var(--surface-soft)] p-5 text-sm leading-6 text-[var(--muted)]">
+              <p className="font-semibold text-[var(--foreground)]">
+                AI reasoning is the analysis step
+              </p>
+              <p className="mt-2">
+                Workprint is being designed around a chosen AI reasoning
+                provider. When provider reasoning is enabled, Workprint will
+                send a bounded evidence packet to that provider for processing:
+                selected excerpts, evidence IDs, source labels, file names,
+                relative paths, and relevant metadata.
+              </p>
+              <p className="mt-2">
+                Workprint should never send your whole project folder, blocked
+                sensitive files, credentials, keys, tokens, certificates, or
+                files you did not select. Provider reasoning will be governed by
+                the provider you choose and your account settings with that
+                provider.
+              </p>
+              <p className="mt-2 font-semibold text-[var(--foreground)]">
+                Make sure you have permission to process the selected evidence
+                with that provider. Workprint&apos;s license covers Workprint
+                software; it does not grant rights to upload client, employer,
+                collaborator, confidential, copyrighted, regulated, or
+                proprietary evidence to an AI provider.
+              </p>
+            </div>
             <p className="mt-4 text-sm leading-6 text-[var(--muted)]">
               {repositoryPath
                 ? "Workprint will read every evidence source found for this project and build a full report, including findings, a timeline, confidence, and what the evidence cannot determine."
@@ -1314,6 +1352,20 @@ function firstMeaningfulLine(text: string) {
     .split("\n")
     .map((line) => line.trim())
     .find((line) => line && line !== "...");
+}
+
+function filterEvidenceForDiscovery(
+  items: ReturnType<typeof projectFileEvidenceItems>,
+  discovery: ActiveDiscovery,
+) {
+  if (!discovery.evidenceIds || discovery.evidenceIds.length === 0) {
+    return items;
+  }
+
+  const evidenceIds = new Set(discovery.evidenceIds);
+  const matchingItems = items.filter((item) => evidenceIds.has(item.id));
+
+  return matchingItems.length > 0 ? matchingItems : items;
 }
 
 function claudeSessionEvidenceItems(summary: ClaudeLocalSummary) {

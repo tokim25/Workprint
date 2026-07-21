@@ -8,6 +8,22 @@ This NOTICE file is provided for informational purposes only, per Section 4
 of the Apache License, Version 2.0, and does not modify the License.
 
 ================================================================================
+User evidence and AI provider processing
+================================================================================
+
+The Apache License applies to the Workprint software. It does not grant rights
+to upload, disclose, process, or reuse user-supplied project evidence with
+OpenAI, Claude, Gemini, Microsoft Copilot, GitHub Copilot, or any other AI
+reasoning provider. Selected evidence sent to a provider is governed by the
+provider's terms, policies, account settings, retention controls, and any
+separate obligations that apply to the user's employer, clients,
+collaborators, source materials, or regulated data.
+
+Workprint documentation and product surfaces should disclose this boundary
+before provider-assisted reasoning begins. Workprint does not provide legal
+advice.
+
+================================================================================
 AI Fluency Framework attribution
 ================================================================================
 

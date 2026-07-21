@@ -24,8 +24,8 @@ shaped together.
 UX story: The experience should feel calm, warm, personal, and obvious. Each
 screen should ask one question and present one clear next action.
 
-Marketing story: "See what you did, what AI did, and how the work came
-together."
+Marketing story: "Turn project evidence into AI-assisted insights you can
+inspect."
 
 Smallest useful version: Create low-fidelity visual wireframes for the
 approved four-screen experience:
@@ -90,7 +90,7 @@ Guiding question: What project should Workprint understand?
 +------------------------------------------------------------------+
 | Workprint                                                        |
 |                                                                  |
-| See what you did, what AI did, and how the work came together.   |
+| Turn project evidence into AI-assisted insights you can inspect. |
 |                                                                  |
 | What are you working on?                                         |
 | [Input: short project answer_______________________________]     |
@@ -563,8 +563,8 @@ unknowns, and export disclosures near the relevant actions.
 
 ### World-Class Marketer
 
-The benefit is immediately legible: "See what you did, what AI did, and how
-the work came together." The first insight is the proof moment. Language is
+The benefit is immediately legible: "Turn project evidence into AI-assisted
+insights you can inspect." The first insight is the proof moment. Language is
 plain and careful; it avoids claiming authorship, ownership, contribution
 share, or project completeness.
 
