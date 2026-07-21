@@ -28,24 +28,35 @@ The intended experience is:
 
 ## Provider Order
 
-OpenAI is the first reasoning provider.
+There is no default provider. The user chooses which AI reasoning provider
+processes their evidence packet, every time -- Workprint must never nudge
+toward, preselect, or visually favor one provider over another.
 
-Future providers should use the same contract:
+The initial provider list, presented as an equal choice: OpenAI, Claude, and
+Gemini. All three use the same evidence-packet and output contract described
+below; none is a special case.
 
-- Claude
-- Gemini
-- Microsoft Copilot
-- GitHub Copilot
+The provider is chosen per report, not as a one-time account-level setting --
+different reports may reasonably call for different providers.
 
-Microsoft Copilot and GitHub Copilot should be treated as separate provider
-families. Microsoft Copilot may involve Microsoft 365 account data and tenant
-controls. GitHub Copilot may involve repository, IDE, pull request, or GitHub
-account context. Workprint should not imply they share the same access model,
-privacy model, licensing terms, or evidence availability.
+Microsoft Copilot and GitHub Copilot are explicitly deferred, not merely
+lower-priority in the same list. They are not simple API-key integrations the
+way OpenAI, Claude, and Gemini are: GitHub Copilot is tied to a user's GitHub
+account and often an employer's org settings; Microsoft Copilot is tied to a
+Microsoft/Office 365 account and that organization's admin controls. Adding
+either is a distinct integration with its own access model and its own
+disclosure language -- not an additional entry that follows the same BYOK
+contract as the first three providers. Scope and disclose them as a separate
+future feature when they're built, rather than implying today that they
+already fit the same picker.
 
 ## Evidence Packet Contract
 
-The evidence packet should be the smallest useful packet for reasoning.
+The evidence packet should be the smallest useful packet for reasoning, and is
+capped at 30,000 tokens. Content cut to fit the ceiling must be surfaced as a
+named item in the Evidence Gaps section, not dropped silently. (Truncation
+priority -- source diversity vs. recency -- is not yet finalized;
+source-diversity-first is the current recommendation.)
 
 It may include:
 
@@ -85,26 +96,46 @@ Each candidate finding should include:
 - unknowns and limitations;
 - any provider-side uncertainty.
 
-Workprint should reject or downgrade provider output when:
+Invalid provider output is handled by exactly one of three outcomes, chosen by
+failure type -- these are not interchangeable:
 
-- a claim lacks evidence IDs;
-- evidence IDs do not exist in the sent packet;
-- the claim infers authorship, effort, ownership, value, contribution,
-  importance, intent, or human-versus-AI percentages;
-- the claim says AI involvement is proven when the evidence does not prove it;
-- the provider omits important unknowns;
-- the claim is stronger than the cited evidence.
+- **Reject outright** when a claim lacks evidence IDs, cites evidence IDs that
+  do not exist in the sent packet, or infers authorship, effort, ownership,
+  value, contribution, importance, intent, or human-versus-AI percentages. A
+  boundary violation is rejected, never rewritten into an "unknown" --
+  softening it that way still frames the forbidden question as legitimate.
+- **Rewrite down** when a claim cites real, valid evidence but is stronger than
+  that evidence supports (e.g. states AI involvement is proven when the
+  evidence only shows AI participation). Rewrite to what the evidence actually
+  supports rather than discarding a partially-valid claim.
+- **Hold for user review** only for genuinely ambiguous cases -- for example,
+  disagreement between the two validation passes below -- not as a catch-all
+  for the other two failure types.
+
+Validation is a four-step pipeline, not a single pass: (1) deterministic
+checks on the evidence packet going in (evidence-ID existence, a banned-pattern
+scan for authorship/ownership/percentage language); (2) an AI pass that
+analyzes the validated evidence and originates a candidate claim; (3) a second
+AI pass that corroborates or revises that claim; (4) deterministic checks
+again on the final claim text coming out of step 3, not only on the evidence
+that went in. Step 4 exists because the two AI passes may share the same blind
+spot -- AI-on-AI review must never be the only line of defense.
 
 ## Claim And Finding Examples
 
 The first supported insight should be specific, plain-language, and compact:
-one sentence, 90-160 characters. It should describe the most useful
-evidence-supported pattern, not the whole report.
+one sentence, 90-160 characters. It must analyze the work -- the project, the
+process, the relationship between the user and the AI agent, or the user
+themselves -- not describe what evidence exists or what shape it takes. A
+claim that only names evidence sources or file types (however precisely) is
+not an insight, even if it is accurate and well-supported; it is a table of
+contents. Every deeper finding in the report body goes further into one of
+those same four dimensions, backed by cited evidence.
 
 Good first insight:
 
-"The project evidence describes an aggregated project made from related
-prototypes, notes, and implementation records."
+"The user set direction repeatedly, narrowing the AI agent's early proposals
+into the final four-screen flow."
 
 Too vague:
 
@@ -112,10 +143,16 @@ Too vague:
 
 Too long:
 
-"The project evidence describes a multi-phase body of work made from several
-related prototypes, multiple implementation notes, source records, and planning
-artifacts that may have involved AI collaboration but also includes many
-unknowns."
+"The user appears to have set the overall direction for the project across
+many different moments captured in the evidence, including narrowing scope,
+rejecting several early proposals from the AI agent, and approving specific
+implementation choices, though this pattern is not confirmed in every evidence
+source and some observations remain ambiguous or incomplete."
+
+An artifact list, not an insight (do not use, even though it may be accurate):
+
+"The project evidence describes an aggregated project made from related
+prototypes, notes, and implementation records."
 
 Evidence-linked findings should analyze the work rather than list artifacts.
 They should help the user understand how the work came together and what role
@@ -212,10 +249,12 @@ Avoid:
 
 ## Implementation Notes
 
-The first OpenAI milestone should add the provider adapter behind a stable
-reasoning interface. It should not hard-code OpenAI behavior into the UI or
-investigation engine in a way that makes Claude, Gemini, Microsoft Copilot, or
-GitHub Copilot special cases later.
+The initial milestone should add OpenAI, Claude, and Gemini behind the same
+stable reasoning interface together, presented as an equal choice -- not one
+provider shipped first with the others deferred as follow-on work. No
+provider's behavior should be hard-coded into the UI or investigation engine
+in a way that makes any of the three a special case, or that makes adding
+Microsoft Copilot or GitHub Copilot later harder than it needs to be.
 
 The first provider implementation should include:
 

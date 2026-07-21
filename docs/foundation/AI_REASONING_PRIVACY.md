@@ -66,8 +66,14 @@ Provider output must be treated as untrusted until Workprint verifies that:
 - the claim preserves important unknowns;
 - the user can inspect the supporting evidence.
 
-Unsupported provider claims should be rejected, rewritten as unknowns, or held
-for user review. They should not silently become Workprint findings.
+An unsupported provider claim is rejected outright (missing/invalid evidence
+IDs, or any attribution/ownership/effort/contribution/intent/human-vs-AI
+boundary violation -- never softened into an "unknown," which would still
+treat the forbidden question as legitimate), rewritten down to what the cited
+evidence actually supports (a claim stronger than its evidence), or held for
+user review (genuinely ambiguous cases only). See
+`docs/ai-reasoning-providers.md`'s "Provider Output Contract" for the full
+mapping. Claims should not silently become Workprint findings.
 
 ## Licensing And Terms Boundary
 
@@ -116,23 +122,36 @@ Avoid:
 
 ## Local Collection Mode
 
-Local collection mode is a privacy-aware input step. It should remain useful
-for previewing what evidence Workprint can see and for preparing bounded
-evidence packets.
+Local collection mode is a privacy-aware input step, not a lesser version of
+the core product. It previews what evidence Workprint can see and prepares the
+bounded evidence packet a provider will reason over.
 
-Local collection mode should not be positioned as the complete Workprint value
-proposition. It may produce factual previews, but meaningful synthesis is
-expected to come from provider-assisted reasoning. If the user does not want to
-send evidence to a provider, Workprint should say plainly that insight quality
-will be limited.
+Local-only mechanical claim generation is retired, not merely de-emphasized.
+Without a connected AI reasoning provider, Workprint does not generate a
+first insight or finding of any quality -- there is no downgraded local
+fallback claim to fall back to. The Discoveries screen instead shows a plain
+"connect an AI agent to see your first insight" state. Do not use language
+implying a local-only path still produces limited-but-real insights ("insight
+quality will be limited"); the accurate statement is that no insight is
+produced until a provider is connected.
 
 ## Reasoning Provider Expansion
 
-OpenAI should be the first reasoning provider. Claude, Gemini, Microsoft
-Copilot, and GitHub Copilot should be added only through the same provider
-contract after the OpenAI path proves useful.
+There is no default provider, including at first launch. The user chooses
+which AI reasoning provider processes their evidence, per report, from an
+equal-choice list -- Workprint must never preselect or visually favor one.
 
-Provider-specific capabilities may differ, especially between Microsoft
-Copilot and GitHub Copilot. Workprint should expose those differences
-plainly instead of pretending all providers have the same evidence access,
-privacy model, or account controls.
+The initial list is OpenAI, Claude, and Gemini, all using the same
+bounded-evidence-packet contract. Workprint is bring-your-own-key: the user
+supplies their own provider account and API key, and Workprint does not bill
+for or intermediate provider access.
+
+Microsoft Copilot and GitHub Copilot are explicitly deferred as a separate,
+later feature, not merely lower-priority entries in the same list. They are
+not simple API-key integrations: Microsoft Copilot is tied to a Microsoft/
+Office 365 account and that organization's admin controls, and GitHub
+Copilot is tied to a user's GitHub account and often an employer's org
+settings. Workprint should expose those differences plainly instead of
+pretending all providers have the same evidence access, privacy model, or
+account controls -- and should not imply, before that work is built, that
+Copilot/GitHub Copilot fit the same picker as the first three providers.
