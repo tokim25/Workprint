@@ -50,6 +50,46 @@ export type CandidateInsight = {
   provider_uncertainty: string;
 };
 
+export const PROVIDER_INSIGHT_RESPONSE_SCHEMA = {
+  type: "object",
+  properties: {
+    claim: {
+      type: "string",
+      description:
+        "One plain sentence, 90-160 characters, analyzing the work rather than listing evidence.",
+    },
+    evidence_ids: {
+      type: "array",
+      items: { type: "string" },
+      description: "Existing evidence IDs from the bounded Workprint packet.",
+    },
+    explanation: {
+      type: "string",
+      description: "Why the cited evidence supports the claim.",
+    },
+    confidence: {
+      type: "string",
+      description: "High, Moderate, Limited, or Low; qualitative language only.",
+    },
+    unknowns: {
+      type: "string",
+      description: "What the evidence cannot determine.",
+    },
+    provider_uncertainty: {
+      type: "string",
+      description: "Any uncertainty from this reasoning pass.",
+    },
+  },
+  required: [
+    "claim",
+    "evidence_ids",
+    "explanation",
+    "confidence",
+    "unknowns",
+    "provider_uncertainty",
+  ],
+} as const;
+
 export type ReasoningSuccess = {
   ok: true;
   provider: ReasoningProviderId;
@@ -220,15 +260,6 @@ export function validateCandidateInsight(
 }
 
 export function buildProviderPrompt(packet: EvidencePacket, mode: "originate" | "corroborate", candidate?: CandidateInsight) {
-  const schema = {
-    claim: "One plain sentence, 90-160 characters, analyzing the work rather than listing evidence.",
-    evidence_ids: ["existing evidence IDs from the packet"],
-    explanation: "Why the cited evidence supports the claim.",
-    confidence: "High, Moderate, Limited, or Low; use qualitative language only.",
-    unknowns: "What the evidence cannot determine.",
-    provider_uncertainty: "Any uncertainty from this reasoning pass.",
-  };
-
   return [
     "You are helping Workprint generate a candidate first insight from bounded project evidence.",
     "You are not final authority. Workprint will verify your output before display.",
@@ -237,12 +268,23 @@ export function buildProviderPrompt(packet: EvidencePacket, mode: "originate" | 
     mode === "corroborate"
       ? "This is the second validation pass. Revise the candidate down if it is stronger than the evidence supports."
       : "This is the first reasoning pass. Produce the strongest supported candidate insight.",
-    `Return only JSON with this schema: ${JSON.stringify(schema)}.`,
+    `Return only JSON with this schema: ${JSON.stringify(PROVIDER_INSIGHT_RESPONSE_SCHEMA)}.`,
     candidate ? `Candidate from first pass: ${JSON.stringify(candidate)}` : "",
     `Evidence packet: ${JSON.stringify(packet)}`,
   ]
     .filter(Boolean)
     .join("\n\n");
+}
+
+export function buildProviderRepairPrompt(response: string) {
+  return [
+    "Convert this provider response into exactly the Workprint JSON schema.",
+    "Do not add new claims, evidence IDs, attribution, ownership, effort, value, intent, or contribution percentages.",
+    "If the response does not support a required field, use an empty string. If it cites no evidence IDs, use an empty array.",
+    "Return only JSON. Do not include Markdown, prose, or commentary.",
+    `Schema: ${JSON.stringify(PROVIDER_INSIGHT_RESPONSE_SCHEMA)}`,
+    `Provider response to convert: ${response.slice(0, 8_000)}`,
+  ].join("\n\n");
 }
 
 export async function callReasoningProvider(input: {
@@ -388,6 +430,7 @@ async function callGemini(input: {
         generationConfig: {
           maxOutputTokens: MAX_PROVIDER_OUTPUT_TOKENS,
           responseMimeType: "application/json",
+          responseSchema: PROVIDER_INSIGHT_RESPONSE_SCHEMA,
         },
       }),
       signal: input.signal,

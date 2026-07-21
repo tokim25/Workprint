@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   buildEvidencePacket,
   buildProviderPrompt,
+  buildProviderRepairPrompt,
   callReasoningProvider,
   defaultProviderModel,
   isReasoningProviderId,
@@ -165,6 +166,18 @@ async function runReasoningPass(input: {
   const parsed = parseCandidateInsight(response);
 
   if (!parsed) {
+    const repairResponse = await callReasoningProvider({
+      provider: input.provider,
+      apiKey: input.apiKey,
+      model: input.model,
+      prompt: buildProviderRepairPrompt(response),
+      signal: input.signal,
+    });
+    const repaired = parseCandidateInsight(repairResponse);
+    if (repaired) {
+      return repaired;
+    }
+
     throw Object.assign(
       new Error(
         "The provider returned text instead of the structured JSON Workprint requested. Try again, or choose a different provider if it keeps happening.",

@@ -87,6 +87,34 @@ class ProviderReasoningWebTests(unittest.TestCase):
 
         self.assertIn("structured JSON Workprint requested", source)
 
+    def test_gemini_requests_structured_schema(self):
+        source = (ROOT / "lib" / "provider-reasoning.ts").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("PROVIDER_INSIGHT_RESPONSE_SCHEMA", source)
+        self.assertIn('responseMimeType: "application/json"', source)
+        self.assertIn("responseSchema: PROVIDER_INSIGHT_RESPONSE_SCHEMA", source)
+
+    def test_provider_route_repairs_plain_text_before_failing(self):
+        source = (ROOT / "app" / "api" / "provider-reasoning" / "route.ts").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("buildProviderRepairPrompt", source)
+        self.assertIn("const repairResponse = await callReasoningProvider", source)
+        self.assertIn("const repaired = parseCandidateInsight(repairResponse)", source)
+
+    def test_repair_prompt_does_not_expand_attribution(self):
+        source = (ROOT / "lib" / "provider-reasoning.ts").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("Convert this provider response", source)
+        self.assertIn("Do not add new claims", source)
+        self.assertIn("contribution percentages", source)
+        self.assertIn("use an empty array", source)
+
 
 if __name__ == "__main__":
     unittest.main()
