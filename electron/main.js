@@ -98,6 +98,10 @@ function startProductionServer() {
       HOSTNAME: "127.0.0.1",
       PORT: String(PROD_SERVER_PORT),
       WORKPRINT_BACKEND_BIN: backendBinary,
+      WORKPRINT_PROVIDER_DEBUG_DIR: path.join(
+        app.getPath("userData"),
+        "provider-debug",
+      ),
     },
     stdio: ["ignore", "pipe", "pipe"],
   });

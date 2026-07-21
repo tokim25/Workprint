@@ -24,6 +24,7 @@ class ProviderReasoningWebTests(unittest.TestCase):
         )
 
         self.assertIn("MAX_EVIDENCE_PACKET_TOKENS = 30_000", source)
+        self.assertIn("MAX_PROVIDER_OUTPUT_TOKENS = 2_000", source)
         self.assertIn("store: false", source)
         self.assertIn("Some selected evidence was not sent", source)
         self.assertIn("credentials, secrets, tokens", source)
@@ -50,6 +51,19 @@ class ProviderReasoningWebTests(unittest.TestCase):
         self.assertIn("is not saved by Workprint", source)
         self.assertIn("Selected evidence will leave your device", source)
         self.assertIn("Analyze selected evidence", source)
+        self.assertIn("Provider model:", source)
+        self.assertIn("API key for selected provider", source)
+        self.assertIn("What is this?", source)
+        self.assertIn("Do not enter your account password", source)
+        self.assertIn("Paste an API key, not your account password", source)
+        self.assertIn("Bounded evidence", source)
+        self.assertIn("selected excerpts", source)
+        self.assertIn("evidence IDs", source)
+        self.assertIn("source names", source)
+        self.assertIn("basic metadata", source)
+        self.assertIn("OpenAI API keys", source)
+        self.assertIn("Anthropic Console API keys", source)
+        self.assertIn("Google AI Studio API keys", source)
 
     def test_deterministic_validation_rejects_forbidden_claims(self):
         source = (ROOT / "lib" / "provider-reasoning.ts").read_text(
@@ -71,6 +85,18 @@ class ProviderReasoningWebTests(unittest.TestCase):
         self.assertIn("candidate_insight", source)
         self.assertIn("evidenceIds", source)
         self.assertIn("supporting_evidence_ids", source)
+
+    def test_provider_parser_tolerates_common_gemini_shape_drift(self):
+        source = (ROOT / "lib" / "provider-reasoning.ts").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("stringifyCandidateValue", source)
+        self.assertIn("extractEvidenceIds", source)
+        self.assertIn("confidence_level", source)
+        self.assertIn("record.evidence_id", source)
+        self.assertIn("record.reference", source)
+        self.assertIn(".flatMap(extractEvidenceIds)", source)
 
     def test_gemini_key_uses_header_not_url_query(self):
         source = (ROOT / "lib" / "provider-reasoning.ts").read_text(
@@ -95,6 +121,7 @@ class ProviderReasoningWebTests(unittest.TestCase):
         self.assertIn("PROVIDER_INSIGHT_RESPONSE_SCHEMA", source)
         self.assertIn('responseMimeType: "application/json"', source)
         self.assertIn("responseSchema: PROVIDER_INSIGHT_RESPONSE_SCHEMA", source)
+        self.assertNotIn("responseFormat", source)
 
     def test_provider_route_repairs_plain_text_before_failing(self):
         source = (ROOT / "app" / "api" / "provider-reasoning" / "route.ts").read_text(
@@ -102,8 +129,41 @@ class ProviderReasoningWebTests(unittest.TestCase):
         )
 
         self.assertIn("buildProviderRepairPrompt", source)
-        self.assertIn("const repairResponse = await callReasoningProvider", source)
-        self.assertIn("const repaired = parseCandidateInsight(repairResponse)", source)
+        self.assertIn("const repairResponse = await callProviderWithFallback", source)
+        self.assertIn("const repaired = parseCandidateInsight(repairResponse.response)", source)
+
+    def test_provider_route_saves_local_debug_file_after_parse_failure(self):
+        source = (ROOT / "app" / "api" / "provider-reasoning" / "route.ts").read_text(
+            encoding="utf-8"
+        )
+        electron_source = (ROOT / "electron" / "main.js").read_text(encoding="utf-8")
+        gitignore = (ROOT / ".gitignore").read_text(encoding="utf-8")
+
+        self.assertIn("writeProviderDebugFile", source)
+        self.assertIn("WORKPRINT_PROVIDER_DEBUG_DIR", source)
+        self.assertIn("WORKPRINT_PROVIDER_DEBUG_DIR", electron_source)
+        self.assertIn("provider-debug", electron_source)
+        self.assertIn("workprint-debug/", gitignore)
+        self.assertIn("API keys and evidence packets are not included", source)
+        self.assertIn("original_response", source)
+        self.assertIn("repair_response", source)
+        self.assertNotIn("api_key", source)
+
+    def test_gemini_capacity_errors_use_fallback_model(self):
+        route_source = (ROOT / "app" / "api" / "provider-reasoning" / "route.ts").read_text(
+            encoding="utf-8"
+        )
+        provider_source = (ROOT / "lib" / "provider-reasoning.ts").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn('GEMINI_FALLBACK_MODELS = ["gemini-2.5-flash"]', provider_source)
+        self.assertIn("isProviderCapacityError", provider_source)
+        self.assertIn("callProviderWithFallback", route_source)
+        self.assertIn("Gemini reported", route_source)
+        self.assertIn("temporarily busy", route_source)
+        self.assertIn("Workprint tried the fallback model too", route_source)
+        self.assertIn("model: secondPass.model", route_source)
 
     def test_repair_prompt_does_not_expand_attribution(self):
         source = (ROOT / "lib" / "provider-reasoning.ts").read_text(
