@@ -207,6 +207,10 @@ def evidence_files_from_discovery(
     files: list[GuidedEvidenceFile] = []
     index = 1
     for result in discovery.results:
+        if result.source == "claude-desktop-chat" and not result.metadata.get(
+            "deep_parse", False
+        ):
+            continue
         for relative_path in result.detected_files:
             path = root / relative_path
             rendered_path = relative_path
@@ -238,6 +242,18 @@ def _render_discovered_evidence(
     print("", file=output)
     if discovery.git_repository:
         print("Git repository: found", file=output)
+        print("", file=output)
+
+    non_importable = [
+        result
+        for result in discovery.results
+        if result.source == "claude-desktop-chat"
+        and not result.metadata.get("deep_parse", False)
+    ]
+    for result in non_importable:
+        print(result.label, file=output)
+        for line in _claude_desktop_chat_disclosure():
+            print(line, file=output)
         print("", file=output)
 
     if not evidence_files:

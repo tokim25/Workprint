@@ -7,6 +7,7 @@ from .claude_desktop_chat import ClaudeDesktopChatAdapter
 from .figma import FigmaAdapter
 from .git import GitAdapter
 from .google_docs import GoogleDocsAdapter
+from .project_notes import ProjectNotesAdapter
 from .registry import available_adapters, get_adapter
 
 __all__ = [
@@ -19,6 +20,7 @@ __all__ = [
     "FigmaAdapter",
     "GitAdapter",
     "GoogleDocsAdapter",
+    "ProjectNotesAdapter",
     "available_adapters",
     "get_adapter",
 ]

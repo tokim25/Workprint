@@ -13,6 +13,7 @@ export type ActiveDiscovery = {
   support: string;
   unknown: string;
   confidence: string;
+  kind: "insight" | "status";
 };
 
 export type SampleDiscovery = {
@@ -20,6 +21,7 @@ export type SampleDiscovery = {
   support: string;
   unknown: string;
   confidence: string;
+  kind: "insight" | "status";
 };
 
 type PickActiveDiscoveryInput = {
@@ -51,6 +53,7 @@ export function pickActiveDiscovery({
       support: gitDiscoverySupport(gitSummary),
       unknown: gitSummary.limitations.join(" "),
       confidence: MECHANICAL_CONFIDENCE,
+      kind: "status",
     };
   }
 
@@ -61,6 +64,7 @@ export function pickActiveDiscovery({
         support: sessionDiscoverySupport(claudeSummary.claude_code),
         unknown: claudeSummary.limitations.join(" "),
         confidence: MECHANICAL_CONFIDENCE,
+        kind: "status",
       };
     }
 
@@ -70,6 +74,7 @@ export function pickActiveDiscovery({
         support: sessionDiscoverySupport(claudeSummary.claude_cowork),
         unknown: claudeSummary.limitations.join(" "),
         confidence: MECHANICAL_CONFIDENCE,
+        kind: "status",
       };
     }
 
@@ -83,6 +88,7 @@ export function pickActiveDiscovery({
             : "Presence-only: no conversation content was read.",
         unknown: claudeSummary.limitations.join(" "),
         confidence: MECHANICAL_CONFIDENCE,
+        kind: "status",
       };
     }
   }
@@ -95,6 +101,7 @@ export function pickActiveDiscovery({
       unknown:
         "Workprint did not read file contents beyond what was confirmed in the browser, and file names and extensions do not prove authorship, effort, ownership, or intent.",
       confidence: MECHANICAL_CONFIDENCE,
+      kind: "status",
     };
   }
 
@@ -160,5 +167,6 @@ export function pickExecutiveDiscovery(json: unknown): ActiveDiscovery | null {
         : "Workprint synthesized this from all connected evidence sources.",
     unknown: unknownsSummary,
     confidence: confidenceRecord.band,
+    kind: "insight",
   };
 }

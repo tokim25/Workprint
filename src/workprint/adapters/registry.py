@@ -11,6 +11,7 @@ from .claude_desktop_chat import ClaudeDesktopChatAdapter
 from .figma import FigmaAdapter
 from .git import GitAdapter
 from .google_docs import GoogleDocsAdapter
+from .project_notes import ProjectNotesAdapter
 
 
 AdapterFactory = Callable[[], EvidenceAdapter]
@@ -25,6 +26,7 @@ _ADAPTERS: dict[str, AdapterFactory] = {
     "figma": FigmaAdapter,
     "git": GitAdapter,
     "google-docs": GoogleDocsAdapter,
+    "project-notes": ProjectNotesAdapter,
 }
 
 

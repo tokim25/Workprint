@@ -6,6 +6,28 @@ from typing import Any
 
 from workprint.adapters import available_adapters, get_adapter
 
+EXCLUDED_DIRECTORIES = {
+    ".cache",
+    ".git",
+    ".next",
+    ".nuxt",
+    ".parcel-cache",
+    ".svelte-kit",
+    ".turbo",
+    ".venv",
+    "__pycache__",
+    "bower_components",
+    "build",
+    "coverage",
+    "dist",
+    "node_modules",
+    "out",
+    "target",
+    "tmp",
+    "vendor",
+    "venv",
+}
+
 
 @dataclass(frozen=True)
 class DiscoveryResult:
@@ -61,7 +83,7 @@ class ProjectDiscovery:
 def _iter_files(root: Path) -> list[Path]:
     files: list[Path] = []
     for path in root.rglob("*"):
-        if ".git" in path.parts:
+        if any(part in EXCLUDED_DIRECTORIES for part in path.parts):
             continue
         if path.is_file():
             files.append(path)
@@ -235,6 +257,7 @@ def render_discovery(discovery: ProjectDiscovery) -> str:
             "- Claude Cowork",
             "- Claude Desktop Chat",
             "- Google Docs",
+            "- Project Notes",
             "- Figma",
             "",
         ])
@@ -287,6 +310,9 @@ def _summary_line(result: DiscoveryResult) -> str:
             return f"{count} candidate conversation {noun} (experimental, account-wide)"
         return "cache detected (deep parsing not enabled)"
     if result.source == "google-docs":
+        noun = "document" if result.file_count == 1 else "documents"
+        return f"{result.file_count} {noun}"
+    if result.source == "project-notes":
         noun = "document" if result.file_count == 1 else "documents"
         return f"{result.file_count} {noun}"
     if result.source == "figma":

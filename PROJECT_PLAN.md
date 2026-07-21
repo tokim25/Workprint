@@ -19,6 +19,7 @@ usable by people with limited coding knowledge.
 - [x] Google Docs adapter
 - [x] Figma adapter
 - [x] Git adapter
+- [x] Project Notes adapter
 - [x] Claude Code adapter
 - [x] Claude Cowork adapter
 - [x] Claude Desktop Chat adapter (experimental deep-parse mode)
@@ -293,8 +294,8 @@ Implemented scope:
 - Current working directory default when no path is supplied.
 - Recursive filesystem scan.
 - Git repository detection as a selectable evidence source.
-- Adapter-driven detection for ChatGPT, Claude, Google Docs, and Figma
-  evidence.
+- Adapter-driven detection for ChatGPT, Claude, Google Docs, Project Notes,
+  and Figma evidence.
 - Deterministic source and file ordering.
 - Project readiness summary.
 - No evidence import, investigation generation, report rendering, file
@@ -307,6 +308,37 @@ Limitations:
 - Git discovery is narrow: it checks the selected repository context and does
   not automatically traverse unrelated nested repositories.
 - Static export limitations still apply to document and design evidence.
+
+## Completed Milestone: Project Notes Adapter
+
+Status: Complete
+
+Goal: Import ordinary project notes and documentation into Workprint's
+normalized evidence pipeline without mislabeling them as Google Docs exports or
+inferring authorship from repository files.
+
+Implemented scope:
+
+- Canonical `project-notes` source identifier and `Project Notes`
+  reader-facing label.
+- Supported `.md`, `.mdx`, `.txt`, `.rst`, and `.adoc` files.
+- Discovery skips generic repository boilerplate such as README, LICENSE,
+  CONTRIBUTING, CHANGELOG, SECURITY, and CODEOWNERS.
+- Discovery skips generated and vendored directories such as `.git`, `.next`,
+  `node_modules`, `dist`, `build`, caches, virtual environments, and vendor
+  folders.
+- Paragraph-level normalized records with stable evidence references.
+- Web report generation can use project notes as real evidence rather than
+  falling back to sample or presence-only status.
+
+Limitations:
+
+- Workprint reads text content only; it does not execute files, render HTML, or
+  infer meaning beyond deterministic observation rules.
+- Project notes do not establish authorship, ownership, effort, intent,
+  correctness, completeness, originality, or AI involvement.
+- Boilerplate filenames are skipped during discovery to avoid noisy reports,
+  but direct expert import remains possible.
 
 ## Completed Milestone: Guided Investigation Wizard
 
