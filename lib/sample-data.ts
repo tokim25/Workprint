@@ -91,6 +91,7 @@ export const insight = {
   support:
     "Workprint found multiple sample moments where your messages set constraints, requested revisions, or chose the next step.",
   confidence: "Moderate",
+  kind: "insight" as const,
   unknown:
     "The sample evidence cannot determine total authorship, ownership, effort, intent, or contribution share.",
 };

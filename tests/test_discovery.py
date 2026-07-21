@@ -194,7 +194,7 @@ class DiscoveryTests(unittest.TestCase):
         self.assertEqual(result.file_count, 1)
         self.assertEqual(result.detected_files, ("sample-file.json",))
 
-    def test_repository_markdown_is_not_google_docs_evidence(self):
+    def test_repository_markdown_is_project_notes_evidence_not_google_docs(self):
         with tempfile.TemporaryDirectory() as directory:
             Path(directory, "README.md").write_text(
                 "# Project\n\nOrdinary repository documentation.",
@@ -208,8 +208,29 @@ class DiscoveryTests(unittest.TestCase):
 
             discovery = discover_project(directory)
 
-        self.assertEqual(discovery.results, ())
-        self.assertFalse(discovery.ready)
+        self.assertTrue(discovery.ready)
+        result = self._result(discovery, "project-notes")
+        self.assertEqual(result.label, "Project Notes")
+        self.assertEqual(result.detected_files, ("docs/architecture.md",))
+        with self.assertRaises(AssertionError):
+            self._result(discovery, "google-docs")
+
+    def test_discovery_skips_generated_directories_for_project_notes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            Path(directory, "notes.md").write_text(
+                "# Real Notes\n\nThe project goal is to keep real docs visible.",
+                encoding="utf-8",
+            )
+            Path(directory, "node_modules", "package").mkdir(parents=True)
+            Path(directory, "node_modules", "package", "guide.md").write_text(
+                "# Vendored Guide\n\nThis should not become project evidence.",
+                encoding="utf-8",
+            )
+
+            discovery = discover_project(directory)
+
+        result = self._result(discovery, "project-notes")
+        self.assertEqual(result.detected_files, ("notes.md",))
 
     def test_cli_discover_command(self):
         with tempfile.TemporaryDirectory() as directory:

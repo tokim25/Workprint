@@ -66,6 +66,27 @@ class WebInvestigateTests(unittest.TestCase):
                 build_web_investigation(directory)
         self.assertEqual(context.exception.code, "no_evidence_selected")
 
+    def test_plain_project_notes_generate_real_report_evidence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            notes = Path(directory) / "project-brief.md"
+            shutil.copy("fixtures/project-notes/project-brief.md", notes)
+
+            result = build_web_investigation(
+                directory,
+                include="project-notes",
+                project_name="Feedback Coach",
+            )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["sources"], ["project-notes"])
+        self.assertIn("# Executive Report: Feedback Coach", result["markdown"])
+        self.assertIn("feedback coaching chatbot", result["markdown"])
+        self.assertEqual(result["json"]["source_files"], [str(notes.resolve())])
+        self.assertGreater(len(result["json"]["observations"]), 0)
+        self.assertTrue(
+            all(item["source"] == "project-notes" for item in result["json"]["observations"])
+        )
+
     @unittest.skipUnless(GIT, "git executable is required")
     def test_returns_full_markdown_and_json_for_real_repo(self):
         with tempfile.TemporaryDirectory() as directory:

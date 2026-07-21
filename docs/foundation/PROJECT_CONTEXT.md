@@ -53,6 +53,7 @@ Workprint currently includes these completed capabilities:
 - Google Docs static export adapter.
 - Figma static export adapter.
 - Local Git evidence adapter.
+- Project Notes adapter for ordinary project documentation.
 - Report visual design and shareability.
 - Executive Report v1.
 - Executive Report copy-quality audit integration.
@@ -187,11 +188,12 @@ patterns, confidence, and evidence gaps. This is not a current capability.
 ## Major Capabilities
 
 Workprint can import supported ChatGPT and Claude conversation exports, static
-Google Docs exports, static Figma JSON exports, and local Git repository
-metadata. It can discover supported evidence in a project folder, combine
-multiple sources into one investigation, generate deterministic observations
-and timeline events, build an Executive Report, run the Executive Report
-copy-quality audit offline, and render Markdown or JSON outputs.
+Google Docs exports, static Figma JSON exports, ordinary project notes, and
+local Git repository metadata. It can discover supported evidence in a project
+folder, combine multiple sources into one investigation, generate
+deterministic observations and timeline events, build an Executive Report, run
+the Executive Report copy-quality audit offline, and render Markdown or JSON
+outputs.
 
 The system preserves source boundaries. It separates user activity,
 collaborator activity, AI/tool activity, joint activity, and unattributed

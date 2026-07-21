@@ -12,6 +12,7 @@ from workprint.adapters import (
     FigmaAdapter,
     GitAdapter,
     GoogleDocsAdapter,
+    ProjectNotesAdapter,
     available_adapters,
     get_adapter,
 )
@@ -38,6 +39,7 @@ class EvidenceAdapterTests(unittest.TestCase):
                 "figma",
                 "git",
                 "google-docs",
+                "project-notes",
             ),
         )
 
@@ -68,6 +70,10 @@ class EvidenceAdapterTests(unittest.TestCase):
     def test_registry_returns_git_adapter(self):
         adapter = get_adapter("git")
         self.assertIsInstance(adapter, GitAdapter)
+
+    def test_registry_returns_project_notes_adapter(self):
+        adapter = get_adapter("project-notes")
+        self.assertIsInstance(adapter, ProjectNotesAdapter)
 
     def test_registry_rejects_unknown_adapter(self):
         with self.assertRaisesRegex(ValueError, "unsupported evidence source"):

@@ -33,6 +33,7 @@ observations, build findings, generate a timeline, or modify files.
 - ChatGPT exports
 - Claude exports
 - Google Docs static exports
+- Project notes and documentation
 - Figma static exports
 
 Google Docs `.json` exports are auto-discovered when they match the supported
@@ -47,6 +48,11 @@ This keeps ordinary repository Markdown from being treated as Google Docs
 evidence. Direct expert import of `.md` and `.txt` files through
 `workprint import google-docs ...` remains available.
 
+Ordinary project notes use the separate `project-notes` source. Discovery
+recognizes `.md`, `.mdx`, `.txt`, `.rst`, and `.adoc` files that are not
+generic repository boilerplate such as README, LICENSE, CONTRIBUTING, or
+CHANGELOG files.
+
 ## Limitations
 
 - Discovery recognizes supported files; it does not validate every future
@@ -54,8 +60,8 @@ evidence. Direct expert import of `.md` and `.txt` files through
 - Discovery does not infer attribution, authorship, ownership, effort, value, or
   contribution percentages.
 - Discovery counts supported files and adapter-recognized records only.
-- Git detection only identifies repository presence; Git evidence import is not
-  implemented in this milestone.
+- Git discovery identifies repository presence; Git investigation still reads
+  bounded local repository history through the Git adapter.
 - Unsupported files are ignored.
 
 ## Relationship to Investigations

@@ -1073,7 +1073,9 @@ export function WorkprintApp() {
           className="mx-auto max-w-6xl py-16 sm:py-24"
         >
           <p className="mb-5 text-sm font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
-            First supported insight
+            {activeDiscovery.kind === "insight"
+              ? "First supported insight"
+              : "What's connected so far"}
           </p>
           <div className="max-w-5xl">
             <h1
@@ -1288,7 +1290,7 @@ function gitEvidenceItems(summary: GitSummary) {
     title: `${commit.abbreviated_sha}: ${commit.message}`,
     excerpt: `The commit author field contains "${commit.author}" and Git records timestamp ${commit.committed_at}.`,
     supports:
-      `This supports the Git discovery because the repository records commit ${commit.commit_sha} with ${commit.file_change_count} changed ${commit.file_change_count === 1 ? "file" : "files"}.`,
+      `This supports the Git discovery because the repository records commit ${commit.commit_sha}: "${commit.message}".`,
     doesNotProve:
       "It does not prove verified identity, authorship, ownership, effort, contribution, intent, or human-versus-AI involvement.",
   }));
@@ -1301,10 +1303,17 @@ function projectFileEvidenceItems(facts: ProjectFileEvidenceFact[]) {
     title: fact.path,
     excerpt: fact.excerpt || "(Empty file)",
     supports:
-      `This supports the file evidence section because Workprint read ${fact.path} in the browser and recorded ${fact.size} ${fact.size === 1 ? "byte" : "bytes"} and ${fact.lineCount} ${fact.lineCount === 1 ? "line" : "lines"}.`,
+      `This supports the file evidence section because ${fact.path} says: "${firstMeaningfulLine(fact.excerpt) || "(empty file)"}"`,
     doesNotProve:
       "It does not prove authorship, effort, ownership, importance, correctness, originality, completeness, intent, or AI involvement.",
   }));
+}
+
+function firstMeaningfulLine(text: string) {
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .find((line) => line && line !== "...");
 }
 
 function claudeSessionEvidenceItems(summary: ClaudeLocalSummary) {

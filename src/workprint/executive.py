@@ -48,6 +48,8 @@ SOURCE_LABELS = {
     "Git": "Git",
     "google-docs": "Google Docs",
     "Google Docs": "Google Docs",
+    "project-notes": "Project Notes",
+    "Project Notes": "Project Notes",
 }
 
 GOAL_PATTERNS = (
@@ -1646,12 +1648,12 @@ def _confidence_summary(confidence: ConfidenceAssessment) -> str:
 def _plain_statement(text: str) -> str:
     value = " ".join(text.split())
     replacements = (
-        r"^(?:Human|ChatGPT|Claude|Assistant|google-docs|figma|git|Git author:[^:]+)\s+reported implementation activity:\s*",
-        r"^(?:Human|ChatGPT|Claude|Assistant|google-docs|figma|git|Git author:[^:]+)\s+stated a decision or acceptance:\s*",
-        r"^(?:Human|ChatGPT|Claude|Assistant|google-docs|figma|git|Git author:[^:]+)\s+stated a decision:\s*",
-        r"^(?:Human|ChatGPT|Claude|Assistant|google-docs|figma|git|Git author:[^:]+)\s+suggested:\s*",
-        r"^(?:Human|ChatGPT|Claude|Assistant|google-docs|figma|git|Git author:[^:]+)\s+asked:\s*",
-        r"^(?:Human|ChatGPT|Claude|Assistant|google-docs|figma|git|Git author:[^:]+)\s+stated:\s*",
+        r"^(?:Human|ChatGPT|Claude|Assistant|google-docs|project-notes|figma|git|Git author:[^:]+)\s+reported implementation activity:\s*",
+        r"^(?:Human|ChatGPT|Claude|Assistant|google-docs|project-notes|figma|git|Git author:[^:]+)\s+stated a decision or acceptance:\s*",
+        r"^(?:Human|ChatGPT|Claude|Assistant|google-docs|project-notes|figma|git|Git author:[^:]+)\s+stated a decision:\s*",
+        r"^(?:Human|ChatGPT|Claude|Assistant|google-docs|project-notes|figma|git|Git author:[^:]+)\s+suggested:\s*",
+        r"^(?:Human|ChatGPT|Claude|Assistant|google-docs|project-notes|figma|git|Git author:[^:]+)\s+asked:\s*",
+        r"^(?:Human|ChatGPT|Claude|Assistant|google-docs|project-notes|figma|git|Git author:[^:]+)\s+stated:\s*",
         r"^figma stated:\s*",
     )
     for pattern in replacements:

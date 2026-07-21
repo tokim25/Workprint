@@ -1,0 +1,5 @@
+Research notes
+
+Users need concrete examples of feedback that is specific, timely, and kind.
+The chatbot should make practice feel private and should clearly state that it
+does not send coaching notes to managers.

@@ -3,9 +3,10 @@
 **See what you did, what AI did, and how the work came together.**
 
 Workprint reads evidence about a project — a local Git repository, local
-Claude Code/Cowork/Desktop Chat session history, or exported conversations
-and documents — and turns it into a report you can trust: what the
-evidence directly supports, and what it honestly cannot determine.
+project notes, local Claude Code/Cowork/Desktop Chat session history, or
+exported conversations and documents — and turns it into a report you can
+trust: what the evidence directly supports, and what it honestly cannot
+determine.
 Workprint never calculates authorship, effort, ownership, or
 human-vs-AI contribution percentages. It shows evidence, not verdicts.
 
@@ -56,12 +57,15 @@ a terminal — only *using* the downloaded release doesn't.
 ## What Workprint Can Read
 
 - **Local Git history** — commits, authors, timestamps, changed files.
+- **Project notes and documentation** — Markdown, MDX, plain text, RST, and
+  AsciiDoc files that are not generic repository boilerplate.
 - **Local Claude Code, Claude Cowork, and Claude Desktop Chat** session
   history, read directly from your machine.
 - **Exported conversations** from ChatGPT and Claude.
 - **Static exports** from Google Docs and Figma.
 
 Each source is read with clear, documented boundaries — see
+[docs/project-notes-import.md](docs/project-notes-import.md),
 [docs/claude-code-adapter.md](docs/claude-code-adapter.md),
 [docs/claude-cowork-adapter.md](docs/claude-cowork-adapter.md), and
 [docs/claude-desktop-chat-adapter.md](docs/claude-desktop-chat-adapter.md)
