@@ -345,11 +345,20 @@ The first insight should dominate the initial discoveries viewport. It should
 not compete with a dashboard, report grid, export control, or secondary
 metrics. Reveal it as one compact unit:
 
-1. Claim: one plain-language sentence.
+1. Claim: one plain-language sentence, 90-160 characters, specific enough that
+   the user understands what Workprint noticed.
 2. Why Workprint believes this: source types and evidence references
    summarized in human language.
 3. Confidence: qualitative band with the shortest useful reason.
 4. Unknown: the most important limit on the claim.
+
+Good first insight:
+
+"The project evidence describes an aggregated project made from related
+prototypes, notes, and implementation records."
+
+Avoid claims that are too vague, such as "Workprint found evidence," or too
+broad, such as a full report summary compressed into the hero sentence.
 
 If no insight meets the support threshold, the discoveries screen should say:
 "Workprint found evidence, but not enough to make a reliable first insight
@@ -358,6 +367,13 @@ work happened or Export limitations.
 
 The first insight must never be a global contribution ranking, authorship
 claim, or unsupported project-quality judgment.
+
+Evidence-linked findings below the first insight should analyze the work, not
+just name files. They should help the user understand what role they and the AI
+agent appear to have played when the evidence supports those roles. For
+example: "The captured user turns define constraints and acceptance criteria,
+while assistant turns propose implementation structure and wording." If role
+evidence is absent, Workprint should say the role remains unknown.
 
 ### Evidence Drill-Down Behavior
 

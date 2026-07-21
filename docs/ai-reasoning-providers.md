@@ -75,9 +75,12 @@ Providers should return structured candidate findings, not final authority.
 
 Each candidate finding should include:
 
-- a claim;
+- a claim, written as one plain sentence between 90 and 160 characters when it
+  is the first supported insight;
 - supporting evidence IDs;
 - a short explanation of why the evidence supports the claim;
+- an evidence-linked finding that analyzes the work pattern and helps the user
+  understand the role they and the AI agent appear to have played;
 - confidence language;
 - unknowns and limitations;
 - any provider-side uncertainty.
@@ -91,6 +94,63 @@ Workprint should reject or downgrade provider output when:
 - the claim says AI involvement is proven when the evidence does not prove it;
 - the provider omits important unknowns;
 - the claim is stronger than the cited evidence.
+
+## Claim And Finding Examples
+
+The first supported insight should be specific, plain-language, and compact:
+one sentence, 90-160 characters. It should describe the most useful
+evidence-supported pattern, not the whole report.
+
+Good first insight:
+
+"The project evidence describes an aggregated project made from related
+prototypes, notes, and implementation records."
+
+Too vague:
+
+"Workprint found evidence."
+
+Too long:
+
+"The project evidence describes a multi-phase body of work made from several
+related prototypes, multiple implementation notes, source records, and planning
+artifacts that may have involved AI collaboration but also includes many
+unknowns."
+
+Evidence-linked findings should analyze the work rather than list artifacts.
+They should help the user understand how the work came together and what role
+the user and AI agent appear to have played, while staying inside evidence.
+
+Allowed claim patterns:
+
+- "The supplied files describe an aggregated project assembled from related
+  prototypes, project notes, and repository activity."
+- "The evidence shows a sequence from direction-setting to implementation,
+  with notes preceding repository changes."
+- "The captured user turns define constraints and acceptance criteria."
+- "The captured assistant turns propose implementation structure and wording."
+- "The AI agent appears in the evidence as a synthesis partner because captured
+  assistant turns propose structure and next steps."
+- "The user appears to have directed the work when they approved the four-screen
+  flow and rejected additional setup complexity."
+- "Git records commits after the planning notes, but Git does not prove who
+  personally wrote the changed lines."
+- "The evidence shows AI participation in the conversation, but not whether AI
+  generated the final files."
+- "The supplied evidence supports a collaboration pattern, not a contribution
+  percentage."
+- "The evidence shows review or correction when the user rejects, revises, or
+  narrows an assistant proposal."
+
+Avoid:
+
+- "You did most of the work."
+- "AI created these files."
+- "This proves authorship."
+- "More changed lines means more effort."
+- "The project is complete."
+- "The AI agent was responsible for implementation" unless the evidence
+  directly supports that exact narrow role.
 
 ## User Disclosure
 
