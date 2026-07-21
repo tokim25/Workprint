@@ -1,6 +1,6 @@
 {
   "name": "workprint",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "private": true,
   "license": "Apache-2.0",
   "main": "electron/main.js",
@@ -40,7 +40,13 @@
       "electron/**/*"
     ],
     "extraResources": [
-      { "from": "dist-backend", "to": "backend", "filter": ["**/*"] }
+      {
+        "from": "dist-backend",
+        "to": "backend",
+        "filter": [
+          "**/*"
+        ]
+      }
     ],
     "afterPack": "scripts/after-pack.js",
     "mac": {
