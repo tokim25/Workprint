@@ -11,7 +11,6 @@ import { ProjectFileEvidence } from "@/components/project-file-evidence";
 import { SourceStatusList } from "@/components/source-status-list";
 import {
   pickActiveDiscovery,
-  pickExecutiveDiscovery,
   type ActiveDiscovery,
 } from "@/lib/active-discovery";
 import {
@@ -33,6 +32,12 @@ import {
   type LocalProjectSummary,
 } from "@/lib/local-project-sources";
 import type { ProjectFileEvidenceFact } from "@/lib/project-file-evidence";
+import {
+  REASONING_PROVIDERS,
+  type ReasoningProviderId,
+  type ReasoningSuccess,
+  type ReasoningFailure,
+} from "@/lib/provider-reasoning";
 import { evidenceItems, insight, projectSources } from "@/lib/sample-data";
 
 type Screen = "start" | "sources" | "investigating" | "discoveries";
@@ -49,6 +54,8 @@ type InvestigateResult = {
 type InvestigateResponse =
   | (InvestigateResult & { ok: true })
   | { ok: false; error: { code: string; message: string } };
+
+type ProviderReasoningResponse = ReasoningSuccess | ReasoningFailure;
 
 type BrowserFileSystemEntry = {
   isDirectory: boolean;
@@ -103,7 +110,13 @@ export function WorkprintApp() {
   );
   const [investigateError, setInvestigateError] = useState("");
   const [investigateLoading, setInvestigateLoading] = useState(false);
-  const [executiveDiscovery, setExecutiveDiscovery] = useState<ActiveDiscovery | null>(
+  const [selectedProvider, setSelectedProvider] = useState<ReasoningProviderId | "">("");
+  const [providerApiKey, setProviderApiKey] = useState("");
+  const [providerReasoningError, setProviderReasoningError] = useState("");
+  const [providerReasoningLoading, setProviderReasoningLoading] = useState(false);
+  const [providerReasoningResult, setProviderReasoningResult] =
+    useState<ReasoningSuccess | null>(null);
+  const [providerDiscovery, setProviderDiscovery] = useState<ActiveDiscovery | null>(
     null,
   );
   // window.workprintElectron is set once by the Electron preload script
@@ -131,7 +144,7 @@ export function WorkprintApp() {
 
   const visibleSources = localProject?.sources ?? projectSources;
   const activeDiscovery =
-    executiveDiscovery ??
+    providerDiscovery ??
     pickActiveDiscovery({
       gitSummary,
       claudeSummary,
@@ -207,9 +220,9 @@ export function WorkprintApp() {
     }, 3200));
 
     // Kick off the local report build in parallel with the stage animation.
-    // This can surface a fully supported executive-report headline when the
-    // report has one, but it must not fall back to a local mechanical
-    // "insight" when no AI reasoning provider has processed evidence.
+    // The downloadable report remains useful, but the Discoveries headline
+    // must come from provider-assisted reasoning rather than a local
+    // mechanical fallback.
     //
     // Also read Git/Claude evidence directly here rather than relying on
     // the user having separately clicked "Read Git metadata"/"Read Claude
@@ -251,7 +264,7 @@ export function WorkprintApp() {
     setDesktopChatDeepParseRequested(false);
     setInvestigateResult(null);
     setInvestigateError("");
-    setExecutiveDiscovery(null);
+    clearProviderReasoning();
     setProjectStatusMessage("Showing sample project places.");
     window.requestAnimationFrame(() => {
       chooseProjectButtonRef.current?.focus();
@@ -271,7 +284,7 @@ export function WorkprintApp() {
     setDesktopChatDeepParseRequested(false);
     setInvestigateResult(null);
     setInvestigateError("");
-    setExecutiveDiscovery(null);
+    clearProviderReasoning();
     setProjectStatusMessage("Removed the selected project. Sample project places are shown.");
     if (projectInputRef.current) {
       projectInputRef.current.value = "";
@@ -299,7 +312,7 @@ export function WorkprintApp() {
     setDesktopChatDeepParseRequested(false);
     setInvestigateResult(null);
     setInvestigateError("");
-    setExecutiveDiscovery(null);
+    clearProviderReasoning();
     setProjectStatusMessage(
       `Found ${summary.fileCount} ${summary.fileCount === 1 ? "file" : "files"} in ${summary.folderName}.`,
     );
@@ -440,7 +453,6 @@ export function WorkprintApp() {
     setInvestigateLoading(true);
     setInvestigateError("");
     setInvestigateResult(null);
-    setExecutiveDiscovery(null);
 
     const projectName =
       projectAnswer.trim() || localProject?.folderName || repositoryPath || "Workprint Project";
@@ -467,15 +479,84 @@ export function WorkprintApp() {
       }
 
       setInvestigateResult(payload);
-      const upgraded = pickExecutiveDiscovery(payload.json);
-      if (upgraded) {
-        setExecutiveDiscovery(upgraded);
-      }
     } catch {
       setInvestigateError("Workprint could not reach the local investigation route.");
     } finally {
       setInvestigateLoading(false);
     }
+  }
+
+  async function runProviderReasoning() {
+    setProviderReasoningError("");
+    setProviderReasoningResult(null);
+    setProviderDiscovery(null);
+
+    if (!selectedProvider) {
+      setProviderReasoningError("Choose OpenAI, Claude, or Gemini first.");
+      return;
+    }
+
+    if (!providerApiKey.trim()) {
+      setProviderReasoningError("Enter the API key for the provider you chose.");
+      return;
+    }
+
+    if (realEvidenceItems.length === 0) {
+      setProviderReasoningError(
+        "Add evidence before asking a provider to reason over it.",
+      );
+      return;
+    }
+
+    setProviderReasoningLoading(true);
+
+    try {
+      const response = await fetch("/api/provider-reasoning", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: selectedProvider,
+          apiKey: providerApiKey,
+          project:
+            projectAnswer.trim() || localProject?.folderName || repositoryPath || "Workprint Project",
+          evidence: realEvidenceItems,
+        }),
+      });
+      const payload = (await response.json()) as ProviderReasoningResponse;
+
+      if (!response.ok || !payload.ok) {
+        setProviderReasoningError(
+          payload.ok
+            ? "Workprint could not reason over this evidence."
+            : payload.error.message,
+        );
+        return;
+      }
+
+      setProviderReasoningResult(payload);
+      setProviderDiscovery({
+        claim: payload.insight.claim,
+        evidenceIds: payload.insight.evidence_ids,
+        support: payload.insight.explanation,
+        unknown: payload.insight.unknowns,
+        confidence: payload.insight.confidence,
+        kind: "insight",
+      });
+    } catch {
+      setProviderReasoningError(
+        "Workprint could not reach the provider reasoning route.",
+      );
+    } finally {
+      setProviderReasoningLoading(false);
+    }
+  }
+
+  function clearProviderReasoning() {
+    setProviderApiKey("");
+    setProviderReasoningError("");
+    setProviderReasoningResult(null);
+    setProviderReasoningLoading(false);
+    setProviderDiscovery(null);
   }
 
   function downloadReport(format: "markdown" | "json" | "playbook") {
@@ -1097,7 +1178,7 @@ export function WorkprintApp() {
               {activeDiscovery.kind !== "provider_needed" ? (
                 <ConfidenceIndicator label={activeConfidence} />
               ) : null}
-              {investigateLoading && !executiveDiscovery ? (
+              {investigateLoading && !providerDiscovery ? (
                 <span className="text-sm text-[var(--muted)]">
                   Investigating further&hellip;
                 </span>
@@ -1125,30 +1206,99 @@ export function WorkprintApp() {
                   Choose a reasoning provider
                 </h2>
                 <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
-                  Provider connection is not wired in this build yet. When it is,
-                  OpenAI, Claude, and Gemini must be offered as equal choices,
-                  with no default selection, before any selected evidence leaves
-                  your device.
+                  OpenAI, Claude, and Gemini are equal choices. Workprint does
+                  not choose a default provider. Your API key is used for this
+                  request only and is not saved by Workprint.
                 </p>
                 <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                  {["OpenAI", "Claude", "Gemini"].map((provider) => (
-                    <div
-                      className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4"
-                      key={provider}
+                  {REASONING_PROVIDERS.map((provider) => (
+                    <button
+                      aria-pressed={selectedProvider === provider.id}
+                      className={`rounded-2xl border p-4 text-left transition ${
+                        selectedProvider === provider.id
+                          ? "border-[var(--accent)] bg-[var(--accent-soft)]"
+                          : "border-[var(--line)] bg-[var(--surface)]"
+                      }`}
+                      key={provider.id}
+                      onClick={() => {
+                        setSelectedProvider(provider.id);
+                        setProviderReasoningError("");
+                        setProviderReasoningResult(null);
+                        setProviderDiscovery(null);
+                      }}
+                      type="button"
                     >
-                      <p className="font-semibold">{provider}</p>
+                      <p className="font-semibold">{provider.label}</p>
                       <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-                        Not connected yet.
+                        {selectedProvider === provider.id
+                          ? "Selected for this report."
+                          : "Available with your own API key."}
                       </p>
-                    </div>
+                    </button>
                   ))}
                 </div>
+                <label className="mt-5 block text-sm font-semibold" htmlFor="provider-key">
+                  Provider API key
+                </label>
+                <input
+                  autoComplete="off"
+                  className="mt-2 w-full rounded-full border border-[var(--line)] bg-[var(--surface)] px-5 py-3 text-sm"
+                  id="provider-key"
+                  onChange={(event) => setProviderApiKey(event.target.value)}
+                  placeholder="Used once for this reasoning request"
+                  type="password"
+                  value={providerApiKey}
+                />
                 <p className="mt-5 text-sm leading-6 text-[var(--muted)]">
-                  Workprint should send a bounded evidence packet only after you
-                  choose a provider, review the disclosure, and confirm that you
-                  have permission to process the selected evidence with that
-                  provider.
+                  Selected evidence will leave your device and be processed by
+                  the provider you choose. Workprint sends bounded excerpts and
+                  metadata, not your whole project folder. Provider processing is
+                  governed by that provider&apos;s terms, policies, and account
+                  settings. Make sure you have permission to process this
+                  evidence with the selected provider.
                 </p>
+                <button
+                  className="mt-5 rounded-full bg-[var(--accent)] px-6 py-4 font-semibold text-white transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={
+                    providerReasoningLoading ||
+                    !selectedProvider ||
+                    !providerApiKey.trim() ||
+                    realEvidenceItems.length === 0
+                  }
+                  onClick={runProviderReasoning}
+                  type="button"
+                >
+                  {providerReasoningLoading
+                    ? "Reasoning with provider..."
+                    : "Analyze selected evidence"}
+                </button>
+                {providerReasoningError ? (
+                  <p className="mt-4 rounded-2xl bg-[var(--danger-soft)] p-4 text-sm leading-6 text-[var(--danger)]">
+                    {providerReasoningError}
+                  </p>
+                ) : null}
+                {providerReasoningResult ? (
+                  <div className="mt-4 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4 text-sm leading-6 text-[var(--muted)]">
+                    <p className="font-semibold text-[var(--foreground)]">
+                      {providerReasoningResult.providerLabel} processed{" "}
+                      {providerReasoningResult.packet.evidenceCount} selected{" "}
+                      {providerReasoningResult.packet.evidenceCount === 1
+                        ? "evidence item"
+                        : "evidence items"}
+                      .
+                    </p>
+                    <p className="mt-2">
+                      Workprint validated cited evidence IDs and attribution
+                      boundaries before showing the insight.
+                    </p>
+                    {providerReasoningResult.packet.truncated ? (
+                      <p className="mt-2">
+                        Some evidence was omitted to stay under the 30,000-token
+                        packet ceiling.
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
               </section>
             ) : null}
             {projectFileFacts.length > 0 ? (
