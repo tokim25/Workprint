@@ -90,6 +90,44 @@ class ProviderReasoningWebTests(unittest.TestCase):
             source,
         )
 
+    def test_provider_validation_requires_human_centered_first_insight(self):
+        source = (ROOT / "lib" / "provider-reasoning.ts").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("firstInsightRequiredPatterns", source)
+        self.assertIn("sourceDetectionOnlyPatterns", source)
+        self.assertIn(
+            "what the user did OR where human judgment, review, or sequencing appears",
+            source,
+        )
+        self.assertIn(
+            "what AI/tooling appears to have done, how the work moved from idea to implementation, or what the evidence cannot separate",
+            source,
+        )
+        self.assertIn("AI Fluency 4D lens", source)
+        self.assertIn("Delegation, Description, Discernment, and Diligence", source)
+        self.assertIn("what the user gave to AI, kept for themselves, or shaped together", source)
+        self.assertIn("review, correction, evaluation, or selection", source)
+        self.assertIn("Prof. Rick Dakan", source)
+        self.assertIn("Prof. Joseph Feller", source)
+        self.assertIn("Anthropic Academy resources", source)
+        self.assertIn("source-detection statement rather than a Workprint first insight", source)
+        self.assertIn(
+            "The provider insight did not explain what the user did or where human judgment, review, or sequencing appears",
+            source,
+        )
+
+    def test_provider_validation_rejects_presence_only_cache_headlines(self):
+        source = (ROOT / "lib" / "provider-reasoning.ts").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("presence-only Claude Desktop chat cache evidence", source)
+        self.assertIn("presence of (?:an? )?(?:active )?", source)
+        self.assertIn("available and utilized on the development system", source)
+        self.assertIn("Do not use presence-only Claude Desktop chat cache evidence", source)
+
     def test_confidence_indicator_explains_confidence_bands(self):
         source = (ROOT / "components" / "confidence-indicator.tsx").read_text(
             encoding="utf-8"

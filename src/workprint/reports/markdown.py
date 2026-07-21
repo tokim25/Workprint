@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from workprint.ai_fluency import build_ai_fluency_reflection
+from workprint.ai_fluency import FRAMEWORK_SUMMARY, build_ai_fluency_reflection
 from workprint.executive import build_executive_report
 from workprint.models import Investigation
 from workprint.timeline import build_timeline, summarize_timeline
@@ -267,6 +267,8 @@ def _ai_fluency_section(investigation: Investigation) -> list[str]:
         reflection.attribution,
         "",
         reflection.disclaimer,
+        "",
+        FRAMEWORK_SUMMARY,
         "",
     ]
     for competency in reflection.competencies:

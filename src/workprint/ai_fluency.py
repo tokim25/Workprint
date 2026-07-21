@@ -12,15 +12,23 @@ FRAMEWORK_ATTRIBUTION = (
     "Organized using Anthropic's AI Fluency Framework (Delegation, "
     "Description, Discernment, Diligence), developed with Prof. Rick Dakan "
     "(Ringling College of Art and Design) and Prof. Joseph Feller "
-    "(University College Cork). Framework materials are CC BY-NC-SA 4.0; "
-    "see aifluencyframework.org."
+    "(University College Cork), with supporting Anthropic Academy AI Fluency "
+    "educational resources. Framework materials are CC BY-NC-SA 4.0; see "
+    "aifluencyframework.org."
 )
 
 DISCLAIMER = (
-    "Workprint does not score or rate AI fluency. This section reorganizes "
-    "evidence Workprint already gathered under the framework's four "
-    "competencies so you can reflect on your own patterns. The judgment is "
-    "yours, not Workprint's."
+    "Workprint does not score or rate AI fluency. This section uses the "
+    "framework as a reflection lens for evidence Workprint already gathered, "
+    "so you can notice patterns in how you delegated, described, discerned, "
+    "and practiced diligence. The judgment is yours, not Workprint's."
+)
+
+FRAMEWORK_SUMMARY = (
+    "AI Fluency means working with AI effectively, efficiently, ethically, "
+    "and safely. Workprint uses the 4Ds -- Delegation, Description, "
+    "Discernment, and Diligence -- as evidence-backed reflection categories, "
+    "not as grades or contribution claims."
 )
 
 # Keyed on the exact Observation.source string each adapter writes (its
@@ -111,8 +119,10 @@ def build_ai_fluency_reflection(investigation: Investigation) -> AIFluencyReflec
             key="delegation",
             name="Delegation",
             definition=(
-                "Deciding what to hand to AI versus keep for yourself, and "
-                "choosing the right tool for the task."
+                "Making thoughtful decisions about what work is appropriate "
+                "for you to do, what work is appropriate for AI to do, what "
+                "work should happen together, and how to distribute those "
+                "tasks."
             ),
             evidence=_delegation_evidence(observations),
         ),
@@ -120,8 +130,9 @@ def build_ai_fluency_reflection(investigation: Investigation) -> AIFluencyReflec
             key="description",
             name="Description",
             definition=(
-                "Communicating goals, constraints, and context clearly "
-                "enough for AI to produce something useful."
+                "Communicating goals, desired outputs, process expectations, "
+                "context, and AI behavior clearly enough to create a "
+                "productive collaboration."
             ),
             evidence=_description_evidence(observations),
             note=(
@@ -136,8 +147,10 @@ def build_ai_fluency_reflection(investigation: Investigation) -> AIFluencyReflec
             key="discernment",
             name="Discernment",
             definition=(
-                "Critically evaluating AI output for quality, relevance, "
-                "and fit before accepting it."
+                "Thoughtfully evaluating what AI produces, how it produces "
+                "it, and how it behaves; checking quality, accuracy, "
+                "relevance, reasoning, and fit before accepting or using the "
+                "work."
             ),
             evidence=_discernment_evidence(observations),
             note=(
@@ -152,8 +165,10 @@ def build_ai_fluency_reflection(investigation: Investigation) -> AIFluencyReflec
             key="diligence",
             name="Diligence",
             definition=(
-                "Using AI ethically, disclosing its involvement, and "
-                "taking accountability for the final result."
+                "Taking responsibility for AI-assisted work through careful "
+                "tool choice, transparency about AI's role, verification, "
+                "appropriate use, and accountability for what is shared or "
+                "deployed."
             ),
             evidence=_diligence_evidence(observations),
         ),

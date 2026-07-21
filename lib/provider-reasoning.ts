@@ -144,6 +144,45 @@ const forbiddenClaimPatterns = [
   /\bhuman[-\s]?versus[-\s]?AI\b/i,
 ];
 
+const sourceDetectionOnlyPatterns = [
+  /\bpresence of (?:an? )?(?:active )?(?:claude|chatgpt|gemini|ai|llm|chat|desktop).*cache\b/i,
+  /\b(?:claude|chatgpt|gemini|ai|llm|chat|desktop).*cache (?:indicates|shows|suggests|was found|was detected)\b/i,
+  /\b(?:ai|llm|conversational ai) tools were (?:available|present|detected|utilized)\b/i,
+  /\bavailable and utilized on the development system\b/i,
+  /\bused on the local machine\b/i,
+  /\bdevelopment system\b/i,
+  /\bsource(?:s)? (?:were|was) detected\b/i,
+];
+
+const firstInsightRequiredPatterns = [
+  /\byou\b/i,
+  /\buser\b/i,
+  /\bhuman\b/i,
+  /\bdirected?\b/i,
+  /\bchose\b/i,
+  /\bdecided\b/i,
+  /\bapproved\b/i,
+  /\breview(?:ed|s|ing)?\b/i,
+  /\bjudg(?:e)?ment\b/i,
+  /\bsequenc(?:e|ed|ing)\b/i,
+  /\biteration\b/i,
+  /\brepair loop\b/i,
+  /\bvalidation\b/i,
+  /\bdelegat(?:e|ed|ion|ing)\b/i,
+  /\bdescrib(?:e|ed|ing|es)\b/i,
+  /\bdiscern(?:ed|ment|ing)?\b/i,
+  /\bdiligen(?:ce|t)\b/i,
+  /\bverif(?:y|ied|ication|ying)\b/i,
+  /\bcriteria\b/i,
+  /\bcheckpoint\b/i,
+  /\bprompt(?:ed|ing)?\b/i,
+  /\bhandoff\b/i,
+  /\btool choice\b/i,
+  /\bplatform choice\b/i,
+  /\baccountab(?:ility|le)\b/i,
+  /\bresponsib(?:ility|le)\b/i,
+];
+
 export function providerLabel(provider: ReasoningProviderId) {
   return (
     REASONING_PROVIDERS.find((candidate) => candidate.id === provider)?.label ??
@@ -201,7 +240,13 @@ export function buildEvidencePacket(input: {
     instructions: [
       "Return only JSON matching the requested schema.",
       "Every claim must cite evidence IDs from this packet.",
-      "Analyze the work, process, collaboration pattern, or user direction; do not merely list evidence sources.",
+      "The first insight must explain what the user did OR where human judgment, review, or sequencing appears.",
+      "The first insight may also explain what AI/tooling appears to have done, how the work moved from idea to implementation, or what the evidence cannot separate.",
+      "Use the AI Fluency 4D lens when supported by evidence: Delegation, Description, Discernment, and Diligence.",
+      "Delegation means what the user gave to AI, kept for themselves, or shaped together; Description means how goals, constraints, process, or AI behavior were specified; Discernment means review, correction, evaluation, or selection; Diligence means verification, disclosure, appropriate use, or accountability.",
+      "Credit the AI Fluency Framework to Prof. Rick Dakan, Prof. Joseph Feller, and Anthropic Academy resources if you mention the framework directly.",
+      "Analyze the work, process, collaboration pattern, or user direction; do not merely list evidence sources, tool availability, or cache presence.",
+      "Do not use presence-only Claude Desktop chat cache evidence as the first insight headline.",
       "Prefer unknown over unsupported certainty.",
       "The packet must not include credentials, secrets, tokens, certificates, private keys, environment files, or unrestricted project-folder access.",
     ],
@@ -276,6 +321,35 @@ export function validateCandidateInsight(
     };
   }
 
+  const claimAndExplanationText = [
+    insight.claim,
+    insight.explanation,
+  ].join(" ");
+
+  const sourceDetectionOnly = sourceDetectionOnlyPatterns.find((pattern) =>
+    pattern.test(claimAndExplanationText),
+  );
+  if (sourceDetectionOnly) {
+    return {
+      ok: false,
+      code: "boundary_violation",
+      message:
+        "The provider returned a source-detection statement rather than a Workprint first insight.",
+    };
+  }
+
+  const humanCenteredInsight = firstInsightRequiredPatterns.some((pattern) =>
+    pattern.test(claimAndExplanationText),
+  );
+  if (!humanCenteredInsight) {
+    return {
+      ok: false,
+      code: "boundary_violation",
+      message:
+        "The provider insight did not explain what the user did or where human judgment, review, or sequencing appears.",
+    };
+  }
+
   const packetIds = new Set(packet.evidence.map((item) => item.id));
   const invalidIds = insight.evidence_ids.filter((id) => !packetIds.has(id));
   if (invalidIds.length > 0) {
@@ -313,6 +387,13 @@ export function buildProviderPrompt(packet: EvidencePacket, mode: "originate" | 
     "You are not final authority. Workprint will verify your output before display.",
     "Do not infer authorship, ownership, effort, value, intent, contribution percentages, or human-versus-AI percentages.",
     "Do not claim the project is complete unless evidence explicitly says so.",
+    "The first insight must tell the user what they did OR where human judgment, review, or sequencing appears.",
+    "The first insight may also include what AI/tooling appears to have done, how the work moved from idea to implementation, or what the evidence cannot separate.",
+    "Use the AI Fluency 4D lens when supported by evidence: Delegation, Description, Discernment, and Diligence.",
+    "Delegation means what the user gave to AI, kept for themselves, or shaped together; Description means how goals, constraints, process, or AI behavior were specified; Discernment means review, correction, evaluation, or selection; Diligence means verification, disclosure, appropriate use, or accountability.",
+    "Credit the AI Fluency Framework to Prof. Rick Dakan, Prof. Joseph Feller, and Anthropic Academy resources if you mention the framework directly.",
+    "Do not make the first insight merely about source detection, tool availability, cache presence, or a system where AI tools were available.",
+    "Presence-only Claude Desktop chat cache evidence may support a limitation, but it must not be the first insight headline.",
     mode === "corroborate"
       ? "This is the second validation pass. Revise the candidate down if it is stronger than the evidence supports."
       : "This is the first reasoning pass. Produce the strongest supported candidate insight.",
