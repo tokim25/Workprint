@@ -206,12 +206,10 @@ export function WorkprintApp() {
       goTo("discoveries");
     }, 3200));
 
-    // Kick off the real investigation in parallel with the stage
-    // animation above, so the Discoveries screen can upgrade from the
-    // mechanical Git/Claude-count claim to a real synthesized one (see
-    // pickExecutiveDiscovery) once it resolves, instead of only ever
-    // showing the sample/mechanical claim. Skipped in sample mode, where
-    // there is no real project path to investigate.
+    // Kick off the local report build in parallel with the stage animation.
+    // This can surface a fully supported executive-report headline when the
+    // report has one, but it must not fall back to a local mechanical
+    // "insight" when no AI reasoning provider has processed evidence.
     //
     // Also read Git/Claude evidence directly here rather than relying on
     // the user having separately clicked "Read Git metadata"/"Read Claude
@@ -219,13 +217,8 @@ export function WorkprintApp() {
     // sources screen, and this "Investigate" button has no guard
     // requiring them. Without this, gitSummary/claudeSummary stay null
     // for anyone who just connects a project and clicks the one obvious
-    // CTA, so pickActiveDiscovery (Phase 1) falls through to the sample
-    // claim even though real evidence exists -- confirmed as the actual
-    // cause of a real-world report that the Discoveries screen still
-    // showed sample content after the pickActiveDiscovery/
-    // pickExecutiveDiscovery fix: the picker itself was verified correct
-    // against real API data, but gitSummary/claudeSummary were simply
-    // never populated because those two buttons were never clicked.
+    // CTA, so gitSummary/claudeSummary stay null for anyone who just
+    // connects a project and clicks the one obvious button.
     if (repositoryPath.trim()) {
       void runInvestigation();
       void readGitSummary();
@@ -1085,7 +1078,9 @@ export function WorkprintApp() {
           className="mx-auto max-w-6xl py-16 sm:py-24"
         >
           <p className="mb-5 text-sm font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
-            {activeDiscovery.kind === "insight"
+            {activeDiscovery.kind === "provider_needed"
+              ? "AI reasoning needed"
+              : activeDiscovery.kind === "insight"
               ? "First supported insight"
               : "What's connected so far"}
           </p>
@@ -1099,7 +1094,9 @@ export function WorkprintApp() {
               {activeClaim}
             </h1>
             <div className="mt-8 flex flex-wrap items-center gap-3">
-              <ConfidenceIndicator label={activeConfidence} />
+              {activeDiscovery.kind !== "provider_needed" ? (
+                <ConfidenceIndicator label={activeConfidence} />
+              ) : null}
               {investigateLoading && !executiveDiscovery ? (
                 <span className="text-sm text-[var(--muted)]">
                   Investigating further&hellip;
@@ -1108,7 +1105,9 @@ export function WorkprintApp() {
             </div>
             <section className="mt-10 max-w-3xl border-l-2 border-[var(--accent)] pl-6">
               <h2 className="text-2xl font-semibold tracking-[-0.03em]">
-                Why Workprint believes this
+                {activeDiscovery.kind === "provider_needed"
+                  ? "What happens before an insight"
+                  : "Why Workprint believes this"}
               </h2>
               <p className="mt-4 text-lg leading-8 text-[var(--muted)]">
                 {activeSupport}
@@ -1120,6 +1119,38 @@ export function WorkprintApp() {
                 {activeUnknown}
               </p>
             </section>
+            {activeDiscovery.kind === "provider_needed" ? (
+              <section className="mt-10 max-w-4xl rounded-[28px] border border-[var(--line)] bg-[var(--surface-soft)] p-6 sm:p-8">
+                <h2 className="text-2xl font-semibold tracking-[-0.03em]">
+                  Choose a reasoning provider
+                </h2>
+                <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
+                  Provider connection is not wired in this build yet. When it is,
+                  OpenAI, Claude, and Gemini must be offered as equal choices,
+                  with no default selection, before any selected evidence leaves
+                  your device.
+                </p>
+                <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                  {["OpenAI", "Claude", "Gemini"].map((provider) => (
+                    <div
+                      className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4"
+                      key={provider}
+                    >
+                      <p className="font-semibold">{provider}</p>
+                      <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
+                        Not connected yet.
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-5 text-sm leading-6 text-[var(--muted)]">
+                  Workprint should send a bounded evidence packet only after you
+                  choose a provider, review the disclosure, and confirm that you
+                  have permission to process the selected evidence with that
+                  provider.
+                </p>
+              </section>
+            ) : null}
             {projectFileFacts.length > 0 ? (
               <section className="mt-10 max-w-4xl border-t border-[var(--line)] pt-8">
                 <h2 className="text-2xl font-semibold tracking-[-0.03em]">
