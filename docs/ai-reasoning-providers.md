@@ -53,10 +53,28 @@ already fit the same picker.
 ## Evidence Packet Contract
 
 The evidence packet should be the smallest useful packet for reasoning, and is
-capped at 30,000 tokens. Content cut to fit the ceiling must be surfaced as a
-named item in the Evidence Gaps section, not dropped silently. (Truncation
-priority -- source diversity vs. recency -- is not yet finalized;
-source-diversity-first is the current recommendation.)
+capped at 45,000 tokens. Content cut to fit the ceiling must be surfaced as a
+named item in the Evidence Gaps section or provider packet disclosure, not
+dropped silently.
+
+The packet is assembled for context, not merely filled in input order.
+Workprint must balance:
+
+1. source diversity;
+2. evidence of human direction, judgment, review, or sequencing;
+3. AI Fluency 4D signals;
+4. recency.
+
+This matters because the most recent evidence may describe only the latest
+release repair, while the fullest account of the user's role may live earlier
+in long chat histories, project notes, or design discussions. Recent evidence
+is useful, but it must not crowd out source diversity or human-direction
+signals.
+
+When complete chat histories cannot fit, Workprint should help the user
+contextualize them rather than pretending the packet is complete. Acceptable
+future approaches include evidence summaries, user-approved chat-history
+bundles, source-level packet budgets, and explicit "not sent" disclosures.
 
 It may include:
 
@@ -112,30 +130,55 @@ failure type -- these are not interchangeable:
   disagreement between the two validation passes below -- not as a catch-all
   for the other two failure types.
 
-Validation is a four-step pipeline, not a single pass: (1) deterministic
-checks on the evidence packet going in (evidence-ID existence, a banned-pattern
-scan for authorship/ownership/percentage language); (2) an AI pass that
-analyzes the validated evidence and originates a candidate claim; (3) a second
-AI pass that corroborates or revises that claim; (4) deterministic checks
-again on the final claim text coming out of step 3, not only on the evidence
-that went in. Step 4 exists because the two AI passes may share the same blind
-spot -- AI-on-AI review must never be the only line of defense.
+Validation is a four-step pipeline, not a single pass:
+
+1. deterministic checks on the evidence packet going in, including evidence-ID
+   existence, bounded-packet disclosure, and a banned-pattern scan for
+   authorship, ownership, percentage, effort, value, and source-detection-only
+   language;
+2. an AI pass that analyzes the validated evidence and originates a candidate
+   claim using the AI Fluency 4D lens when evidence supports it;
+3. a second AI pass that corroborates or revises that claim, including whether
+   the claim stays inside Delegation, Description, Discernment, or Diligence
+   rather than drifting into generic source description;
+4. deterministic checks again on the final claim text coming out of step 3,
+   including evidence IDs, attribution boundaries, the required first-insight
+   contract, and AI Fluency lens alignment.
+
+Step 4 exists because the two AI passes may share the same blind spot --
+AI-on-AI review must never be the only line of defense.
 
 ## Claim And Finding Examples
 
 The first supported insight should be specific, plain-language, and compact:
-one sentence, 90-160 characters. It must analyze the work -- the project, the
-process, the relationship between the user and the AI agent, or the user
-themselves -- not describe what evidence exists or what shape it takes. A
-claim that only names evidence sources or file types (however precisely) is
-not an insight, even if it is accurate and well-supported; it is a table of
-contents. Every deeper finding in the report body goes further into one of
-those same four dimensions, backed by cited evidence.
+one sentence, 90-160 characters. It must tell the user what they did OR where
+human judgment, review, or sequencing appears. It may also include at least one
+of the following when supported by evidence:
+
+- what AI or tooling appears to have done;
+- how the work moved from idea to implementation;
+- what the evidence cannot separate.
+
+It must analyze the work -- the project, the process, the relationship between
+the user and the AI agent, or the user themselves -- not describe what evidence
+exists or what shape it takes. A claim that only names evidence sources,
+provider availability, cache presence, or file types is not an insight, even
+if it is accurate and well-supported; it is a table of contents. Every deeper
+finding in the report body should use the AI Fluency 4D lens where evidence
+supports it, backed by cited evidence.
 
 Good first insight:
 
 "The user set direction repeatedly, narrowing the AI agent's early proposals
 into the final four-screen flow."
+
+Also good:
+
+"You drove the sequence from dogfood finding to release repair, using AI to
+implement fixes after each trust gap appeared."
+
+"Human review shaped the release: AI proposed and repaired code, but the next
+step changed when dogfooding exposed missing confidence."
 
 Too vague:
 
@@ -153,6 +196,12 @@ An artifact list, not an insight (do not use, even though it may be accurate):
 
 "The project evidence describes an aggregated project made from related
 prototypes, notes, and implementation records."
+
+Source detection, not an insight (do not use, even though it may be accurate):
+
+"Claude Desktop evidence was detected on this machine."
+
+"The project used Git and Claude Code."
 
 Evidence-linked findings should analyze the work rather than list artifacts.
 They should help the user understand how the work came together and what role

@@ -23,11 +23,19 @@ class ProviderReasoningWebTests(unittest.TestCase):
             encoding="utf-8"
         )
 
-        self.assertIn("MAX_EVIDENCE_PACKET_TOKENS = 30_000", source)
+        self.assertIn("MAX_EVIDENCE_PACKET_TOKENS = 45_000", source)
         self.assertIn("MAX_PROVIDER_OUTPUT_TOKENS = 2_000", source)
         self.assertIn("store: false", source)
         self.assertIn("Some selected evidence was not sent", source)
         self.assertIn("credentials, secrets, tokens", source)
+        self.assertIn("balanced-context-v1", source)
+        self.assertIn("PACKET_PRIORITY_ORDER", source)
+        self.assertIn("source diversity", source)
+        self.assertIn("human direction and judgment", source)
+        self.assertIn("AI Fluency 4D signals", source)
+        self.assertIn("omitted_by_source", source)
+        self.assertIn("included_for", source)
+        self.assertIn("assembleEvidenceCandidates", source)
 
     def test_provider_route_uses_two_pass_validation(self):
         source = (ROOT / "app" / "api" / "provider-reasoning" / "route.ts").read_text(
@@ -109,6 +117,12 @@ class ProviderReasoningWebTests(unittest.TestCase):
         self.assertIn("Delegation, Description, Discernment, and Diligence", source)
         self.assertIn("what the user gave to AI, kept for themselves, or shaped together", source)
         self.assertIn("review, correction, evaluation, or selection", source)
+        self.assertIn("aiFluencyLensPatterns", source)
+        self.assertIn("The final claim passed Workprint's AI Fluency lens check", source)
+        self.assertIn(
+            "The provider insight did not align with an evidence-supported AI Fluency lens",
+            source,
+        )
         self.assertIn("Prof. Rick Dakan", source)
         self.assertIn("Prof. Joseph Feller", source)
         self.assertIn("Anthropic Academy resources", source)
@@ -240,6 +254,23 @@ class ProviderReasoningWebTests(unittest.TestCase):
         self.assertIn("Do not add new claims", source)
         self.assertIn("contribution percentages", source)
         self.assertIn("use an empty array", source)
+
+    def test_ai_reasoning_provider_docs_match_first_insight_contract(self):
+        source = (ROOT / "docs" / "ai-reasoning-providers.md").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("capped at 45,000 tokens", source)
+        self.assertIn("source diversity", source)
+        self.assertIn("human direction, judgment, review, or sequencing", source)
+        self.assertIn("AI Fluency 4D signals", source)
+        self.assertIn("recency", source)
+        self.assertIn("It must tell the user what they did OR where", source)
+        self.assertIn("what AI or tooling appears to have done", source)
+        self.assertIn("how the work moved from idea to implementation", source)
+        self.assertIn("what the evidence cannot separate", source)
+        self.assertIn("Source detection, not an insight", source)
+        self.assertIn("Claude Desktop evidence was detected", source)
 
 
 if __name__ == "__main__":

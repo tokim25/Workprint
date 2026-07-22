@@ -424,6 +424,7 @@ function normalizeEvidence(value: unknown): EvidencePacketItem | null {
     excerpt,
     supports,
     does_not_prove: doesNotProve,
+    included_for: ["user selected evidence"],
   };
 }
 
