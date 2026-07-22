@@ -27,6 +27,17 @@ export type EvidencePacketItem = {
   excerpt: string;
   supports: string;
   does_not_prove: string;
+  included_for: string[];
+};
+
+export type EvidencePacketAssembly = {
+  strategy: string;
+  priority_order: string[];
+  source_counts: Record<string, number>;
+  included_counts: Record<string, number>;
+  omitted_count: number;
+  omitted_by_source: Record<string, number>;
+  disclosure: string[];
 };
 
 export type EvidencePacket = {
@@ -39,6 +50,7 @@ export type EvidencePacket = {
   evidence: EvidencePacketItem[];
   unknowns: string[];
   instructions: string[];
+  assembly: EvidencePacketAssembly;
 };
 
 export type CandidateInsight = {
@@ -127,10 +139,16 @@ export type ReasoningFailure = {
   };
 };
 
-export const MAX_EVIDENCE_PACKET_TOKENS = 30_000;
+export const MAX_EVIDENCE_PACKET_TOKENS = 45_000;
 export const GEMINI_FALLBACK_MODELS = ["gemini-2.5-flash"] as const;
 const APPROX_CHARS_PER_TOKEN = 4;
 const MAX_PROVIDER_OUTPUT_TOKENS = 2_000;
+const PACKET_PRIORITY_ORDER = [
+  "source diversity",
+  "human direction and judgment",
+  "AI Fluency 4D signals",
+  "recency",
+] as const;
 
 const forbiddenClaimPatterns = [
   /\b\d+(?:\.\d+)?\s*%/,
@@ -179,6 +197,30 @@ const firstInsightRequiredPatterns = [
   /\bhandoff\b/i,
   /\btool choice\b/i,
   /\bplatform choice\b/i,
+  /\baccountab(?:ility|le)\b/i,
+  /\bresponsib(?:ility|le)\b/i,
+];
+
+const aiFluencyLensPatterns = [
+  /\bdelegat(?:e|ed|ion|ing)\b/i,
+  /\bdescrib(?:e|ed|ing|es|ption)\b/i,
+  /\bdiscern(?:ed|ment|ing)?\b/i,
+  /\bdiligen(?:ce|t)\b/i,
+  /\bgoal(?:s)?\b/i,
+  /\bdirection\b/i,
+  /\bdirected?\b/i,
+  /\bconstraint(?:s)?\b/i,
+  /\bacceptance criteria\b/i,
+  /\bcriteria\b/i,
+  /\bjudg(?:e)?ment\b/i,
+  /\bsequenc(?:e|ed|ing)\b/i,
+  /\breview(?:ed|s|ing)?\b/i,
+  /\brevis(?:e|ed|ion|ing)\b/i,
+  /\breject(?:ed|s|ing)?\b/i,
+  /\bcorrect(?:ed|ion|ing)?\b/i,
+  /\bverif(?:y|ied|ication|ying)\b/i,
+  /\btest(?:ed|s|ing)?\b/i,
+  /\bdisclos(?:e|ed|ure|ing)\b/i,
   /\baccountab(?:ility|le)\b/i,
   /\bresponsib(?:ility|le)\b/i,
 ];
@@ -240,6 +282,7 @@ export function buildEvidencePacket(input: {
     instructions: [
       "Return only JSON matching the requested schema.",
       "Every claim must cite evidence IDs from this packet.",
+      "This packet was assembled to balance source diversity, human direction signals, AI Fluency 4D signals, and recency.",
       "The first insight must explain what the user did OR where human judgment, review, or sequencing appears.",
       "The first insight may also explain what AI/tooling appears to have done, how the work moved from idea to implementation, or what the evidence cannot separate.",
       "Use the AI Fluency 4D lens when supported by evidence: Delegation, Description, Discernment, and Diligence.",
@@ -250,10 +293,31 @@ export function buildEvidencePacket(input: {
       "Prefer unknown over unsupported certainty.",
       "The packet must not include credentials, secrets, tokens, certificates, private keys, environment files, or unrestricted project-folder access.",
     ],
+    assembly: {
+      strategy:
+        "balanced-context-v1: source diversity first, then human direction and AI Fluency signals, then recency within the bounded token budget.",
+      priority_order: [...PACKET_PRIORITY_ORDER],
+      source_counts: {},
+      included_counts: {},
+      omitted_count: 0,
+      omitted_by_source: {},
+      disclosure: [
+        "Workprint sends a bounded evidence packet, not the whole project folder or complete chat history.",
+        "The packet reserves room for source diversity and human-direction signals before filling remaining space with recent evidence.",
+      ],
+    },
   };
 
   for (const item of input.evidence) {
-    const candidate = normalizeEvidenceItem(item);
+    packet.assembly.source_counts[item.source] =
+      (packet.assembly.source_counts[item.source] ?? 0) + 1;
+  }
+
+  const selected = assembleEvidenceCandidates(input.evidence);
+  const includedIds = new Set<string>();
+
+  for (const item of selected) {
+    const candidate = normalizeEvidenceItem(item.evidence, item.reasons);
     const candidatePacket = {
       ...packet,
       evidence: [...packet.evidence, candidate],
@@ -263,13 +327,36 @@ export function buildEvidencePacket(input: {
     if (approximateTokens > MAX_EVIDENCE_PACKET_TOKENS) {
       packet.truncated = true;
       packet.unknowns.push(
-        "Some selected evidence was not sent because it exceeded Workprint's 30,000-token packet ceiling.",
+        "Some selected evidence was not sent because it exceeded Workprint's 45,000-token packet ceiling.",
       );
       break;
     }
 
     packet.evidence.push(candidate);
+    includedIds.add(candidate.id);
+    packet.assembly.included_counts[candidate.source] =
+      (packet.assembly.included_counts[candidate.source] ?? 0) + 1;
     packet.approximate_tokens = approximateTokens;
+  }
+
+  const omitted = input.evidence.filter((item) => !includedIds.has(item.id));
+  packet.assembly.omitted_count = omitted.length;
+  for (const item of omitted) {
+    packet.assembly.omitted_by_source[item.source] =
+      (packet.assembly.omitted_by_source[item.source] ?? 0) + 1;
+  }
+
+  if (omitted.length > 0 && !packet.truncated) {
+    packet.truncated = true;
+  }
+
+  if (omitted.length > 0) {
+    packet.unknowns.push(
+      `${omitted.length} selected evidence item(s) were omitted from the provider packet after Workprint balanced source diversity, human-direction signals, AI Fluency signals, and recency.`,
+    );
+    packet.assembly.disclosure.push(
+      `${omitted.length} selected evidence item(s) were omitted from the provider packet to stay within the bounded token budget.`,
+    );
   }
 
   return packet;
@@ -350,6 +437,18 @@ export function validateCandidateInsight(
     };
   }
 
+  const aiFluencyAligned = aiFluencyLensPatterns.some((pattern) =>
+    pattern.test(claimAndExplanationText),
+  );
+  if (!aiFluencyAligned) {
+    return {
+      ok: false,
+      code: "boundary_violation",
+      message:
+        "The provider insight did not align with an evidence-supported AI Fluency lens: Delegation, Description, Discernment, or Diligence.",
+    };
+  }
+
   const packetIds = new Set(packet.evidence.map((item) => item.id));
   const invalidIds = insight.evidence_ids.filter((id) => !packetIds.has(id));
   if (invalidIds.length > 0) {
@@ -377,6 +476,7 @@ export function validateCandidateInsight(
     notes: [
       "The final claim cites evidence IDs from the bounded packet.",
       "The final claim passed Workprint's deterministic attribution-boundary checks.",
+      "The final claim passed Workprint's AI Fluency lens check.",
     ],
   };
 }
@@ -468,7 +568,7 @@ export function parseCandidateInsight(text: string): CandidateInsight | null {
   }
 }
 
-function normalizeEvidenceItem(item: EvidenceItem): EvidencePacketItem {
+function normalizeEvidenceItem(item: EvidenceItem, includedFor: string[]): EvidencePacketItem {
   return {
     id: item.id,
     source: item.source,
@@ -476,11 +576,71 @@ function normalizeEvidenceItem(item: EvidenceItem): EvidencePacketItem {
     excerpt: item.excerpt,
     supports: item.supports,
     does_not_prove: item.doesNotProve,
+    included_for: includedFor,
   };
 }
 
 function approximateTokenCount(value: unknown) {
   return Math.ceil(JSON.stringify(value).length / APPROX_CHARS_PER_TOKEN);
+}
+
+function assembleEvidenceCandidates(evidence: EvidenceItem[]) {
+  const selected = new Map<string, { evidence: EvidenceItem; reasons: string[] }>();
+
+  const add = (item: EvidenceItem, reason: string) => {
+    const current = selected.get(item.id);
+    if (current) {
+      if (!current.reasons.includes(reason)) {
+        current.reasons.push(reason);
+      }
+      return;
+    }
+    selected.set(item.id, { evidence: item, reasons: [reason] });
+  };
+
+  const bySource = new Map<string, EvidenceItem[]>();
+  for (const item of evidence) {
+    const sourceItems = bySource.get(item.source) ?? [];
+    sourceItems.push(item);
+    bySource.set(item.source, sourceItems);
+  }
+
+  for (const source of [...bySource.keys()].sort()) {
+    const first = bySource.get(source)?.[0];
+    if (first) {
+      add(first, "source diversity");
+    }
+  }
+
+  for (const item of evidence) {
+    const text = evidenceSearchText(item);
+    if (firstInsightRequiredPatterns.some((pattern) => pattern.test(text))) {
+      add(item, "human direction and judgment");
+    }
+  }
+
+  for (const item of evidence) {
+    const text = evidenceSearchText(item);
+    if (aiFluencyLensPatterns.some((pattern) => pattern.test(text))) {
+      add(item, "AI Fluency 4D signals");
+    }
+  }
+
+  for (const item of evidence) {
+    add(item, "recency");
+  }
+
+  return [...selected.values()];
+}
+
+function evidenceSearchText(item: EvidenceItem) {
+  return [
+    item.source,
+    item.title,
+    item.excerpt,
+    item.supports,
+    item.doesNotProve,
+  ].join(" ");
 }
 
 async function callOpenAI(input: {
