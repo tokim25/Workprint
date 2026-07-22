@@ -1,0 +1,42 @@
+{
+  "workprint_source": "chat-summary",
+  "id": "workprint-dogfood-summary",
+  "title": "Workprint long-chat dogfood summary",
+  "approved_by_user": true,
+  "approved_at": "2026-07-21T16:45:00-07:00",
+  "original_sources": [
+    "Claude Code session",
+    "Gemini provider dogfood"
+  ],
+  "date_range": {
+    "start": "2026-07-21",
+    "end": "2026-07-21"
+  },
+  "participants": [
+    "Tony",
+    "Codex",
+    "Gemini"
+  ],
+  "tools": [
+    "Claude Code",
+    "Gemini",
+    "Git"
+  ],
+  "summary_method": "user-approved summary",
+  "summary": "Tony used Workprint dogfooding to evaluate whether provider insights explained his role, not just which evidence sources existed.",
+  "key_decisions": [
+    "Tony decided that first insights must explain what the user did or where human judgment, review, or sequencing appears."
+  ],
+  "user_direction": [
+    "Tony directed Workprint to treat source detection as insufficient for a first insight."
+  ],
+  "ai_fluency_notes": [
+    "Discernment appears in repeated dogfood review of provider output before release."
+  ],
+  "unknowns": [
+    "The summary does not include the complete chat transcript and cannot prove every intermediate decision."
+  ],
+  "limitations": [
+    "Summary evidence depends on the accuracy of the user-approved summary."
+  ]
+}

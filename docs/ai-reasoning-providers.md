@@ -72,14 +72,17 @@ is useful, but it must not crowd out source diversity or human-direction
 signals.
 
 When complete chat histories cannot fit, Workprint should help the user
-contextualize them rather than pretending the packet is complete. Acceptable
-future approaches include evidence summaries, user-approved chat-history
-bundles, source-level packet budgets, and explicit "not sent" disclosures.
+contextualize them rather than pretending the packet is complete. The
+supported first step is user-approved `chat-summary` evidence: a reviewed
+summary file that can capture long-chat context while remaining clearly labeled
+as summary evidence, not a full transcript. Future improvements may add
+source-level packet budgets and more explicit "not sent" disclosures.
 
 It may include:
 
 - evidence IDs;
 - selected excerpts;
+- user-approved chat-summary records that preserve their summary boundary;
 - source labels;
 - file names and relative paths;
 - timestamps;

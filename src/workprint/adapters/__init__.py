@@ -1,4 +1,5 @@
 from .base import EvidenceAdapter
+from .chat_summary import ChatSummaryAdapter, build_chat_summary_template
 from .chatgpt import ChatGPTAdapter
 from .claude import ClaudeAdapter
 from .claude_code import ClaudeCodeAdapter
@@ -12,6 +13,8 @@ from .registry import available_adapters, get_adapter
 
 __all__ = [
     "EvidenceAdapter",
+    "ChatSummaryAdapter",
+    "build_chat_summary_template",
     "ChatGPTAdapter",
     "ClaudeAdapter",
     "ClaudeCodeAdapter",

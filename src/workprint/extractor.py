@@ -82,6 +82,37 @@ def _statement(message: NormalizedMessage, activity: str) -> str:
     return f"{actor} {verbs[activity]}: {compact}"
 
 
+def _summary_activity(message: NormalizedMessage, fallback: str) -> str:
+    kind = str((message.metadata or {}).get("summary_item_kind") or "")
+    if kind == "decision":
+        return "decision"
+    if kind == "unknown":
+        return "unknown"
+    if kind == "user_direction":
+        return "decision"
+    return fallback
+
+
+def _summary_statement(message: NormalizedMessage, activity: str) -> str:
+    compact = " ".join(message.content.split())
+    if len(compact) > 240:
+        compact = compact[:237].rstrip() + "..."
+    kind = str((message.metadata or {}).get("summary_item_kind") or "summary")
+    labels = {
+        "summary": "summary",
+        "summary_block": "summary",
+        "decision": "decision",
+        "user_direction": "user direction",
+        "ai_fluency_note": "AI fluency note",
+        "unknown": "evidence gap",
+    }
+    label = labels.get(kind, activity.replace("_", " "))
+    return (
+        f"User-approved chat summary recorded {label}: {compact} "
+        "This is summary evidence, not the full transcript."
+    )
+
+
 def _digest(*parts: object) -> str:
     return sha1(":".join(str(part) for part in parts).encode("utf-8")).hexdigest()[:10]
 
@@ -254,6 +285,13 @@ def extract_observations(
             continue
         activity = _classify(message)
         message_metadata = message.metadata or {}
+        if message_metadata.get("summary_evidence"):
+            activity = _summary_activity(message, activity)
+            actor = "User-approved summary"
+            statement = _summary_statement(message, activity)
+        else:
+            actor = "Human" if message.role == "human" else message.source
+            statement = _statement(message, activity)
         digest = _digest(message.source, message.conversation_id, message.id)
         observations.append(
             Observation(
@@ -261,9 +299,9 @@ def extract_observations(
                 timestamp=message.created_at,
                 source=message.source,
                 source_type=str(message_metadata.get("source_type") or "conversation"),
-                actor="Human" if message.role == "human" else message.source,
+                actor=actor,
                 activity=activity,
-                statement=_statement(message, activity),
+                statement=statement,
                 evidence_refs=(message.source_locator,),
                 reliability="high",
                 metadata={

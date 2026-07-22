@@ -81,6 +81,8 @@ a terminal — only *using* the downloaded release doesn't.
 - **Local Claude Code, Claude Cowork, and Claude Desktop Chat** session
   history, read directly from your machine.
 - **Exported conversations** from ChatGPT and Claude.
+- **User-approved long-chat summaries** for context that cannot fit in a
+  bounded packet, labeled as summary evidence rather than full transcripts.
 - **Static exports** from Google Docs and Figma.
 
 Each source is read with clear, documented boundaries — see
@@ -89,6 +91,8 @@ Each source is read with clear, documented boundaries — see
 [docs/claude-cowork-adapter.md](docs/claude-cowork-adapter.md), and
 [docs/claude-desktop-chat-adapter.md](docs/claude-desktop-chat-adapter.md)
 for exactly what each source does and does not tell Workprint.
+See [docs/chat-summary-evidence.md](docs/chat-summary-evidence.md) for the
+user-approved summary format and its limits.
 
 ## Run It Yourself
 
@@ -164,6 +168,17 @@ workprint guide \
   --output-dir workprint-output \
   --yes
 ```
+
+**Create a user-approved long-chat summary template:**
+
+```bash
+workprint chat-summary-template \
+  --title "Project long-chat summary" \
+  --output project-chat-summary.json
+```
+
+Review the file before changing `approved_by_user` to `true`. Workprint treats
+this as summary evidence, not proof that the complete chat history was sent.
 
 **Investigate a single exported source:**
 

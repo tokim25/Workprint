@@ -187,10 +187,11 @@ patterns, confidence, and evidence gaps. This is not a current capability.
 
 ## Major Capabilities
 
-Workprint can import supported ChatGPT and Claude conversation exports, static
-Google Docs exports, static Figma JSON exports, ordinary project notes, and
-local Git repository metadata. It can discover supported evidence in a project
-folder, combine multiple sources into one investigation, generate
+Workprint can import supported ChatGPT and Claude conversation exports,
+user-approved long-chat summaries, static Google Docs exports, static Figma
+JSON exports, ordinary project notes, and local Git repository metadata. It
+can discover supported evidence in a project folder, combine multiple sources
+into one investigation, generate
 deterministic observations and timeline events, build an Executive Report, run
 the Executive Report copy-quality audit offline, and render Markdown or JSON
 outputs.

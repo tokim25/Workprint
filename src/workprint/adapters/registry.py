@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from .base import EvidenceAdapter
+from .chat_summary import ChatSummaryAdapter
 from .chatgpt import ChatGPTAdapter
 from .claude import ClaudeAdapter
 from .claude_code import ClaudeCodeAdapter
@@ -19,6 +20,7 @@ AdapterFactory = Callable[[], EvidenceAdapter]
 
 _ADAPTERS: dict[str, AdapterFactory] = {
     "chatgpt": ChatGPTAdapter,
+    "chat-summary": ChatSummaryAdapter,
     "claude": ClaudeAdapter,
     "claude-code": ClaudeCodeAdapter,
     "claude-cowork": ClaudeCoworkAdapter,

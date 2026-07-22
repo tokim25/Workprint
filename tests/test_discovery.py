@@ -38,6 +38,7 @@ class DiscoveryTests(unittest.TestCase):
 
         self.assertFalse(discovery.ready)
         self.assertIn("No supported evidence found.", rendered)
+        self.assertIn("- Chat Summary", rendered)
         self.assertIn("- ChatGPT", rendered)
         self.assertIn("- Figma", rendered)
 
@@ -66,6 +67,22 @@ class DiscoveryTests(unittest.TestCase):
         result = self._result(discovery, "chatgpt")
         self.assertEqual(result.file_count, 1)
         self.assertEqual(result.metadata["record_count"], 1)
+
+    def test_detects_chat_summary_fixture(self):
+        with tempfile.TemporaryDirectory() as directory:
+            self._copy_fixture(
+                "fixtures/chat-summary/sample-summary.json",
+                directory,
+                "sample-summary.json",
+            )
+            discovery = discover_project(directory)
+            rendered = render_discovery(discovery)
+
+        result = self._result(discovery, "chat-summary")
+        self.assertEqual(result.label, "Chat Summary")
+        self.assertEqual(result.file_count, 1)
+        self.assertEqual(result.detected_files, ("sample-summary.json",))
+        self.assertIn("5 user-approved summary items", rendered)
 
     def test_detects_claude_fixture(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -160,6 +177,11 @@ class DiscoveryTests(unittest.TestCase):
                 "chatgpt.json",
             )
             self._copy_fixture(
+                "fixtures/chat-summary/sample-summary.json",
+                directory,
+                "chat-summary.json",
+            )
+            self._copy_fixture(
                 "fixtures/google-docs/sample-document.md",
                 directory,
                 "doc.md",
@@ -175,10 +197,10 @@ class DiscoveryTests(unittest.TestCase):
         self.assertTrue(discovery.git_repository)
         self.assertEqual(
             [item.source for item in discovery.results],
-            ["chatgpt", "figma", "git", "google-docs"],
+            ["chat-summary", "chatgpt", "figma", "git", "google-docs"],
         )
-        self.assertEqual(discovery.supported_files, 4)
-        self.assertEqual(discovery.evidence_sources, 4)
+        self.assertEqual(discovery.supported_files, 5)
+        self.assertEqual(discovery.evidence_sources, 5)
 
     def test_malformed_candidate_does_not_abort_discovery(self):
         with tempfile.TemporaryDirectory() as directory:
