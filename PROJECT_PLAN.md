@@ -23,6 +23,7 @@ usable by people with limited coding knowledge.
 - [x] Claude Code adapter
 - [x] Claude Cowork adapter
 - [x] Claude Desktop Chat adapter (experimental deep-parse mode)
+- [x] User-approved long-chat summary evidence
 - [x] Local MCP server
 - [x] Report visual design and shareability
 - [x] Executive Report v1
@@ -294,8 +295,8 @@ Implemented scope:
 - Current working directory default when no path is supplied.
 - Recursive filesystem scan.
 - Git repository detection as a selectable evidence source.
-- Adapter-driven detection for ChatGPT, Claude, Google Docs, Project Notes,
-  and Figma evidence.
+- Adapter-driven detection for ChatGPT, Claude, Chat Summary, Google Docs,
+  Project Notes, and Figma evidence.
 - Deterministic source and file ordering.
 - Project readiness summary.
 - No evidence import, investigation generation, report rendering, file

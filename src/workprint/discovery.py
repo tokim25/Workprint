@@ -252,6 +252,7 @@ def render_discovery(discovery: ProjectDiscovery) -> str:
             "",
             "Supported sources:",
             "- ChatGPT",
+            "- Chat Summary",
             "- Claude",
             "- Claude Code",
             "- Claude Cowork",
@@ -299,6 +300,10 @@ def _summary_line(result: DiscoveryResult) -> str:
         count = result.metadata.get("record_count", 0)
         noun = "conversation" if count == 1 else "conversations"
         return f"{count} {noun}"
+    if result.source == "chat-summary":
+        count = result.metadata.get("record_count", 0)
+        noun = "summary item" if count == 1 else "summary items"
+        return f"{count} user-approved {noun}"
     if result.source in {"claude-code", "claude-cowork"}:
         count = result.metadata.get("record_count", 0)
         noun = "session" if count == 1 else "sessions"

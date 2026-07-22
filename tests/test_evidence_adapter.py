@@ -4,6 +4,7 @@ from pathlib import Path
 
 from workprint.adapters import (
     ChatGPTAdapter,
+    ChatSummaryAdapter,
     ClaudeAdapter,
     ClaudeCodeAdapter,
     ClaudeCoworkAdapter,
@@ -31,6 +32,7 @@ class EvidenceAdapterTests(unittest.TestCase):
         self.assertEqual(
             available_adapters(),
             (
+                "chat-summary",
                 "chatgpt",
                 "claude",
                 "claude-code",
@@ -42,6 +44,10 @@ class EvidenceAdapterTests(unittest.TestCase):
                 "project-notes",
             ),
         )
+
+    def test_registry_returns_chat_summary_adapter(self):
+        adapter = get_adapter("chat-summary")
+        self.assertIsInstance(adapter, ChatSummaryAdapter)
 
     def test_registry_returns_claude_adapter(self):
         adapter = get_adapter("claude")

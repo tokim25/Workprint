@@ -72,6 +72,12 @@ class ProviderReasoningWebTests(unittest.TestCase):
         self.assertIn("OpenAI API keys", source)
         self.assertIn("Anthropic Console API keys", source)
         self.assertIn("Google AI Studio API keys", source)
+        self.assertIn("Need fuller long-chat context?", source)
+        self.assertIn("Prompt to copy", source)
+        self.assertIn("what I directed, decided, reviewed, sequenced, or", source)
+        self.assertIn("corrected; what AI or tooling appears to have done", source)
+        self.assertIn("summary evidence only", source)
+        self.assertIn("complete chat history was sent", source)
 
     def test_deterministic_validation_rejects_forbidden_claims(self):
         source = (ROOT / "lib" / "provider-reasoning.ts").read_text(

@@ -30,11 +30,24 @@ observations, build findings, generate a timeline, or modify files.
 ## Supported Evidence
 
 - Git repository
+- User-approved chat summaries
 - ChatGPT exports
 - Claude exports
 - Google Docs static exports
 - Project notes and documentation
 - Figma static exports
+
+Chat Summary `.json` exports are auto-discovered only when they declare
+`workprint_source: chat-summary` and `approved_by_user: true`. Chat Summary
+`.md` and `.txt` files are auto-discovered only when they contain this explicit
+marker near the top:
+
+```text
+workprint-source: chat-summary
+```
+
+This keeps ordinary repository notes from being treated as long-chat summary
+evidence.
 
 Google Docs `.json` exports are auto-discovered when they match the supported
 structured schema. Google Docs `.md` and `.txt` files are auto-discovered only

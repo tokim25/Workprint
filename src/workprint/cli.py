@@ -5,7 +5,11 @@ import json
 from pathlib import Path
 from typing import Sequence
 
-from workprint.adapters import available_adapters, get_adapter
+from workprint.adapters import (
+    available_adapters,
+    build_chat_summary_template,
+    get_adapter,
+)
 from workprint.discovery import discover_project, render_discovery
 from workprint.engine import build_investigation
 from workprint.extractor import extract_observations
@@ -58,6 +62,20 @@ def build_parser() -> argparse.ArgumentParser:
     )
     validate_parser.add_argument("source", choices=available_adapters())
     validate_parser.add_argument("input")
+
+    summary_template_parser = subparsers.add_parser(
+        "chat-summary-template",
+        help="Create a user-approved long-chat summary template.",
+    )
+    summary_template_parser.add_argument(
+        "--title",
+        default="Untitled chat summary",
+        help="Title to include in the summary template.",
+    )
+    summary_template_parser.add_argument(
+        "--output",
+        help="Path for the JSON template. Prints to stdout when omitted.",
+    )
 
     guide_parser = subparsers.add_parser(
         "guide",
@@ -137,6 +155,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         except ValueError as exc:
             parser.error(str(exc))
         print(render_discovery(discovery))
+        return 0
+
+    if args.command == "chat-summary-template":
+        output = json.dumps(
+            build_chat_summary_template(title=args.title),
+            indent=2,
+            ensure_ascii=False,
+        ) + "\n"
+        _write(args.output, output)
         return 0
 
     if args.command == "investigate-multi":

@@ -35,6 +35,12 @@ records. Future conversation adapters such as Gemini can target the same
 normalized type. Non-conversation adapters may return different normalized
 record types while preserving the same adapter contract.
 
+`ChatSummaryAdapter` also returns `NormalizedMessage` records, but marks them
+with source type `summary` and metadata that preserves the evidence boundary:
+the user approved a summary, not necessarily a complete transcript. Extraction
+keeps that boundary visible in observations so reports do not imply that
+Workprint saw every omitted chat turn.
+
 Adapters are registered through `workprint.adapters.registry`. The CLI uses
 that registry rather than importing vendor-specific classes directly.
 
@@ -121,6 +127,19 @@ node `last_modified` values may be used as normalized compatibility timestamps
 for ordering, but they represent last observed modification rather than
 creation time. Contributors, owners, and editors remain metadata unless
 evidence explicitly links a person to a node or action.
+
+## User-approved chat summaries
+
+The chat-summary adapter reads conservative `.json`, `.md`, and `.txt`
+summary evidence. JSON summaries must declare `workprint_source:
+chat-summary` and `approved_by_user: true`. Markdown and text summaries must
+include the explicit marker `workprint-source: chat-summary` for discovery.
+
+Chat summaries are useful when long histories cannot fit in a bounded provider
+packet. They preserve user-supplied context, decisions, user direction, AI
+Fluency notes, unknowns, and limitations. They do not recover omitted turns,
+complete chronology, or exact transcript wording, and they must not be used to
+infer authorship, ownership, effort, value, or contribution percentages.
 
 ## Normalized message
 

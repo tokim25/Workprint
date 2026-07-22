@@ -1313,6 +1313,33 @@ export function WorkprintApp() {
                   sure you have permission to process this evidence with the
                   selected provider.
                 </p>
+                <details className="mt-4 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4 text-sm leading-6 text-[var(--muted)]">
+                  <summary className="cursor-pointer font-semibold text-[var(--foreground)]">
+                    Need fuller long-chat context?
+                  </summary>
+                  <p className="mt-3">
+                    If a long chat is too large for the bounded evidence packet,
+                    ask your AI tool to create a summary first, then review and
+                    approve it before adding it to Workprint.
+                  </p>
+                  <p className="mt-3 font-semibold text-[var(--foreground)]">
+                    Prompt to copy:
+                  </p>
+                  <blockquote className="mt-2 rounded-2xl bg-[var(--surface-soft)] p-4">
+                    Summarize this chat for Workprint as user-approved evidence.
+                    Focus on what I directed, decided, reviewed, sequenced, or
+                    corrected; what AI or tooling appears to have done; how the
+                    work moved from idea to implementation; and what the summary
+                    cannot prove because it is not the full transcript. Do not
+                    infer authorship, ownership, effort, value, or contribution
+                    percentages.
+                  </blockquote>
+                  <p className="mt-3">
+                    Workprint treats that file as summary evidence only. It
+                    should never say the complete chat history was sent unless
+                    the complete chat history was actually selected and included.
+                  </p>
+                </details>
                 <button
                   className="mt-5 rounded-full bg-[var(--accent)] px-6 py-4 font-semibold text-white transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50"
                   disabled={

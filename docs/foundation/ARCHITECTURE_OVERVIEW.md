@@ -33,8 +33,9 @@ Markdown / JSON
 
 Responsibility: Evidence sources are the raw materials supplied by the user or
 found in a project folder. Current sources include ChatGPT exports, Claude
-exports, static Google Docs exports, static Figma JSON exports, and Git
-repository presence detected during discovery.
+exports, user-approved chat summaries, static Google Docs exports, static
+Figma JSON exports, project notes, and Git repository presence detected during
+discovery.
 
 Inputs: Files, folders, exports, metadata, and other source artifacts.
 
@@ -70,7 +71,8 @@ adapter declares a stable source identifier, reads supported artifacts, and
 returns Workprint-normalized records with evidence references.
 
 Inputs: A specific supported source artifact, such as a ChatGPT export, Claude
-export, Google Docs static export, or Figma JSON export.
+export, user-approved chat summary, Google Docs static export, or Figma JSON
+export.
 
 Outputs: Normalized evidence records.
 
