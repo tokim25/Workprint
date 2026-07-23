@@ -29,9 +29,10 @@ No coding experience is required to use it.
    (unlocks Git history and local Claude session evidence) or add
    individual files for evidence — or just click **Use sample project**
    to try Workprint without picking anything.
-4. **Connect a reasoning provider.** OpenAI is the first planned provider;
-   Claude, Gemini, Microsoft Copilot, and GitHub Copilot should follow through
-   the same evidence-packet contract.
+4. **Connect a reasoning provider.** OpenAI, Claude, and Gemini appear as
+   equal bring-your-own-key choices — there is no default. Microsoft Copilot
+   and GitHub Copilot are planned as a separate, later integration since they
+   don't fit the same simple API-key model.
 5. **Click Investigate.** Workprint sends selected, bounded evidence to the
    provider you choose for reasoning, then shows supported findings with a
    plain-language explanation of *why* it believes them and what it still
@@ -55,6 +56,19 @@ account or enterprise agreements fit your obligations.
 See [docs/ai-reasoning-providers.md](docs/ai-reasoning-providers.md) and
 [docs/foundation/AI_REASONING_PRIVACY.md](docs/foundation/AI_REASONING_PRIVACY.md)
 for the reasoning, privacy, and licensing boundaries.
+
+### No Install? Use Workprint Inside Claude Or ChatGPT
+
+Prefer not to download anything yet, or don't have an Apple Silicon Mac? The
+same investigation approach is also available as a **Claude Skill** and a
+**ChatGPT Custom GPT**:
+**[github.com/tokim25/workprint-skills](https://github.com/tokim25/workprint-skills)**.
+
+This is a lighter-weight version of Workprint. It applies the same
+evidence-boundary and claim rules through instructions (plus a script run for
+the ChatGPT zip-upload path), not through this app's full deterministic
+validation pipeline — good for trying the idea; the desktop app above remains
+the fuller, more rigorously checked experience.
 
 ### The AI Fluency Playbook Worksheet
 
@@ -131,7 +145,10 @@ Apple Developer credentials, and isn't set up yet).
 ### Connect Workprint to Claude directly (MCP)
 
 Workprint also runs as a local MCP server, so Claude Desktop or Claude
-Code can call it directly to discover and investigate a project. See
+Code can call it directly to discover and investigate a project. This is a
+different integration from the Claude Skill above — MCP requires setting up
+this repository's Python backend as a local server; the Skill only needs a
+folder of instructions dropped into Claude, no server required. See
 [docs/mcp-server.md](docs/mcp-server.md) for setup.
 
 ## Expert CLI Reference
