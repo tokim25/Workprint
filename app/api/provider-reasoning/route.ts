@@ -3,13 +3,17 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
   buildEvidencePacket,
+  buildFallbackInsight,
   buildProviderPrompt,
   buildProviderRepairPrompt,
   callReasoningProvider,
+  CLAUDE_FALLBACK_MODELS,
   defaultProviderModel,
   GEMINI_FALLBACK_MODELS,
+  isModelUnavailableError,
   isProviderCapacityError,
   isReasoningProviderId,
+  OPENAI_FALLBACK_MODELS,
   parseCandidateInsight,
   providerLabel,
   validateCandidateInsight,
@@ -93,7 +97,14 @@ export async function POST(request: Request) {
     });
     const firstValidation = validateCandidateInsight(firstPass.insight, packet);
     if (!firstValidation.ok) {
-      return errorResponse(firstValidation.code, firstValidation.message, 400);
+      return fallbackResponse({
+        fallbackReason: firstValidation.message,
+        packet,
+        provider: validation.provider,
+        providerLabel: providerLabel(validation.provider),
+        model: firstPass.model,
+        notes: firstPass.notes,
+      });
     }
 
     const secondPass = await runReasoningPass({
@@ -107,7 +118,14 @@ export async function POST(request: Request) {
     });
     const finalValidation = validateCandidateInsight(secondPass.insight, packet);
     if (!finalValidation.ok) {
-      return errorResponse(finalValidation.code, finalValidation.message, 400);
+      return fallbackResponse({
+        fallbackReason: finalValidation.message,
+        packet,
+        provider: validation.provider,
+        providerLabel: providerLabel(validation.provider),
+        model: secondPass.model,
+        notes: dedupeNotes([...firstPass.notes, ...secondPass.notes]),
+      });
     }
 
     return NextResponse.json({
@@ -150,6 +168,38 @@ export async function POST(request: Request) {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+function fallbackResponse(input: {
+  fallbackReason: string;
+  model: string;
+  notes: string[];
+  packet: EvidencePacket;
+  provider: ReasoningProviderId;
+  providerLabel: string;
+}) {
+  const fallback = buildFallbackInsight(input.packet, input.fallbackReason);
+  return NextResponse.json({
+    ok: true,
+    provider: input.provider,
+    providerLabel: input.providerLabel,
+    model: input.model,
+    insight: fallback,
+    packet: {
+      evidenceCount: input.packet.evidence.length,
+      approximateTokens: input.packet.approximate_tokens,
+      truncated: input.packet.truncated,
+      unknowns: input.packet.unknowns,
+    },
+    validation: {
+      status: "fallback",
+      notes: dedupeNotes([
+        ...input.notes,
+        input.fallbackReason,
+        "Workprint replaced the provider wording with a strict helpful fallback because role evidence was insufficient or the candidate crossed a first-insight boundary.",
+      ]),
+    },
+  });
 }
 
 export function GET() {
@@ -230,6 +280,12 @@ async function runReasoningPass(input: {
   };
 }
 
+const PROVIDER_FALLBACK_MODELS: Record<ReasoningProviderId, readonly string[]> = {
+  openai: OPENAI_FALLBACK_MODELS,
+  claude: CLAUDE_FALLBACK_MODELS,
+  gemini: GEMINI_FALLBACK_MODELS,
+};
+
 async function callProviderWithFallback(input: {
   apiKey: string;
   model: string;
@@ -244,11 +300,19 @@ async function callProviderWithFallback(input: {
       response: await callReasoningProvider(input),
     };
   } catch (error) {
-    if (input.provider !== "gemini" || !isProviderCapacityError(error)) {
+    const isCapacityError = isProviderCapacityError(error);
+    const isUnavailableModel = isModelUnavailableError(error);
+
+    if (!isCapacityError && !isUnavailableModel) {
       throw error;
     }
 
-    for (const fallbackModel of GEMINI_FALLBACK_MODELS) {
+    const label = providerLabel(input.provider);
+    const reason = isUnavailableModel
+      ? `${label}'s selected model (${input.model}) is no longer available for this account.`
+      : `${label} reported ${input.model} was temporarily busy.`;
+
+    for (const fallbackModel of PROVIDER_FALLBACK_MODELS[input.provider]) {
       if (sameModel(input.model, fallbackModel)) {
         continue;
       }
@@ -256,16 +320,14 @@ async function callProviderWithFallback(input: {
       try {
         return {
           model: fallbackModel,
-          notes: [
-            `Gemini reported ${input.model} was temporarily busy, so Workprint retried with ${fallbackModel}.`,
-          ],
+          notes: [`${reason} Workprint retried with a newer ${label} model (${fallbackModel}).`],
           response: await callReasoningProvider({
             ...input,
             model: fallbackModel,
           }),
         };
       } catch (fallbackError) {
-        if (!isProviderCapacityError(fallbackError)) {
+        if (!isProviderCapacityError(fallbackError) && !isModelUnavailableError(fallbackError)) {
           throw fallbackError;
         }
       }
@@ -273,7 +335,7 @@ async function callProviderWithFallback(input: {
 
     throw Object.assign(
       new Error(
-        "Gemini is currently experiencing high demand. Workprint tried the fallback model too; please try again later or choose another provider.",
+        `${reason} Workprint tried a fallback model too; please try again later or choose another provider.`,
       ),
       { code: "provider_failed" satisfies ReasoningFailureCode },
     );
