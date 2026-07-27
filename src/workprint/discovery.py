@@ -16,13 +16,18 @@ EXCLUDED_DIRECTORIES = {
     ".turbo",
     ".venv",
     "__pycache__",
+    "__tests__",
     "bower_components",
     "build",
     "coverage",
     "dist",
+    "fixtures",
     "node_modules",
     "out",
+    "spec",
     "target",
+    "test",
+    "tests",
     "tmp",
     "vendor",
     "venv",
@@ -83,7 +88,8 @@ class ProjectDiscovery:
 def _iter_files(root: Path) -> list[Path]:
     files: list[Path] = []
     for path in root.rglob("*"):
-        if any(part in EXCLUDED_DIRECTORIES for part in path.parts):
+        relative_parts = path.relative_to(root).parts
+        if any(part in EXCLUDED_DIRECTORIES for part in relative_parts):
             continue
         if path.is_file():
             files.append(path)

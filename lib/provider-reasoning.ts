@@ -9,12 +9,12 @@ export const REASONING_PROVIDERS = [
   {
     id: "claude",
     label: "Claude",
-    defaultModel: "claude-sonnet-4-5",
+    defaultModel: "claude-sonnet-5",
   },
   {
     id: "gemini",
     label: "Gemini",
-    defaultModel: "gemini-3.5-flash",
+    defaultModel: "gemini-3.6-flash",
   },
 ] as const;
 
@@ -60,6 +60,22 @@ export type CandidateInsight = {
   confidence: string;
   unknowns: string;
   provider_uncertainty: string;
+  visible_role_patterns: VisibleRolePattern[];
+  role_section_label: string;
+  why_workprint_uses_this_phrase: string;
+  what_this_does_not_prove: string;
+  summary_evidence_used: boolean;
+  summary_evidence_boundary: string;
+  fallback_reason: string | null;
+};
+
+export type VisibleRolePattern = {
+  label: string;
+  basis: string;
+  behaviors: string[];
+  confidence: string;
+  evidence_refs: string[];
+  boundary: string;
 };
 
 export const PROVIDER_INSIGHT_RESPONSE_SCHEMA = {
@@ -91,6 +107,58 @@ export const PROVIDER_INSIGHT_RESPONSE_SCHEMA = {
       type: "string",
       description: "Any uncertainty from this reasoning pass.",
     },
+    visible_role_patterns: {
+      type: "array",
+      description:
+        "Up to two evidence-backed working-pattern labels for the proof card, not official job titles.",
+      items: {
+        type: "object",
+        properties: {
+          label: { type: "string" },
+          basis: { type: "string" },
+          behaviors: { type: "array", items: { type: "string" } },
+          confidence: { type: "string" },
+          evidence_refs: { type: "array", items: { type: "string" } },
+          boundary: { type: "string" },
+        },
+        required: [
+          "label",
+          "basis",
+          "behaviors",
+          "confidence",
+          "evidence_refs",
+          "boundary",
+        ],
+      },
+    },
+    role_section_label: {
+      type: "string",
+      description: 'Must be exactly "How you shaped the work".',
+    },
+    why_workprint_uses_this_phrase: {
+      type: "string",
+      description:
+        "A concise explanation of why the working-pattern phrase fits the cited evidence.",
+    },
+    what_this_does_not_prove: {
+      type: "string",
+      description:
+        "A concise boundary. It must not prove authorship, ownership, effort, or contribution share.",
+    },
+    summary_evidence_used: {
+      type: "boolean",
+      description: "Whether the claim relies on user-approved summary evidence.",
+    },
+    summary_evidence_boundary: {
+      type: "string",
+      description:
+        "Boundary for summary evidence, or empty string if no summary evidence was used.",
+    },
+    fallback_reason: {
+      type: "string",
+      description:
+        "Empty string for a supported role insight; a plain reason when Workprint must fallback.",
+    },
   },
   required: [
     "claim",
@@ -99,6 +167,13 @@ export const PROVIDER_INSIGHT_RESPONSE_SCHEMA = {
     "confidence",
     "unknowns",
     "provider_uncertainty",
+    "visible_role_patterns",
+    "role_section_label",
+    "why_workprint_uses_this_phrase",
+    "what_this_does_not_prove",
+    "summary_evidence_used",
+    "summary_evidence_boundary",
+    "fallback_reason",
   ],
 } as const;
 
@@ -117,7 +192,7 @@ export type ReasoningSuccess = {
     unknowns: string[];
   };
   validation: {
-    status: "accepted" | "rewritten_down" | "held_for_review";
+    status: "accepted" | "rewritten_down" | "held_for_review" | "fallback";
     notes: string[];
   };
 };
@@ -140,9 +215,11 @@ export type ReasoningFailure = {
 };
 
 export const MAX_EVIDENCE_PACKET_TOKENS = 45_000;
-export const GEMINI_FALLBACK_MODELS = ["gemini-2.5-flash"] as const;
+export const GEMINI_FALLBACK_MODELS = ["gemini-3.5-flash-lite"] as const;
+export const OPENAI_FALLBACK_MODELS = ["gpt-5-mini"] as const;
+export const CLAUDE_FALLBACK_MODELS = ["claude-haiku-4-5-20251001"] as const;
 const APPROX_CHARS_PER_TOKEN = 4;
-const MAX_PROVIDER_OUTPUT_TOKENS = 2_000;
+const MAX_PROVIDER_OUTPUT_TOKENS = 3_000;
 const PACKET_PRIORITY_ORDER = [
   "source diversity",
   "human direction and judgment",
@@ -160,6 +237,21 @@ const forbiddenClaimPatterns = [
   /\beffort\b/i,
   /\bdid most of the work\b/i,
   /\bhuman[-\s]?versus[-\s]?AI\b/i,
+  /\byou were the\b/i,
+  /\byour official role\b/i,
+  /\byou deserve credit\b/i,
+  /\byou owned\b/i,
+  /\byou contributed\b/i,
+  /\bresponsible for\b/i,
+];
+
+const overpraisePatterns = [
+  /\bbrilliant(?:ly)?\b/i,
+  /\bexceptional(?:ly)?\b/i,
+  /\bexcellent\b/i,
+  /\belevated the product\b/i,
+  /\bmaster(?:y|ful)\b/i,
+  /\btalent\b/i,
 ];
 
 const sourceDetectionOnlyPatterns = [
@@ -199,6 +291,16 @@ const firstInsightRequiredPatterns = [
   /\bplatform choice\b/i,
   /\baccountab(?:ility|le)\b/i,
   /\bresponsib(?:ility|le)\b/i,
+];
+
+const aiToolActivityPatterns = [
+  /\bai\b/i,
+  /\bllm\b/i,
+  /\bclaude\b/i,
+  /\bchatgpt\b/i,
+  /\bgemini\b/i,
+  /\btool(?:ing)?\b/i,
+  /\bimplementation repairs?\b/i,
 ];
 
 const aiFluencyLensPatterns = [
@@ -244,23 +346,29 @@ export function isReasoningProviderId(value: unknown): value is ReasoningProvide
   );
 }
 
-export function isProviderCapacityError(error: unknown) {
+function errorMessageText(error: unknown): string {
   if (!error || typeof error !== "object") {
-    return false;
+    return "";
   }
 
-  const message =
-    error instanceof Error
-      ? error.message
-      : "message" in error && typeof (error as { message?: unknown }).message === "string"
-        ? (error as { message: string }).message
-        : "";
+  return error instanceof Error
+    ? error.message
+    : "message" in error && typeof (error as { message?: unknown }).message === "string"
+      ? (error as { message: string }).message
+      : "";
+}
 
-  return (
-    /\b(high demand|overload|overloaded|temporarily unavailable|try again later|resource exhausted|rate limit|quota)\b/i.test(
-      message,
-    )
+export function isProviderCapacityError(error: unknown) {
+  return /\b(high demand|overload|overloaded|temporarily unavailable|try again later|resource exhausted|rate limit|quota)\b/i.test(
+    errorMessageText(error),
   );
+}
+
+const MODEL_UNAVAILABLE_PATTERN =
+  /\b(model[\s_-]?not[\s_-]?found|does not exist|is not found|no longer available|has been (?:deprecated|retired|decommissioned|removed)|unknown model|invalid model|unsupported model|not supported for generatecontent)\b/i;
+
+export function isModelUnavailableError(error: unknown) {
+  return MODEL_UNAVAILABLE_PATTERN.test(errorMessageText(error));
 }
 
 export function buildEvidencePacket(input: {
@@ -283,13 +391,25 @@ export function buildEvidencePacket(input: {
       "Return only JSON matching the requested schema.",
       "Every claim must cite evidence IDs from this packet.",
       "This packet was assembled to balance source diversity, human direction signals, AI Fluency 4D signals, and recency.",
-      "The first insight must explain what the user did OR where human judgment, review, or sequencing appears.",
+      "The first insight must feel like a mirror and proof point: it must explain what the user did OR where human judgment, review, direction, correction, sequencing, or collaboration appears.",
+      'Use "How you shaped the work" as the role_section_label.',
+      "The first insight sentence should be plain human language. Put working-pattern labels underneath in visible_role_patterns.",
+      "Use at most two visible_role_patterns. They are working patterns, not official job titles.",
+      "Use an empty string for fallback_reason when the first insight is supported.",
+      "Use direct language only for direct role evidence. Use appeared, looked like, or the evidence suggests for partial or summary-based role evidence.",
+      "If evidence is Git-only, metadata-only, source-presence-only, AI-strong/user-weak, or missing user actions, return the strict helpful fallback instead of inventing a role label.",
+      "Fallback claim: Workprint found project activity, but not enough direct role evidence yet to describe how you shaped the work.",
+      "If evidence clearly shows AI/tool activity but weakly shows user activity, fallback claim: Workprint found AI-assisted project activity, but not enough direct role evidence yet to describe how you shaped the work.",
+      "When supported, connect user behavior to the effect on the work. Do not imply unsupported causality or broad project arcs without corroboration.",
       "The first insight may also explain what AI/tooling appears to have done, how the work moved from idea to implementation, or what the evidence cannot separate.",
       "Use the AI Fluency 4D lens when supported by evidence: Delegation, Description, Discernment, and Diligence.",
+      "AI Fluency terms may appear in the first insight only when immediately grounded in plain-language behavior. Do not use them as scores, grades, or abstract competencies.",
       "Delegation means what the user gave to AI, kept for themselves, or shaped together; Description means how goals, constraints, process, or AI behavior were specified; Discernment means review, correction, evaluation, or selection; Diligence means verification, disclosure, appropriate use, or accountability.",
       "Credit the AI Fluency Framework to Prof. Rick Dakan, Prof. Joseph Feller, and Anthropic Academy resources if you mention the framework directly.",
       "Analyze the work, process, collaboration pattern, or user direction; do not merely list evidence sources, tool availability, or cache presence.",
       "Do not use presence-only Claude Desktop chat cache evidence as the first insight headline.",
+      "Do not say you were the, your official role, you deserve credit, you owned, you contributed X%, or you were responsible for unless a narrow responsibility is directly evidenced.",
+      "Do not praise or grade the user. Avoid excellent, exceptional, brilliant, mastery, and similar language.",
       "Prefer unknown over unsupported certainty.",
       "The packet must not include credentials, secrets, tokens, certificates, private keys, environment files, or unrestricted project-folder access.",
     ],
@@ -380,6 +500,9 @@ export function validateCandidateInsight(
     ["confidence", insight.confidence],
     ["unknowns", insight.unknowns],
     ["provider_uncertainty", insight.provider_uncertainty],
+    ["role_section_label", insight.role_section_label],
+    ["why_workprint_uses_this_phrase", insight.why_workprint_uses_this_phrase],
+    ["what_this_does_not_prove", insight.what_this_does_not_prove],
   ].filter(([, value]) => typeof value !== "string" || !value.trim());
   if (emptyFields.length > 0) {
     return {
@@ -411,6 +534,8 @@ export function validateCandidateInsight(
   const claimAndExplanationText = [
     insight.claim,
     insight.explanation,
+    insight.why_workprint_uses_this_phrase,
+    insight.what_this_does_not_prove,
   ].join(" ");
 
   const sourceDetectionOnly = sourceDetectionOnlyPatterns.find((pattern) =>
@@ -428,7 +553,8 @@ export function validateCandidateInsight(
   const humanCenteredInsight = firstInsightRequiredPatterns.some((pattern) =>
     pattern.test(claimAndExplanationText),
   );
-  if (!humanCenteredInsight) {
+  const isFallback = Boolean(insight.fallback_reason);
+  if (!humanCenteredInsight && !isFallback) {
     return {
       ok: false,
       code: "boundary_violation",
@@ -440,7 +566,7 @@ export function validateCandidateInsight(
   const aiFluencyAligned = aiFluencyLensPatterns.some((pattern) =>
     pattern.test(claimAndExplanationText),
   );
-  if (!aiFluencyAligned) {
+  if (!aiFluencyAligned && !isFallback) {
     return {
       ok: false,
       code: "boundary_violation",
@@ -460,7 +586,7 @@ export function validateCandidateInsight(
   }
 
   const boundaryViolation = forbiddenClaimPatterns.find((pattern) =>
-    pattern.test(insight.claim),
+    pattern.test(claimAndExplanationText),
   );
   if (boundaryViolation) {
     return {
@@ -468,6 +594,85 @@ export function validateCandidateInsight(
       code: "boundary_violation",
       message:
         "The provider response crossed Workprint's attribution boundary and was rejected.",
+    };
+  }
+
+  const overpraise = overpraisePatterns.find((pattern) =>
+    pattern.test(claimAndExplanationText),
+  );
+  if (overpraise) {
+    return {
+      ok: false,
+      code: "boundary_violation",
+      message:
+        "The provider insight praised or graded the user instead of describing evidence-backed behavior.",
+    };
+  }
+
+  if (insight.role_section_label !== "How you shaped the work") {
+    return {
+      ok: false,
+      code: "malformed_provider_response",
+      message:
+        'The provider did not use Workprint\'s required role label: "How you shaped the work".',
+    };
+  }
+
+  if (insight.visible_role_patterns.length > 2) {
+    return {
+      ok: false,
+      code: "boundary_violation",
+      message:
+        "The provider returned too many role patterns for the first insight proof card.",
+    };
+  }
+
+  if (!isFallback && insight.visible_role_patterns.length === 0) {
+    return {
+      ok: false,
+      code: "boundary_violation",
+      message:
+        "The provider insight did not include an evidence-backed working pattern.",
+    };
+  }
+
+  const roleEvidenceIds = new Set(insight.evidence_ids);
+  for (const pattern of insight.visible_role_patterns) {
+    if (
+      !pattern.label.trim() ||
+      !pattern.basis.trim() ||
+      !pattern.boundary.trim() ||
+      pattern.behaviors.length === 0 ||
+      pattern.evidence_refs.length === 0
+    ) {
+      return {
+        ok: false,
+        code: "malformed_provider_response",
+        message:
+          "The provider returned an incomplete role-pattern proof card.",
+      };
+    }
+
+    for (const ref of pattern.evidence_refs) {
+      if (!packetIds.has(ref) && !roleEvidenceIds.has(ref)) {
+        return {
+          ok: false,
+          code: "invalid_evidence",
+          message: `The provider cited role-pattern evidence Workprint did not send: ${ref}.`,
+        };
+      }
+    }
+  }
+
+  const aiToolCentered =
+    aiToolActivityPatterns.some((pattern) => pattern.test(insight.claim)) &&
+    !humanCenteredInsight;
+  if (aiToolCentered) {
+    return {
+      ok: false,
+      code: "boundary_violation",
+      message:
+        "The provider led with AI/tool activity without enough user-role evidence.",
     };
   }
 
@@ -481,19 +686,84 @@ export function validateCandidateInsight(
   };
 }
 
+export function buildFallbackInsight(
+  packet: EvidencePacket,
+  reason: string,
+): CandidateInsight {
+  const hasAiToolEvidence = packet.evidence.some((item) =>
+    aiToolActivityPatterns.some((pattern) => pattern.test(evidencePacketItemText(item))),
+  );
+  const claim = hasAiToolEvidence
+    ? "Workprint found AI-assisted project activity, but not enough direct role evidence yet to describe how you shaped the work."
+    : "Workprint found project activity, but not enough direct role evidence yet to describe how you shaped the work.";
+  const evidenceIds = packet.evidence.slice(0, 3).map((item) => item.id);
+  const summaryEvidenceUsed = packet.evidence.some((item) =>
+    /\bchat-summary|summary evidence|approved summary\b/i.test(
+      evidencePacketItemText(item),
+    ),
+  );
+
+  return {
+    claim,
+    evidence_ids: evidenceIds,
+    explanation: hasAiToolEvidence
+      ? "Workprint can see AI/tool activity and project changes, but it cannot yet connect that activity to direct user direction, review, decisions, or sequencing."
+      : "Workprint can see project activity, but the selected evidence does not yet show enough direct user direction, review, decisions, or sequencing.",
+    confidence: "Limited",
+    unknowns:
+      "Workprint cannot determine how the user shaped the work without stronger role evidence, such as direct conversation turns or a user-approved chat summary.",
+    provider_uncertainty: reason,
+    visible_role_patterns: [],
+    role_section_label: "How you shaped the work",
+    why_workprint_uses_this_phrase:
+      "Workprint did not assign a working-pattern label because the evidence does not directly support one yet.",
+    what_this_does_not_prove:
+      "This does not prove authorship, ownership, effort, value, intent, or contribution share.",
+    summary_evidence_used: summaryEvidenceUsed,
+    summary_evidence_boundary: summaryEvidenceUsed
+      ? "Summary evidence may provide context, but Workprint did not process the full underlying transcript unless it was explicitly selected."
+      : "",
+    fallback_reason: reason,
+  };
+}
+
+function evidencePacketItemText(item: EvidencePacketItem) {
+  return [
+    item.id,
+    item.source,
+    item.title,
+    item.excerpt,
+    item.supports,
+    item.does_not_prove,
+    item.included_for.join(" "),
+  ].join(" ");
+}
+
 export function buildProviderPrompt(packet: EvidencePacket, mode: "originate" | "corroborate", candidate?: CandidateInsight) {
   return [
     "You are helping Workprint generate a candidate first insight from bounded project evidence.",
     "You are not final authority. Workprint will verify your output before display.",
     "Do not infer authorship, ownership, effort, value, intent, contribution percentages, or human-versus-AI percentages.",
     "Do not claim the project is complete unless evidence explicitly says so.",
-    "The first insight must tell the user what they did OR where human judgment, review, or sequencing appears.",
+    "The first insight must feel like a mirror and proof point: it must tell the user what they did OR where human judgment, review, direction, correction, sequencing, or collaboration appears.",
+    'Use role_section_label exactly as "How you shaped the work".',
+    "The first insight sentence should be plain human language. Put working-pattern labels underneath in visible_role_patterns.",
+    "Use at most two visible_role_patterns. They are working patterns, not official job titles.",
+    "Use an empty string for fallback_reason when the first insight is supported.",
+    "Use direct language only for direct role evidence. Use appeared, looked like, or the evidence suggests for partial or summary-based role evidence.",
+    "If evidence is Git-only, metadata-only, source-presence-only, AI-strong/user-weak, or missing user actions, return the strict helpful fallback instead of inventing a role label.",
+    "Fallback claim: Workprint found project activity, but not enough direct role evidence yet to describe how you shaped the work.",
+    "If evidence clearly shows AI/tool activity but weakly shows user activity, fallback claim: Workprint found AI-assisted project activity, but not enough direct role evidence yet to describe how you shaped the work.",
+    "When supported, connect user behavior to the effect on the work. Do not imply unsupported causality or broad project arcs without corroboration.",
     "The first insight may also include what AI/tooling appears to have done, how the work moved from idea to implementation, or what the evidence cannot separate.",
     "Use the AI Fluency 4D lens when supported by evidence: Delegation, Description, Discernment, and Diligence.",
+    "AI Fluency terms may appear in the first insight only when immediately grounded in plain-language behavior. Do not use them as scores, grades, or abstract competencies.",
     "Delegation means what the user gave to AI, kept for themselves, or shaped together; Description means how goals, constraints, process, or AI behavior were specified; Discernment means review, correction, evaluation, or selection; Diligence means verification, disclosure, appropriate use, or accountability.",
     "Credit the AI Fluency Framework to Prof. Rick Dakan, Prof. Joseph Feller, and Anthropic Academy resources if you mention the framework directly.",
     "Do not make the first insight merely about source detection, tool availability, cache presence, or a system where AI tools were available.",
     "Presence-only Claude Desktop chat cache evidence may support a limitation, but it must not be the first insight headline.",
+    "Do not say you were the, your official role, you deserve credit, you owned, you contributed X%, or you were responsible for unless a narrow responsibility is directly evidenced.",
+    "Do not praise or grade the user. Avoid excellent, exceptional, brilliant, mastery, and similar language.",
     mode === "corroborate"
       ? "This is the second validation pass. Revise the candidate down if it is stronger than the evidence supports."
       : "This is the first reasoning pass. Produce the strongest supported candidate insight.",
@@ -509,6 +779,10 @@ export function buildProviderRepairPrompt(response: string) {
   return [
     "Convert this provider response into exactly the Workprint JSON schema.",
     "Do not add new claims, evidence IDs, attribution, ownership, effort, value, intent, or contribution percentages.",
+    'Use role_section_label exactly as "How you shaped the work" if the response contains enough role evidence.',
+    "Use visible_role_patterns only for evidence-backed working patterns, not official job titles.",
+    "If the response is evidence inventory, source detection, AI-strong/user-weak, or lacks user-role evidence, use the strict helpful fallback claim and set fallback_reason.",
+    "Use an empty string for fallback_reason when the first insight is supported.",
     "If the response does not support a required field, use an empty string. If it cites no evidence IDs, use an empty array.",
     "Return only JSON. Do not include Markdown, prose, or commentary.",
     `Schema: ${JSON.stringify(PROVIDER_INSIGHT_RESPONSE_SCHEMA)}`,
@@ -562,6 +836,19 @@ export function parseCandidateInsight(text: string): CandidateInsight | null {
       confidence: parsed.confidence.trim(),
       unknowns: parsed.unknowns.trim(),
       provider_uncertainty: parsed.provider_uncertainty.trim(),
+      visible_role_patterns: normalizeVisibleRolePatterns(parsed.visible_role_patterns),
+      role_section_label: normalizeRoleSectionLabel(parsed.role_section_label),
+      why_workprint_uses_this_phrase: stringifyCandidateValue(
+        parsed.why_workprint_uses_this_phrase,
+      ),
+      what_this_does_not_prove: stringifyCandidateValue(
+        parsed.what_this_does_not_prove,
+      ),
+      summary_evidence_used: normalizeCandidateBoolean(parsed.summary_evidence_used),
+      summary_evidence_boundary: stringifyCandidateValue(
+        parsed.summary_evidence_boundary,
+      ),
+      fallback_reason: normalizeFallbackReason(parsed.fallback_reason),
     };
   } catch {
     return null;
@@ -664,7 +951,7 @@ async function callOpenAI(input: {
     signal: input.signal,
   });
 
-  return parseProviderTextResponse(response, async (payload) => {
+  return parseProviderTextResponse(response, "openai", async (payload) => {
     if (typeof payload.output_text === "string") {
       return payload.output_text;
     }
@@ -694,7 +981,7 @@ async function callClaude(input: {
     signal: input.signal,
   });
 
-  return parseProviderTextResponse(response, async (payload) => extractText(payload));
+  return parseProviderTextResponse(response, "claude", async (payload) => extractText(payload));
 }
 
 async function callGemini(input: {
@@ -726,21 +1013,23 @@ async function callGemini(input: {
     },
   );
 
-  return parseProviderTextResponse(response, async (payload) => extractText(payload));
+  return parseProviderTextResponse(response, "gemini", async (payload) => extractText(payload));
 }
 
 async function parseProviderTextResponse(
   response: Response,
+  provider: ReasoningProviderId,
   extract: (payload: Record<string, unknown>) => Promise<string>,
 ) {
   const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
 
   if (!response.ok) {
     const status = response.status;
-    const message =
+    const rawMessage =
       typeof payload.error === "object" && payload.error !== null
         ? extractText(payload.error as Record<string, unknown>)
         : "The reasoning provider returned an error.";
+    const message = normalizeProviderErrorMessage(rawMessage, provider);
 
     if (status === 401 || status === 403 || status === 429) {
       throw providerError("auth_or_quota_error", message);
@@ -750,6 +1039,23 @@ async function parseProviderTextResponse(
   }
 
   return extract(payload);
+}
+
+function normalizeProviderErrorMessage(message: string, provider: ReasoningProviderId) {
+  if (MODEL_UNAVAILABLE_PATTERN.test(message)) {
+    const label = providerLabel(provider);
+    return `${label}'s selected model is no longer available for this account. Workprint will try a newer ${label} model.`;
+  }
+
+  if (
+    /generation_config\.response_schema|response_schema|responseSchema|proto field|unknown name "type"/i.test(
+      message,
+    )
+  ) {
+    return "Workprint could not start provider reasoning because the provider rejected the structured response format. Try again after updating Workprint, or choose a different provider.";
+  }
+
+  return message;
 }
 
 function providerError(code: ReasoningFailureCode, message: string) {
@@ -818,7 +1124,7 @@ function stripMarkdownFence(text: string) {
     .trim();
 }
 
-function normalizeCandidateShape(value: unknown): Partial<CandidateInsight> {
+function normalizeCandidateShape(value: unknown): Record<string, unknown> {
   const record = unwrapCandidateRecord(value);
 
   return {
@@ -844,7 +1150,157 @@ function normalizeCandidateShape(value: unknown): Partial<CandidateInsight> {
       "providerUncertainty",
       "uncertainty",
     ]),
+    visible_role_patterns:
+      record.visible_role_patterns ??
+      record.visibleRolePatterns ??
+      record.role_patterns ??
+      record.rolePatterns ??
+      record.how_you_shaped_the_work,
+    role_section_label: readCandidateString(record, [
+      "role_section_label",
+      "roleSectionLabel",
+      "role_label",
+      "roleLabel",
+    ]),
+    why_workprint_uses_this_phrase: readCandidateString(record, [
+      "why_workprint_uses_this_phrase",
+      "whyWorkprintUsesThisPhrase",
+      "role_pattern_basis",
+      "rolePatternBasis",
+      "basis",
+    ]),
+    what_this_does_not_prove: readCandidateString(record, [
+      "what_this_does_not_prove",
+      "whatThisDoesNotProve",
+      "does_not_prove",
+      "doesNotProve",
+      "boundary",
+    ]),
+    summary_evidence_used: record.summary_evidence_used ?? record.summaryEvidenceUsed,
+    summary_evidence_boundary: readCandidateString(record, [
+      "summary_evidence_boundary",
+      "summaryEvidenceBoundary",
+    ]),
+    fallback_reason: readNullableCandidateString(record, [
+      "fallback_reason",
+      "fallbackReason",
+    ]),
   };
+}
+
+function normalizeVisibleRolePatterns(value: unknown): VisibleRolePattern[] {
+  if (!value) {
+    return [];
+  }
+
+  const records = Array.isArray(value) ? value : [value];
+  return records
+    .map((entry) => {
+      if (!entry || typeof entry !== "object") {
+        return null;
+      }
+
+      const record = entry as Record<string, unknown>;
+      const label = readCandidateString(record, ["label", "role", "name"]);
+      const basis = readCandidateString(record, [
+        "basis",
+        "rationale",
+        "reason",
+        "why",
+        "description",
+      ]);
+      const confidence = readCandidateString(record, [
+        "confidence",
+        "confidence_level",
+        "confidenceLevel",
+      ]);
+      const boundary = readCandidateString(record, [
+        "boundary",
+        "what_this_does_not_prove",
+        "whatThisDoesNotProve",
+        "does_not_prove",
+        "doesNotProve",
+      ]);
+      const behaviors = extractStringList(
+        record.behaviors ?? record.activities ?? record.actions,
+      );
+      const evidenceRefs = extractEvidenceIds(
+        record.evidence_refs ??
+          record.evidenceRefs ??
+          record.evidence_ids ??
+          record.evidenceIds,
+      );
+
+      return {
+        label,
+        basis,
+        behaviors,
+        confidence,
+        evidence_refs: evidenceRefs,
+        boundary,
+      };
+    })
+    .filter((pattern): pattern is VisibleRolePattern => Boolean(pattern));
+}
+
+function normalizeRoleSectionLabel(value: unknown): string {
+  const text = stringifyCandidateValue(value);
+  return text || "How you shaped the work";
+}
+
+function normalizeFallbackReason(value: unknown) {
+  const text = stringifyCandidateValue(value);
+  return text ? text : null;
+}
+
+function normalizeCandidateBoolean(value: unknown) {
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    return value.trim().toLowerCase() === "true";
+  }
+
+  return false;
+}
+
+function readNullableCandidateString(record: Record<string, unknown>, keys: string[]) {
+  for (const key of keys) {
+    if (!(key in record)) {
+      continue;
+    }
+
+    const value = record[key];
+    if (value === null) {
+      return null;
+    }
+
+    const text = stringifyCandidateValue(value);
+    if (text) {
+      return text;
+    }
+  }
+
+  return null;
+}
+
+function extractStringList(value: unknown): string[] {
+  if (typeof value === "string") {
+    return value
+      .split(/[,;]+/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .map(stringifyCandidateValue)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  return [];
 }
 
 function unwrapCandidateRecord(value: unknown): Record<string, unknown> {

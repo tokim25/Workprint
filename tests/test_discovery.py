@@ -254,6 +254,26 @@ class DiscoveryTests(unittest.TestCase):
         result = self._result(discovery, "project-notes")
         self.assertEqual(result.detected_files, ("notes.md",))
 
+    def test_discovery_skips_tests_and_fixtures_directories(self):
+        with tempfile.TemporaryDirectory() as directory:
+            Path(directory, "notes.md").write_text(
+                "# Real Notes\n\nThe project goal is to keep real docs visible.",
+                encoding="utf-8",
+            )
+            nested_fixtures = Path(directory, "tests", "fixtures", "google-docs")
+            nested_fixtures.mkdir(parents=True)
+            shutil.copy(
+                Path("fixtures/google-docs/sample-document.json"),
+                nested_fixtures / "sample-document.json",
+            )
+
+            discovery = discover_project(directory)
+
+        with self.assertRaises(AssertionError):
+            self._result(discovery, "google-docs")
+        result = self._result(discovery, "project-notes")
+        self.assertEqual(result.detected_files, ("notes.md",))
+
     def test_cli_discover_command(self):
         with tempfile.TemporaryDirectory() as directory:
             self._copy_fixture(
